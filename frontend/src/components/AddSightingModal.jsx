@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { track } from "../analytics";
-import exifr from "exifr";
+import exifrImport from "exifr";
+
+const exifr = exifrImport?.default ?? exifrImport;
 import { createSighting } from "../api";
 import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";

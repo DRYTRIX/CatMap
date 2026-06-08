@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // Restore Rollup-style CJS default interop for legacy packages (e.g. react-leaflet-cluster).
+  legacy: {
+    inconsistentCjsInterop: true,
+  },
   plugins: [
     react(),
     VitePWA({

@@ -6,7 +6,11 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
+import MarkerClusterGroupImport from "react-leaflet-cluster";
+
+// Vite 8 + "type":"module" can resolve CJS default exports as the module namespace.
+const MarkerClusterGroup =
+  MarkerClusterGroupImport?.default ?? MarkerClusterGroupImport;
 import { fetchDots } from "../api";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { catIcon, clusterIcon } from "../lib/markers";

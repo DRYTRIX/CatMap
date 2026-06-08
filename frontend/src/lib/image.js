@@ -1,4 +1,6 @@
-import imageCompression from "browser-image-compression";
+import imageCompressionImport from "browser-image-compression";
+
+const imageCompression = imageCompressionImport?.default ?? imageCompressionImport;
 
 /**
  * Downscale/compress a photo for upload. The backend also resizes, but doing
