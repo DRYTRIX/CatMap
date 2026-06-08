@@ -1,4 +1,5 @@
 import SearchBar from "./SearchBar";
+import { track } from "../analytics";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faPiggyBank} from "@fortawesome/free-solid-svg-icons";
 /** Solid site header: brand + live count, search, and the Add action. */
@@ -21,7 +22,10 @@ export default function Header({ count, map, onAdd, donateURL}) {
           <button
             type="button"
             className="btn btn-primary add-btn"
-            onClick={() => window.open(donateURL, "_blank", "noopener,noreferrer")}
+            onClick={() => {
+              track("donate_click");
+              window.open(donateURL, "_blank", "noopener,noreferrer");
+            }}
           >
             <span className="add-btn-plus" aria-hidden="true">
               <FontAwesomeIcon icon={faPiggyBank} />

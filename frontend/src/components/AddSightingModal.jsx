@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { track } from "../analytics";
 import exifr from "exifr";
 import { createSighting } from "../api";
 import { compressImage, formatBytes } from "../lib/image";
@@ -9,9 +10,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faCheck } from "@fortawesome/free-solid-svg-icons";
 
 const STEPS = ["Photo", "Location", "Details"];
+const STEP_KEYS = ["photo", "location", "details"];
 
 export default function AddSightingModal({ onClose, onCreated }) {
   const toast = useToast();
+  const submittedRef = useRef(false);
   const [step, setStep] = useState(0);
 
   const [file, setFile] = useState(null);
@@ -67,8 +70,12 @@ export default function AddSightingModal({ onClose, onCreated }) {
         description,
         onProgress: setProgress,
       });
+      submittedRef.current = true;
       toast.success("Cat added to the map! 🐱");
-      onCreated(created);
+      onCreated(created, {
+        location_source: fromExif ? "exif" : "manual",
+        has_description: Boolean(description.trim()),
+      });
     } catch (e) {
       toast.error(e.message);
       setSubmitting(false);
@@ -77,12 +84,24 @@ export default function AddSightingModal({ onClose, onCreated }) {
 
   const canNext = step === 0 ? !!file && !processing : step === 1 ? !!location : true;
 
+  function closeModal() {
+    if (!submittedRef.current) {
+      track("add_sighting_abandon", { step: STEP_KEYS[step] });
+    }
+    onClose();
+  }
+
+  function goNext() {
+    track("add_sighting_step", { step: STEP_KEYS[step] });
+    setStep((s) => s + 1);
+  }
+
   return (
-    <Modal onClose={onClose} labelledBy="add-title" className="sheet">
+    <Modal onClose={closeModal} labelledBy="add-title" className="sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
         <h2 id="add-title">🐱 Add a cat sighting</h2>
-        <button className="icon-btn" aria-label="Close" onClick={onClose}>
+        <button className="icon-btn" aria-label="Close" onClick={closeModal}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
@@ -175,7 +194,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
             Back
           </button>
         ) : (
-          <button className="btn btn-ghost btn-block" onClick={onClose}>
+          <button className="btn btn-ghost btn-block" onClick={closeModal}>
             Cancel
           </button>
         )}
@@ -183,7 +202,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
         {step < STEPS.length - 1 ? (
           <button
             className="btn btn-primary btn-block"
-            onClick={() => setStep((s) => s + 1)}
+            onClick={goNext}
             disabled={!canNext}
           >
             Next

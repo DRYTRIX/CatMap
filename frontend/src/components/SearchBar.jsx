@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { track } from "../analytics";
 import { geocode } from "../api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
@@ -29,6 +30,7 @@ export default function SearchBar({ map }) {
         const data = await geocode(q, controller.signal);
         setResults(data);
         setOpen(true);
+        track("search", { result_count: data.length });
       } catch {
         /* aborted or failed — ignore */
       } finally {
@@ -48,6 +50,7 @@ export default function SearchBar({ map }) {
   }, []);
 
   function choose(r) {
+    track("search_select", { has_bounds: Boolean(r.boundingbox) });
     setQuery(r.display_name.split(",")[0]);
     setOpen(false);
     setResults([]);

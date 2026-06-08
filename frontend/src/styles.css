@@ -890,6 +890,48 @@ textarea:focus {
   cursor: pointer;
 }
 
+.consent-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + var(--footer-h) + var(--safe-bottom));
+  z-index: 1900;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  box-shadow: var(--sh-3);
+  animation: rise 0.4s var(--ease) both;
+}
+.consent-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-500);
+}
+.consent-text a {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+.consent-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.consent-btn {
+  padding: 8px 14px;
+  font-size: 14px;
+}
+.site-footer-privacy {
+  color: var(--ink-400);
+  font-size: 12px;
+}
+
 /* ---------- Animations ---------- */
 @keyframes spin {
   to {

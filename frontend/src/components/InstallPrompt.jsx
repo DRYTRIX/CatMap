@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { track } from "../analytics";
 
 const DISMISS_KEY = "catmap_install_dismissed";
 
@@ -43,6 +44,7 @@ export default function InstallPrompt() {
   }, []);
 
   function dismiss() {
+    track("pwa_dismiss");
     setVisible(false);
     localStorage.setItem(DISMISS_KEY, "1");
   }
@@ -50,10 +52,15 @@ export default function InstallPrompt() {
   async function install() {
     if (!deferred) return;
     deferred.prompt();
-    await deferred.userChoice;
+    const { outcome } = await deferred.userChoice;
+    track("pwa_install", { outcome });
     setDeferred(null);
     dismiss();
   }
+
+  useEffect(() => {
+    if (visible) track("pwa_prompt", { platform: iosHint ? "ios" : "other" });
+  }, [visible, iosHint]);
 
   if (!visible) return null;
 

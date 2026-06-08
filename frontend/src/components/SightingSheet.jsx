@@ -6,6 +6,7 @@ import {
   fetchSighting,
   reportSighting,
 } from "../api";
+import { track } from "../analytics";
 import { getConfirmedSet, isMine, markConfirmed } from "../deviceToken";
 import { timeAgo } from "../lib/time";
 import Modal from "./Modal";
@@ -31,6 +32,10 @@ export default function SightingSheet({ id, onClose, onChanged }) {
   const mine = isMine(id);
 
   useEffect(() => {
+    const source =
+      new URLSearchParams(window.location.search).get("s") === id ? "deep_link" : "map";
+    track("sighting_view", { source });
+
     let active = true;
     setData(null);
     setError(null);
@@ -49,7 +54,10 @@ export default function SightingSheet({ id, onClose, onChanged }) {
       setData((d) => ({ ...d, confirmations_count: res.confirmations }));
       setConfirmed(true);
       markConfirmed(id);
-      if (!res.already_confirmed) toast.success("Sighting confirmed!");
+      if (!res.already_confirmed) {
+        track("sighting_confirm");
+        toast.success("Sighting confirmed!");
+      }
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -62,8 +70,10 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     try {
       if (navigator.share) {
         await navigator.share({ title: "CatMap sighting", url });
+        track("sighting_share", { method: "native" });
       } else {
         await navigator.clipboard.writeText(url);
+        track("sighting_share", { method: "clipboard" });
         toast.success("Link copied to clipboard.");
       }
     } catch {
@@ -77,10 +87,12 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     try {
       const res = await reportSighting(id);
       if (res.hidden) {
+        track("sighting_report", { outcome: "hidden" });
         toast.success("Reported — this sighting has been hidden.");
         onChanged?.();
         onClose();
       } else if (res.reported) {
+        track("sighting_report", { outcome: "submitted" });
         toast.success("Thanks — your report was submitted.");
       } else {
         toast.info("You've already reported this one.");
@@ -97,6 +109,7 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     setBusy(true);
     try {
       await deleteSighting(id);
+      track("sighting_delete");
       toast.success("Sighting deleted.");
       onChanged?.();
       onClose();
@@ -130,7 +143,10 @@ export default function SightingSheet({ id, onClose, onChanged }) {
         <>
           <button
             className="card-img-btn detail-img-btn"
-            onClick={() => setLightbox(true)}
+            onClick={() => {
+              track("sighting_photo_expand");
+              setLightbox(true);
+            }}
             aria-label="View full photo"
           >
             <img

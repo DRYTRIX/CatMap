@@ -8,6 +8,7 @@ import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
 import { ToastProvider, useToast } from "./components/Toast";
 import { markCreated } from "./deviceToken";
+import { track } from "./analytics";
 
 function AppShell() {
   const toast = useToast();
@@ -18,16 +19,25 @@ function AppShell() {
   const [selectedId, setSelectedId] = useState(null);
   const mapRef = useRef(null);
 
-  // Deep link: /?s=<id> opens that sighting directly (shareable links).
   useEffect(() => {
+    track("app_open");
     const id = new URLSearchParams(window.location.search).get("s");
-    if (id) setSelectedId(id);
+    if (id) {
+      track("deep_link_open");
+      setSelectedId(id);
+    }
   }, []);
 
   // Online/offline feedback.
   useEffect(() => {
-    const onOffline = () => toast.error("You're offline — changes may not save.");
-    const onOnline = () => toast.success("Back online.");
+    const onOffline = () => {
+      track("connectivity_change", { status: "offline" });
+      toast.error("You're offline — changes may not save.");
+    };
+    const onOnline = () => {
+      track("connectivity_change", { status: "online" });
+      toast.success("Back online.");
+    };
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
     return () => {
@@ -36,15 +46,26 @@ function AppShell() {
     };
   }, [toast]);
 
-  function handleCreated(sighting) {
+  function handleCreated(sighting, meta = {}) {
+    track("add_sighting_complete", meta);
     setAdding(false);
     markCreated(sighting.id);
     setRefreshKey((k) => k + 1);
     if (mapRef.current) mapRef.current.setView([sighting.lat, sighting.lng], 15);
   }
 
+  function openAdd() {
+    track("add_sighting_start");
+    setAdding(true);
+  }
+
+  function closeAdd() {
+    setAdding(false);
+  }
+
   function locateMe() {
     if (!navigator.geolocation || !mapRef.current) return;
+    track("map_locate");
     navigator.geolocation.getCurrentPosition(
       (pos) => mapRef.current.setView([pos.coords.latitude, pos.coords.longitude], 15),
       () => toast.error("Couldn't get your location."),
@@ -56,7 +77,7 @@ function AppShell() {
 
   return (
     <div className="app">
-      <Header count={count} map={map} onAdd={() => setAdding(true)} donateURL="https://buymeacoffee.com/drytrix" />
+      <Header count={count} map={map} onAdd={openAdd} donateURL="https://buymeacoffee.com/drytrix" />
 
       <div className="map-wrap">
         <MapView
@@ -74,7 +95,7 @@ function AppShell() {
       <Footer />
 
       {adding && (
-        <AddSightingModal onClose={() => setAdding(false)} onCreated={handleCreated} />
+        <AddSightingModal onClose={closeAdd} onCreated={handleCreated} />
       )}
 
       {selectedId && (
