@@ -1,9 +1,15 @@
-const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 const CONSENT_KEY = "catmap_analytics_consent";
+
+function measurementId() {
+  const runtime = typeof window !== "undefined" && window.__CATMAP_ENV__?.gaMeasurementId;
+  const baked = import.meta.env.VITE_GA_MEASUREMENT_ID;
+  return (runtime || baked || "").trim();
+}
 
 /** GA4 is configured and this is a production build. */
 export function isAnalyticsConfigured() {
-  return Boolean(MEASUREMENT_ID) && !import.meta.env.DEV;
+  const id = measurementId();
+  return Boolean(id) && !import.meta.env.DEV;
 }
 
 function readConsent() {
@@ -51,11 +57,12 @@ export function initAnalytics() {
 
   const script = document.createElement("script");
   script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
+  const id = measurementId();
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
   document.head.appendChild(script);
 
   window.gtag("js", new Date());
-  window.gtag("config", MEASUREMENT_ID, {
+  window.gtag("config", id, {
     send_page_view: true,
     anonymize_ip: true,
   });

@@ -42,5 +42,6 @@ services:
         value: https://catmap-backend.onrender.com
       - key: BACKEND_HOST
         value: catmap-backend.onrender.com
+      # Set your real G-XXXXXXXXXX in the Render dashboard, then redeploy.
       - key: VITE_GA_MEASUREMENT_ID
-        value: G-0000000000
+        sync: false
