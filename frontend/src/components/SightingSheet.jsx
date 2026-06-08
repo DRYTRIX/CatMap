@@ -82,10 +82,10 @@ export default function SightingSheet({ id, onClose, onChanged }) {
   }
 
   async function onReport() {
-    if (!window.confirm("Report this sighting as inappropriate or spam?")) return;
+    if (!window.confirm("Report this as not a cat or spam?")) return;
     setBusy(true);
     try {
-      const res = await reportSighting(id);
+      const res = await reportSighting(id, "not_a_cat");
       if (res.hidden) {
         track("sighting_report", { outcome: "hidden" });
         toast.success("Reported — this sighting has been hidden.");

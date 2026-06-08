@@ -14,7 +14,13 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY scripts ./scripts
+RUN python scripts/fetch_model.py
+
 COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini .
+COPY models ./models
 
 EXPOSE 8000
 

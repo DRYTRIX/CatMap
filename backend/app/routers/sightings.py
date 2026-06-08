@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..cat_detection import detect_cat
 from ..config import get_settings
 from ..database import get_db
 from ..deps import device_token
@@ -128,6 +129,14 @@ async def create_sighting(
     except InvalidImageError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    score = detect_cat(main_bytes)
+    if settings.cat_detection_enabled and score is not None:
+        if settings.cat_detection_strict and score < settings.cat_detection_threshold:
+            raise HTTPException(
+                status_code=400,
+                detail="We couldn't spot a cat in this photo. Try a clearer, closer shot.",
+            )
+
     sighting = Sighting(
         lat=lat,
         lng=lng,
@@ -136,6 +145,7 @@ async def create_sighting(
         thumbnail=thumb_bytes,
         photo_mime=mime,
         creator_token=token,
+        cat_confidence=score,
     )
     db.add(sighting)
     db.commit()

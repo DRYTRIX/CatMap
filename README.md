@@ -134,9 +134,36 @@ builds without rewriting features.
 
 ---
 
+## Database migrations
+
+Schema changes are managed with **Alembic**. On startup the backend runs
+`alembic upgrade head` ([`app/database.py`](backend/app/database.py)).
+
+```bash
+cd backend
+# apply migrations manually (same as startup)
+alembic upgrade head
+# create a new revision after editing models
+alembic revision -m "describe change" --autogenerate
+```
+
+If you deployed **before** Alembic was added and tables already exist, the app
+auto-stamps the `0001` baseline on first boot, then applies newer revisions
+(e.g. `0002` adds `cat_confidence`). Fresh databases run all revisions from
+scratch.
+
+## Cat detection
+
+Uploads are checked server-side with a small ONNX ImageNet classifier. Tune via
+env vars (`CAT_DETECTION_ENABLED`, `CAT_DETECTION_THRESHOLD`, `CAT_DETECTION_STRICT`).
+The browser shows an optional pre-check hint; the server is authoritative.
+
+Download the model for local backend dev:
+
+```bash
+cd backend && python scripts/fetch_model.py
+```
+
 ## Notes & future work
 
-- Tables are auto-created on startup (`Base.metadata.create_all`). Add Alembic
-  if you need migrations.
-- `status` field on sightings is a hook for a future moderation/report flow.
 - For very large datasets, consider marker clustering and/or PostGIS.

@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from .config import get_settings
-from .database import engine, init_db
+from .database import engine, run_migrations
 from .ratelimit import limiter
 from .routers import admin, sightings
 
@@ -18,7 +18,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    run_migrations()
     if settings.cors_origins.strip() == "*":
         logger.warning(
             "CORS_ORIGINS is '*' — set explicit origins before a public launch."

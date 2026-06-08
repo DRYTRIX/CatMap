@@ -41,6 +41,7 @@ class AdminReportRow(BaseModel):
     status: str
     reports_count: int
     confirmations_count: int
+    cat_confidence: float | None
     created_at: datetime
     thumbnail_url: str
 

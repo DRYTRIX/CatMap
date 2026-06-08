@@ -50,6 +50,9 @@ class Sighting(Base):
     # Distinct device reports; auto-hidden once this reaches the threshold.
     reports_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # ML cat-detection score (0.0–1.0); NULL for rows created before this feature.
+    cat_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     confirmations: Mapped[list["Confirmation"]] = relationship(
         back_populates="sighting", cascade="all, delete-orphan"
     )

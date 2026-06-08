@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { track } from "../analytics";
 import exifr from "exifr";
 import { createSighting } from "../api";
+import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
 import LocationPicker from "./LocationPicker";
 import Modal from "./Modal";
@@ -21,6 +22,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [sizes, setSizes] = useState(null); // { before, after }
   const [processing, setProcessing] = useState(false);
+  const [catDetected, setCatDetected] = useState(null);
 
   const [location, setLocation] = useState(null);
   const [fromExif, setFromExif] = useState(false);
@@ -33,6 +35,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
     const f = e.target.files?.[0];
     if (!f) return;
     setProcessing(true);
+    setCatDetected(null);
     try {
       // 1) Read GPS from the ORIGINAL (compression strips EXIF).
       let gps = null;
@@ -54,6 +57,13 @@ export default function AddSightingModal({ onClose, onCreated }) {
       setFile(compressed);
       setSizes({ before: f.size, after: compressed.size });
       setPreviewUrl(URL.createObjectURL(compressed));
+
+      const catCheck = await checkForCat(compressed);
+      setCatDetected(catCheck.detected);
+      track("add_sighting_client_cat_check", {
+        detected: catCheck.detected,
+        score: catCheck.score,
+      });
     } finally {
       setProcessing(false);
     }
@@ -82,7 +92,12 @@ export default function AddSightingModal({ onClose, onCreated }) {
     }
   }
 
-  const canNext = step === 0 ? !!file && !processing : step === 1 ? !!location : true;
+  const canNext =
+    step === 0
+      ? !!file && !processing && catDetected === true
+      : step === 1
+        ? !!location
+        : true;
 
   function closeModal() {
     if (!submittedRef.current) {
@@ -143,6 +158,11 @@ export default function AddSightingModal({ onClose, onCreated }) {
             <p className="hint">
               Optimized {formatBytes(sizes.before)} → {formatBytes(sizes.after)} for
               a faster upload.
+            </p>
+          )}
+          {catDetected === false && (
+            <p className="hint cat-hint">
+              We couldn't spot a cat in this photo — try a clearer, closer shot.
             </p>
           )}
         </div>

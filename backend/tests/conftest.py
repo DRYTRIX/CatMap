@@ -16,6 +16,7 @@ os.environ["RATE_LIMIT_CONFIRM"] = "1000/minute"
 os.environ["RATE_LIMIT_REPORT"] = "1000/minute"
 os.environ["ADMIN_TOKEN"] = "test-admin"
 os.environ["CORS_ORIGINS"] = "*"
+os.environ["CAT_DETECTION_ENABLED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

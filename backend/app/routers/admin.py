@@ -32,6 +32,7 @@ def list_reported(db: Session = Depends(get_db)) -> list[AdminReportRow]:
             status=s.status,
             reports_count=s.reports_count,
             confirmations_count=s.confirmations_count,
+            cat_confidence=s.cat_confidence,
             created_at=s.created_at,
             thumbnail_url=f"/api/sightings/{s.id}/thumbnail",
         )

@@ -27,6 +27,12 @@ services:
         value: https://catmap-frontend.onrender.com
       - key: MAX_UPLOAD_MB
         value: "10"
+      - key: CAT_DETECTION_ENABLED
+        value: "true"
+      - key: CAT_DETECTION_THRESHOLD
+        value: "0.20"
+      - key: CAT_DETECTION_STRICT
+        value: "true"
 
   - type: web
     name: catmap-frontend

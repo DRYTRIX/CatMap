@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # Token protecting the /api/admin endpoints. Empty disables admin routes.
     admin_token: str = ""
 
+    # Cat detection (ONNX ImageNet classifier).
+    cat_detection_enabled: bool = True
+    cat_detection_threshold: float = 0.20
+    cat_detection_strict: bool = True
+    cat_detection_model_path: str = "models/mobilenet_v2.onnx"
+
     @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":
