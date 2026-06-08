@@ -114,8 +114,10 @@ upload-hardening). CI (`.github/workflows/ci.yml`) runs lint + tests + builds.
    - `catmap-frontend` — Docker web service (`VITE_API_BASE` baked at build)
 3. After the first deploy, confirm the URLs match the values in `render.yaml`
    (`catmap-backend.onrender.com` / `catmap-frontend.onrender.com`). If Render
-   assigned different names, update `CORS_ORIGINS` (backend) and `VITE_API_BASE`
-   (frontend) accordingly and redeploy.
+   assigned different names, update `BACKEND_URL` / `BACKEND_HOST` (frontend) and
+   `CORS_ORIGINS` (backend) accordingly and redeploy. The frontend nginx proxies
+   `/api` to the backend so the browser stays same-origin; add any custom frontend
+   domain to `CORS_ORIGINS` only if you call the backend URL directly.
 
 The backend normalizes Render's `postgresql://` connection string to the
 `postgresql+psycopg://` driver form automatically (`app/database.py`).

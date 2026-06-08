@@ -48,5 +48,12 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Same-origin /api in dev when VITE_API_BASE is unset (mirrors production nginx proxy).
+    proxy: {
+      "/api": {
+        target: process.env.VITE_DEV_API_PROXY || "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
 });

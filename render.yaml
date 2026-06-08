@@ -22,6 +22,7 @@ services:
       # Render's connection string starts with postgresql://; SQLAlchemy needs
       # the psycopg driver. Override here with the +psycopg form if needed, or
       # the app normalizes it (see app/database.py note in README).
+      # Still required for direct API access; the frontend proxies /api same-origin.
       - key: CORS_ORIGINS
         value: https://catmap-frontend.onrender.com
       - key: MAX_UPLOAD_MB
@@ -34,8 +35,12 @@ services:
     dockerContext: ./frontend
     plan: free
     envVars:
-      # Baked into the static build at image build time.
+      # Empty = browser calls /api on the frontend origin (nginx proxies to backend).
       - key: VITE_API_BASE
+        value: ""
+      - key: BACKEND_URL
         value: https://catmap-backend.onrender.com
+      - key: BACKEND_HOST
+        value: catmap-backend.onrender.com
       - key: VITE_GA_MEASUREMENT_ID
         value: G-0000000000

@@ -32,10 +32,11 @@ services:
     build:
       context: ./frontend
       args:
-        # Browser talks to the backend via the host-exposed port.
-        VITE_API_BASE: "http://localhost:8000"
+        VITE_API_BASE: ""
     environment:
       PORT: "80"
+      BACKEND_URL: http://backend:8000
+      BACKEND_HOST: backend
     ports:
       - "5173:80"
     depends_on:

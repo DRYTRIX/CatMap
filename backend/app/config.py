@@ -42,7 +42,19 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":
             return ["*"]
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = []
+        for o in self.cors_origins.split(","):
+            o = o.strip().rstrip("/")
+            if o:
+                origins.append(o)
+        return origins
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        """Match any Render web service URL when using explicit origin allowlists."""
+        if self.cors_origins.strip() == "*":
+            return None
+        return r"https://[\w-]+\.onrender\.com"
 
     @property
     def max_upload_bytes(self) -> int:
