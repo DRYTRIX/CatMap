@@ -1,17 +1,43 @@
+import { useEffect, useState } from "react";
 import SearchBar from "./SearchBar";
+import { fetchStats } from "../api";
 import { track } from "../analytics";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faPiggyBank} from "@fortawesome/free-solid-svg-icons";
-/** Solid site header: brand + live count, search, and the Add action. */
-export default function Header({ count, map, onAdd, donateURL}) {
+import { faPlus, faPiggyBank } from "@fortawesome/free-solid-svg-icons";
+
+function formatCount(n) {
+  return n.toLocaleString();
+}
+
+/** Solid site header: brand + counts, search, and the Add action. */
+export default function Header({ count, map, onAdd, donateURL }) {
+  const [globalTotal, setGlobalTotal] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchStats()
+      .then((data) => active && setGlobalTotal(data.total_cats))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <header className="site-header">
       <div className="brand">
-        <span className="brand-badge" aria-hidden="true">🐱</span>
+        <span className="brand-badge" aria-hidden="true">
+          🐱
+        </span>
         <span className="brand-name">CatMap</span>
+        {globalTotal !== null && (
+          <span className="brand-count brand-count-global">
+            {formatCount(globalTotal)} cat{globalTotal === 1 ? "" : "s"} worldwide
+          </span>
+        )}
         {count !== null && (
           <span className="brand-count">
-            {count} cat{count === 1 ? "" : "s"} here
+            {formatCount(count)} in view
           </span>
         )}
       </div>

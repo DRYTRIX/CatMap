@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f59e0b" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Privacy — CatMap</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: #1e293b;
+        --muted: #64748b;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --accent: #f59e0b;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e2e8f0;
+          --muted: #94a3b8;
+          --bg: #0f172a;
+          --card: #1e293b;
+        }
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin-bottom: 0.25rem;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+      }
+      section {
+        background: var(--card);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+      }
+      h2 {
+        font-size: 1.1rem;
+        margin: 0 0 0.5rem;
+      }
+      p,
+      ul {
+        margin: 0.5rem 0 0;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      .back {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Back to CatMap</a>
+      <h1>Privacy Policy</h1>
+      <p class="meta">Last updated: June 2026</p>
+
+      <section>
+        <h2>Summary</h2>
+        <p>
+          CatMap is designed to be anonymous. You do not create an account or
+          provide personal information to use the map.
+        </p>
+      </section>
+
+      <section>
+        <h2>What we store</h2>
+        <ul>
+          <li>
+            <strong>Device token</strong> — a random ID generated in your
+            browser's <code>localStorage</code>. It is sent as
+            <code>X-Device-Token</code> so you can confirm sightings once, report
+            content, and delete your own posts. It is not linked to your identity.
+          </li>
+          <li>
+            <strong>Sightings you submit</strong> — photo (EXIF metadata is
+            stripped before storage), optional description, and map coordinates.
+          </li>
+          <li>
+            <strong>Anonymous analytics (optional)</strong> — if you accept the
+            consent banner, Google Analytics 4 may collect aggregated usage data
+            (page views, feature interactions). IP addresses are anonymized.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What we do not collect</h2>
+        <ul>
+          <li>Names, email addresses, or login credentials</li>
+          <li>Precise device identifiers beyond the anonymous token above</li>
+          <li>Photo EXIF after upload (GPS and camera metadata are removed)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Moderation</h2>
+        <p>
+          Users can report sightings. Content may be hidden automatically after
+          multiple reports. Uploaded photos are checked for cat-like content
+          before being published.
+        </p>
+      </section>
+
+      <section>
+        <h2>Third parties</h2>
+        <ul>
+          <li>
+            <strong>OpenStreetMap</strong> — map tiles and place search
+            (Nominatim)
+          </li>
+          <li>
+            <strong>Google Analytics</strong> — only when you opt in via the
+            consent banner.
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Google Privacy Policy</a
+            >
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Contact</h2>
+        <p>
+          Questions or concerns:
+          <a href="https://github.com/DRYTRIX/CatMap/issues" target="_blank" rel="noopener noreferrer"
+            >open a GitHub issue</a
+          >
+          or visit
+          <a href="https://drytrix.com" target="_blank" rel="noopener noreferrer">drytrix.com</a>.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -66,10 +66,13 @@ export default function SightingSheet({ id, onClose, onChanged }) {
   }
 
   async function onShare() {
-    const url = `${window.location.origin}/?s=${id}`;
+    const url = `${window.location.origin}/s/${id}`;
+    const title = data?.description
+      ? `Cat on CatMap: ${data.description.slice(0, 80)}`
+      : "Cat sighting on CatMap";
     try {
       if (navigator.share) {
-        await navigator.share({ title: "CatMap sighting", url });
+        await navigator.share({ title, url });
         track("sighting_share", { method: "native" });
       } else {
         await navigator.clipboard.writeText(url);

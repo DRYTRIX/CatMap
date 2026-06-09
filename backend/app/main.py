@@ -10,7 +10,7 @@ from sqlalchemy import text
 from .config import get_settings
 from .database import engine, run_migrations
 from .ratelimit import limiter
-from .routers import admin, sightings
+from .routers import admin, share, sightings, stats
 
 logger = logging.getLogger("catmap")
 settings = get_settings()
@@ -61,6 +61,8 @@ app.add_middleware(
 )
 
 app.include_router(sightings.router)
+app.include_router(stats.router)
+app.include_router(share.router)
 app.include_router(admin.router)
 
 

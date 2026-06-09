@@ -20,6 +20,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://catmap:catmap@db:5432/catmap
       CORS_ORIGINS: "*"
+      PUBLIC_SITE_URL: http://localhost:5173
       MAX_UPLOAD_MB: "10"
       CAT_DETECTION_ENABLED: "true"
       CAT_DETECTION_THRESHOLD: "0.20"

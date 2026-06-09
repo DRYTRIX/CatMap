@@ -24,7 +24,9 @@ services:
       # the app normalizes it (see app/database.py note in README).
       # Still required for direct API access; the frontend proxies /api same-origin.
       - key: CORS_ORIGINS
-        value: https://catmap-frontend.onrender.com
+        value: https://catmap.drytrix.com,https://catmap-frontend.onrender.com
+      - key: PUBLIC_SITE_URL
+        value: https://catmap.drytrix.com
       - key: MAX_UPLOAD_MB
         value: "10"
       - key: CAT_DETECTION_ENABLED

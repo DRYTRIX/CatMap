@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Token protecting the /api/admin endpoints. Empty disables admin routes.
     admin_token: str = ""
 
+    # Public site URL for share-page Open Graph tags (no trailing slash).
+    public_site_url: str = "https://catmap.drytrix.com"
+
     # Cat detection (ONNX ImageNet classifier).
     cat_detection_enabled: bool = True
     cat_detection_threshold: float = 0.20
@@ -60,7 +63,7 @@ class Settings(BaseSettings):
         """Match any Render web service URL when using explicit origin allowlists."""
         if self.cors_origins.strip() == "*":
             return None
-        return r"https://[\w-]+\.onrender\.com"
+        return r"https://([\w-]+\.onrender\.com|catmap\.drytrix\.com)"
 
     @property
     def max_upload_bytes(self) -> int:

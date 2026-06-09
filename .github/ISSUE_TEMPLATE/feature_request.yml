@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an idea for CatMap
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea? Describe the problem you're trying to solve and how CatMap could help.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What user need does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like CatMap to work?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about?
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Area
+      options:
+        - label: Map / UX
+        - label: Upload / sightings
+        - label: Mobile / PWA
+        - label: Backend / API
+        - label: Moderation / safety
+        - label: Other
