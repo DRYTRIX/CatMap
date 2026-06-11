@@ -183,7 +183,8 @@ scratch.
 
 ## Cat detection
 
-Uploads are checked server-side with a small ONNX ImageNet classifier. Tune via
+Uploads are checked server-side with a YOLOv8n ONNX detector (multi-crop scan for
+small cats in busy scenes). Tune via
 env vars (`CAT_DETECTION_ENABLED`, `CAT_DETECTION_THRESHOLD`, `CAT_DETECTION_STRICT`).
 The browser shows an optional pre-check hint (TensorFlow.js loaded on demand);
 the server is authoritative.

@@ -41,11 +41,11 @@ class Settings(BaseSettings):
     # Public site URL for share-page Open Graph tags (no trailing slash).
     public_site_url: str = "https://catmap.drytrix.com"
 
-    # Cat detection (ONNX ImageNet classifier).
+    # Cat detection (YOLOv8n ONNX, multi-crop scan).
     cat_detection_enabled: bool = True
     cat_detection_threshold: float = 0.20
     cat_detection_strict: bool = True
-    cat_detection_model_path: str = "models/mobilenet_v2.onnx"
+    cat_detection_model_path: str = "models/yolov8n.onnx"
 
     @property
     def cors_origin_list(self) -> list[str]:

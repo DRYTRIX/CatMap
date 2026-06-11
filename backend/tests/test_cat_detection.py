@@ -25,6 +25,12 @@ def _jpeg_bytes() -> bytes:
     return buf.getvalue()
 
 
+def _yolo_cat_output(score: float = 0.9) -> np.ndarray:
+    output = np.zeros((1, 84, 8400), dtype=np.float32)
+    output[0, 4 + cat_detection._COCO_CAT_CLASS, 0] = score
+    return output
+
+
 def test_detect_cat_disabled(monkeypatch):
     monkeypatch.setenv("CAT_DETECTION_ENABLED", "false")
     from app.config import get_settings
@@ -46,23 +52,20 @@ def test_detect_cat_no_model_fails_open(monkeypatch):
 
 def test_detect_cat_returns_cat_score(monkeypatch):
     monkeypatch.setenv("CAT_DETECTION_ENABLED", "true")
-    monkeypatch.setenv("CAT_DETECTION_MODEL_PATH", "models/mobilenet_v2.onnx")
+    monkeypatch.setenv("CAT_DETECTION_MODEL_PATH", "models/yolov8n.onnx")
     from app.config import get_settings
 
     get_settings.cache_clear()
 
-    logits = np.zeros(1000, dtype=np.float32)
-    logits[281] = 10.0  # tabby cat
-
     mock_session = MagicMock()
-    mock_session.get_inputs.return_value = [MagicMock(name="input")]
-    mock_session.run.return_value = [logits.reshape(1, -1)]
+    mock_session.get_inputs.return_value = [MagicMock(name="images")]
+    mock_session.run.return_value = [_yolo_cat_output(0.9)]
 
     with patch.object(cat_detection, "_get_session", return_value=mock_session):
         score = cat_detection.detect_cat(_jpeg_bytes())
 
     assert score is not None
-    assert score > 0.9
+    assert score == pytest.approx(0.9)
     get_settings.cache_clear()
 
 

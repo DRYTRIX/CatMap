@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download the MobileNetV2 ONNX model used for cat detection."""
+"""Download the YOLOv8n ONNX model used for cat detection."""
 
 from __future__ import annotations
 
@@ -7,12 +7,11 @@ import sys
 import urllib.request
 from pathlib import Path
 
-# ONNX Model Zoo MobileNetV2 ImageNet classifier (~14 MB).
+# Ultralytics release asset (~13 MB).
 MODEL_URL = (
-    "https://github.com/onnx/models/raw/main/validated/vision/classification/"
-    "mobilenet/model/mobilenetv2-7.onnx"
+    "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.onnx"
 )
-OUTPUT = Path(__file__).resolve().parent.parent / "models" / "mobilenet_v2.onnx"
+OUTPUT = Path(__file__).resolve().parent.parent / "models" / "yolov8n.onnx"
 
 
 def main() -> int:
