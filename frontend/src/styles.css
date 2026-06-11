@@ -591,6 +591,71 @@ textarea:focus {
   display: block;
   background: var(--surface-2);
 }
+.photo-step {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.photo-placeholder {
+  width: 100%;
+  min-height: 160px;
+  max-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+}
+.photo-reqs-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-700);
+  margin: 0 0 10px;
+}
+.photo-reqs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.photo-req {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-400);
+}
+.photo-req-icon {
+  width: 14px;
+  flex-shrink: 0;
+}
+.photo-req--met {
+  color: var(--success);
+}
+.photo-req--met .photo-req-icon {
+  color: var(--success);
+}
+.photo-req--pending .photo-req-icon {
+  font-size: 8px;
+  color: var(--ink-400);
+}
+.photo-req--failed {
+  color: var(--danger);
+}
+.photo-req--failed .photo-req-icon {
+  color: var(--danger);
+}
+@media (max-width: 480px) {
+  .photo-step {
+    grid-template-columns: 1fr;
+  }
+}
 .hint {
   font-size: 13px;
   color: var(--ink-400);

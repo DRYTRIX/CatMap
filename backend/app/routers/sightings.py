@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..cat_detection import detect_cat
+from ..cat_detection import detect_cat, get_detection_status
 from ..config import get_settings
 from ..database import get_db
 from ..deps import device_token
@@ -128,6 +128,16 @@ async def create_sighting(
         )
     except InvalidImageError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if (
+        settings.cat_detection_enabled
+        and settings.cat_detection_strict
+        and get_detection_status() == "unavailable"
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Cat detection is temporarily unavailable. Please try again later.",
+        )
 
     score = detect_cat(main_bytes)
     if settings.cat_detection_enabled and score is not None:

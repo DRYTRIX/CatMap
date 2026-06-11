@@ -154,7 +154,7 @@ scratch.
 
 ## Cat detection
 
-Uploads are checked server-side with a small ONNX ImageNet classifier. Tune via
+Uploads are checked server-side with a COCO SSD object detector (cat class). Tune via
 env vars (`CAT_DETECTION_ENABLED`, `CAT_DETECTION_THRESHOLD`, `CAT_DETECTION_STRICT`).
 The browser shows an optional pre-check hint; the server is authoritative.
 

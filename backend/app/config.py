@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     cat_detection_enabled: bool = True
     cat_detection_threshold: float = 0.20
     cat_detection_strict: bool = True
-    cat_detection_model_path: str = "models/mobilenet_v2.onnx"
+    cat_detection_model_path: str = "models/ssd_mobilenet_v1_12.onnx"
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -1,40 +1,29 @@
-/** Client-side cat check (blocks wizard until a cat is detected; server enforces too). */
+/** Client-side cat check via COCO object detection (server enforces too). */
 
 const THRESHOLD = 0.2;
 
 let modelPromise = null;
 
-function isCatLabel(className) {
-  const name = className.toLowerCase();
-  if (name.includes("catamaran")) return false;
-  return (
-    name.includes("tabby") ||
-    name.includes("tiger cat") ||
-    name.includes("persian cat") ||
-    name.includes("siamese cat") ||
-    name.includes("egyptian cat")
-  );
-}
-
-function scorePredictions(predictions) {
-  let best = 0;
-  for (const p of predictions) {
-    if (isCatLabel(p.className)) {
-      best = Math.max(best, p.probability);
-    }
+async function initBackend(tf) {
+  try {
+    await import("@tensorflow/tfjs-backend-webgl");
+    await tf.setBackend("webgl");
+    await tf.ready();
+  } catch (err) {
+    console.warn("Cat check: WebGL backend failed, falling back to CPU.", err);
+    await import("@tensorflow/tfjs-backend-cpu");
+    await tf.setBackend("cpu");
+    await tf.ready();
   }
-  return best;
 }
 
 async function loadModel() {
   if (!modelPromise) {
     modelPromise = (async () => {
       const tf = await import("@tensorflow/tfjs");
-      await import("@tensorflow/tfjs-backend-webgl");
-      await tf.setBackend("webgl");
-      await tf.ready();
-      const mobilenet = await import("@tensorflow-models/mobilenet");
-      return mobilenet.load({ version: 2, alpha: 1.0 });
+      await initBackend(tf);
+      const cocoSsd = await import("@tensorflow-models/coco-ssd");
+      return cocoSsd.load({ base: "lite_mobilenet_v2" });
     })();
   }
   return modelPromise;
@@ -56,18 +45,55 @@ function fileToImage(file) {
   });
 }
 
+function cropToCanvas(img, sx, sy, sw, sh) {
+  const canvas = document.createElement("canvas");
+  canvas.width = sw;
+  canvas.height = sh;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+  return canvas;
+}
+
+/** Match server multi-crop strategy so client and server agree more often. */
+function cropsForImage(img) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const side = Math.min(w, h);
+  const left = Math.floor((w - side) / 2);
+  const top = Math.floor((h - side) / 2);
+  return [
+    img,
+    cropToCanvas(img, left, top, side, side),
+    cropToCanvas(img, 0, 0, w, Math.max(Math.floor(h / 2), 1)),
+    cropToCanvas(img, 0, 0, Math.max(Math.floor(w / 2), 1), h),
+  ];
+}
+
+async function catScore(model, target) {
+  const predictions = await model.detect(target);
+  let best = 0;
+  for (const p of predictions) {
+    if (p.class === "cat") {
+      best = Math.max(best, p.score);
+    }
+  }
+  return best;
+}
+
 /**
- * @returns {Promise<{ score: number, detected: boolean }>}
+ * @returns {Promise<{ score: number | null, detected: boolean, error?: boolean }>}
  */
 export async function checkForCat(file) {
   try {
     const model = await loadModel();
     const img = await fileToImage(file);
-    const predictions = await model.classify(img, 5);
-    const score = scorePredictions(predictions);
-    return { score, detected: score >= THRESHOLD };
-  } catch {
-    // Fail open — server is authoritative.
-    return { score: null, detected: true };
+    let best = 0;
+    for (const crop of cropsForImage(img)) {
+      best = Math.max(best, await catScore(model, crop));
+    }
+    return { score: best, detected: best >= THRESHOLD };
+  } catch (err) {
+    console.warn("Cat check failed — blocking until a photo can be verified.", err);
+    return { score: null, detected: false, error: true };
   }
 }

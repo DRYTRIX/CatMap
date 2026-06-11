@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
+from .cat_detection import get_detection_status
 from .config import get_settings
 from .database import engine, run_migrations
 from .ratelimit import limiter
@@ -67,9 +68,14 @@ app.include_router(admin.router)
 @app.get("/healthz", tags=["meta"])
 def healthz() -> JSONResponse:
     """Liveness + DB connectivity check."""
+    cat_status = get_detection_status()
+    cat_detection = "ready" if cat_status == "ready" else "unavailable"
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return JSONResponse({"status": "ok", "db": "ok"})
+        return JSONResponse({"status": "ok", "db": "ok", "cat_detection": cat_detection})
     except Exception:  # noqa: BLE001
-        return JSONResponse(status_code=503, content={"status": "degraded", "db": "down"})
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "db": "down", "cat_detection": cat_detection},
+        )

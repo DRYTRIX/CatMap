@@ -15,12 +15,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts ./scripts
-RUN python scripts/fetch_model.py
+RUN python scripts/fetch_model.py \
+    && test "$(stat -c%s models/ssd_mobilenet_v1_12.onnx)" -gt 20000000
 
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini .
-COPY models ./models
 
 EXPOSE 8000
 
