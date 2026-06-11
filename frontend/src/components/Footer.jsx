@@ -21,6 +21,10 @@ export default function Footer() {
         <span className="site-footer-sep" aria-hidden="true">
           ·
         </span>
+        <a href="/privacy.html">Privacy</a>
+        <span className="site-footer-sep" aria-hidden="true">
+          ·
+        </span>
         <span className="site-footer-privacy">
           Anonymous usage analytics with your consent — no personal data collected.
         </span>

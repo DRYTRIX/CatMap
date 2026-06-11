@@ -27,6 +27,11 @@ async function handle(res) {
   return res.json();
 }
 
+export async function fetchStats() {
+  const res = await fetch(`${API_BASE}/api/stats`);
+  return handle(res);
+}
+
 export async function fetchDots(bbox, signal) {
   const params = new URLSearchParams({
     min_lat: bbox.minLat,

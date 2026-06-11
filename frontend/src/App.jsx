@@ -6,6 +6,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
+import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
 import { markCreated } from "./deviceToken";
 import { track } from "./analytics";
@@ -21,7 +22,19 @@ function AppShell() {
 
   useEffect(() => {
     track("app_open");
-    const id = new URLSearchParams(window.location.search).get("s");
+
+    // Normalize /s/{id} bookmarks to /?s={id} for the SPA.
+    const pathMatch = window.location.pathname.match(/^\/s\/([^/]+)\/?$/);
+    let id = pathMatch?.[1] ?? null;
+    if (pathMatch) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("s", id);
+      const qs = params.toString();
+      window.history.replaceState(null, "", `/?${qs}`);
+    } else {
+      id = new URLSearchParams(window.location.search).get("s");
+    }
+
     if (id) {
       track("deep_link_open");
       setSelectedId(id);
@@ -106,6 +119,7 @@ function AppShell() {
         />
       )}
 
+      <OnboardingHint />
       <InstallPrompt />
     </div>
   );
