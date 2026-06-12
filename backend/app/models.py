@@ -53,17 +53,29 @@ class Sighting(Base):
     # ML cat-detection score (0.0–1.0); NULL for rows created before this feature.
     cat_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # Optional descriptive attributes; NULL means "unknown"/not specified.
+    color: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    is_ear_tipped: Mapped[bool | None] = mapped_column(nullable=True)
+    is_stray: Mapped[bool | None] = mapped_column(nullable=True)
+
     confirmations: Mapped[list["Confirmation"]] = relationship(
         back_populates="sighting", cascade="all, delete-orphan"
     )
     reports: Mapped[list["Report"]] = relationship(
         back_populates="sighting", cascade="all, delete-orphan"
     )
+    # Additional photos beyond the primary one stored on this row.
+    photos: Mapped[list["Photo"]] = relationship(
+        back_populates="sighting",
+        cascade="all, delete-orphan",
+        order_by="Photo.position",
+    )
 
     __table_args__ = (
         Index("ix_sightings_lat", "lat"),
         Index("ix_sightings_lng", "lng"),
         Index("ix_sightings_status", "status"),
+        Index("ix_sightings_created_at", "created_at"),
     )
 
 
@@ -83,6 +95,40 @@ class Confirmation(Base):
 
     __table_args__ = (
         UniqueConstraint("sighting_id", "device_token", name="uq_confirm_once"),
+    )
+
+
+class Photo(Base):
+    """An additional photo attached to a sighting (beyond the primary one)."""
+
+    __tablename__ = "photos"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    sighting_id: Mapped[str] = mapped_column(
+        ForeignKey("sightings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    photo: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    thumbnail: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    photo_mime: Mapped[str] = mapped_column(String(50), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    sighting: Mapped["Sighting"] = relationship(back_populates="photos")
+
+
+class AdminAction(Base):
+    """Audit log entry for moderation actions (hide/unhide/delete)."""
+
+    __tablename__ = "admin_actions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Not a FK: the sighting may be deleted, but the audit entry must remain.
+    sighting_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
     )
 
 

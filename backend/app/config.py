@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins, or "*" for any.
     cors_origins: str = "*"
 
+    # Public site URL used for share-page Open Graph tags (no trailing slash).
+    public_site_url: str = "https://catmap.drytrix.com"
+
     # Maximum accepted upload size in megabytes.
     max_upload_mb: int = 10
 
@@ -43,6 +46,14 @@ class Settings(BaseSettings):
     cat_detection_threshold: float = 0.20
     cat_detection_strict: bool = True
     cat_detection_model_path: str = "models/ssd_mobilenet_v1_12.onnx"
+
+    # Error tracking (Sentry). Empty DSN disables it entirely.
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.0
+    sentry_environment: str = "production"
+
+    # Log level for the JSON request/application logger.
+    log_level: str = "INFO"
 
     @property
     def cors_origin_list(self) -> list[str]:

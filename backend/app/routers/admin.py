@@ -4,23 +4,48 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import require_admin
-from ..models import Sighting
-from ..schemas import AdminReportRow
+from ..models import AdminAction, Sighting
+from ..schemas import AdminActionRow, AdminReportRow
 
 router = APIRouter(
-    prefix="/api/admin",
+    prefix="/admin",
     tags=["admin"],
     dependencies=[Depends(require_admin)],
 )
 
 
+MAX_PAGE_SIZE = 200
+
+
 @router.get("/reports", response_model=list[AdminReportRow])
-def list_reported(db: Session = Depends(get_db)) -> list[AdminReportRow]:
-    """All sightings with at least one report, most-reported first."""
+def list_reported(
+    db: Session = Depends(get_db),
+    sort: str = "reports",
+    limit: int = 50,
+    offset: int = 0,
+) -> list[AdminReportRow]:
+    """Sightings with at least one report, paginated.
+
+    `sort` is "reports" (most-reported first, default) or "date" (newest first).
+    """
+    if sort not in ("reports", "date"):
+        raise HTTPException(status_code=400, detail="sort must be 'reports' or 'date'.")
+    if limit < 1 or limit > MAX_PAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"limit must be 1-{MAX_PAGE_SIZE}.")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0.")
+
+    order = (
+        (Sighting.reports_count.desc(), Sighting.created_at.desc())
+        if sort == "reports"
+        else (Sighting.created_at.desc(),)
+    )
     stmt = (
         select(Sighting)
         .where(Sighting.reports_count > 0)
-        .order_by(Sighting.reports_count.desc(), Sighting.created_at.desc())
+        .order_by(*order)
+        .limit(limit)
+        .offset(offset)
     )
     rows = db.execute(stmt).scalars().all()
     return [
@@ -47,10 +72,15 @@ def _get_or_404(db: Session, sighting_id: str) -> Sighting:
     return sighting
 
 
+def _record_action(db: Session, action: str, sighting_id: str) -> None:
+    db.add(AdminAction(action=action, sighting_id=sighting_id))
+
+
 @router.post("/sightings/{sighting_id}/hide")
 def hide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
     sighting = _get_or_404(db, sighting_id)
     sighting.status = "hidden"
+    _record_action(db, "hide", sighting.id)
     db.commit()
     return {"id": sighting.id, "status": sighting.status}
 
@@ -59,6 +89,7 @@ def hide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
 def unhide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
     sighting = _get_or_404(db, sighting_id)
     sighting.status = "active"
+    _record_action(db, "unhide", sighting.id)
     db.commit()
     return {"id": sighting.id, "status": sighting.status}
 
@@ -66,5 +97,36 @@ def unhide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
 @router.delete("/sightings/{sighting_id}", status_code=204)
 def admin_delete(sighting_id: str, db: Session = Depends(get_db)):
     sighting = _get_or_404(db, sighting_id)
+    _record_action(db, "delete", sighting.id)
     db.delete(sighting)
     db.commit()
+
+
+@router.get("/actions", response_model=list[AdminActionRow])
+def list_actions(
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+) -> list[AdminActionRow]:
+    """Recent moderation actions (hide/unhide/delete), newest first."""
+    if limit < 1 or limit > MAX_PAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"limit must be 1-{MAX_PAGE_SIZE}.")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0.")
+
+    stmt = (
+        select(AdminAction)
+        .order_by(AdminAction.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = db.execute(stmt).scalars().all()
+    return [
+        AdminActionRow(
+            id=a.id,
+            action=a.action,
+            sighting_id=a.sighting_id,
+            created_at=a.created_at,
+        )
+        for a in rows
+    ]

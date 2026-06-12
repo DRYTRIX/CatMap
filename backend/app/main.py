@@ -1,6 +1,9 @@
 import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,11 +13,21 @@ from sqlalchemy import text
 from .cat_detection import get_detection_status
 from .config import get_settings
 from .database import engine, run_migrations
+from .logging_config import configure_logging
 from .ratelimit import limiter
 from .routers import admin, share, sightings, stats
 
-logger = logging.getLogger("catmap")
 settings = get_settings()
+configure_logging(settings.log_level)
+logger = logging.getLogger("catmap")
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.sentry_environment,
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        send_default_pii=False,
+    )
 
 
 @asynccontextmanager
@@ -52,6 +65,26 @@ async def security_headers(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def request_logging(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = round((time.perf_counter() - start) * 1000, 2)
+    response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "request",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+        },
+    )
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -61,10 +94,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(sightings.router)
-app.include_router(stats.router)
+# Versioned API: /api/v1/... is the canonical form. /api/... is kept as an
+# unversioned alias for backward compatibility with existing clients.
+for api_prefix, in_schema in (("/api", True), ("/api/v1", False)):
+    app.include_router(sightings.router, prefix=api_prefix, include_in_schema=in_schema)
+    app.include_router(stats.router, prefix=api_prefix, include_in_schema=in_schema)
+    app.include_router(admin.router, prefix=api_prefix, include_in_schema=in_schema)
+
 app.include_router(share.router)
-app.include_router(admin.router)
 
 
 @app.get("/healthz", tags=["meta"])

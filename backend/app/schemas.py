@@ -4,12 +4,24 @@ from pydantic import BaseModel, Field
 
 
 class SightingDot(BaseModel):
-    """Lightweight representation used to render map markers."""
+    """Lightweight representation used to render map markers and the list view."""
 
     id: str
     lat: float
     lng: float
     confirmations_count: int
+    description: str
+    created_at: datetime
+    thumbnail_url: str
+
+
+class PhotoOut(BaseModel):
+    """A single photo attached to a sighting."""
+
+    id: str
+    position: int
+    photo_url: str
+    thumbnail_url: str
 
 
 class SightingDetail(BaseModel):
@@ -21,6 +33,10 @@ class SightingDetail(BaseModel):
     created_at: datetime
     photo_url: str
     thumbnail_url: str
+    photos: list[PhotoOut]
+    color: str | None = None
+    is_ear_tipped: bool | None = None
+    is_stray: bool | None = None
 
 
 class ConfirmResult(BaseModel):
@@ -46,6 +62,13 @@ class AdminReportRow(BaseModel):
     thumbnail_url: str
 
 
+class AdminActionRow(BaseModel):
+    id: str
+    action: str
+    sighting_id: str
+    created_at: datetime
+
+
 class CreateSightingResult(BaseModel):
     id: str
     lat: float
@@ -55,6 +78,10 @@ class CreateSightingResult(BaseModel):
     created_at: datetime
     photo_url: str
     thumbnail_url: str
+    photos: list[PhotoOut]
+    color: str | None = None
+    is_ear_tipped: bool | None = None
+    is_stray: bool | None = None
 
 
 class BBox(BaseModel):
