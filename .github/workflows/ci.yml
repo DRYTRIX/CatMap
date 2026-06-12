@@ -22,6 +22,10 @@ jobs:
       - name: Test (pytest)
         working-directory: backend
         run: pytest
+      - name: Audit dependencies (pip-audit)
+        working-directory: backend
+        run: pip-audit -r requirements.txt
+        continue-on-error: true
 
   frontend:
     runs-on: ubuntu-latest
@@ -34,9 +38,40 @@ jobs:
         working-directory: frontend
         # Uses package-lock.json when present (commit it for reproducible builds).
         run: npm install
+      - name: Unit tests (vitest)
+        working-directory: frontend
+        run: npm test
       - name: Build
         working-directory: frontend
         run: npm run build
+      - name: Audit dependencies (npm audit)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        working-directory: frontend
+        run: npm install
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e tests (Playwright)
+        working-directory: frontend
+        run: npm run e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
 
   docker:
     runs-on: ubuntu-latest

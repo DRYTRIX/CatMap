@@ -11,6 +11,11 @@ node_modules/
 dist/
 .vite/
 
+# Playwright
+/frontend/test-results/
+/frontend/playwright-report/
+/frontend/blob-report/
+
 # Env
 .env
 .env.local

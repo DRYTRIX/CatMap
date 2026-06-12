@@ -67,40 +67,94 @@ npm run dev
 
 ## API
 
+All endpoints are available under both `/api/v1/...` (canonical, versioned)
+and `/api/...` (unversioned alias, kept for backward compatibility). New
+clients should prefer `/api/v1`.
+
 | Method | Path                              | Purpose                                   |
 | ------ | --------------------------------- | ----------------------------------------- |
-| GET    | `/api/sightings?min_lat&max_lat&min_lng&max_lng` | Dots in a bounding box        |
-| POST   | `/api/sightings`                  | Create (multipart: image, lat, lng, description) |
-| GET    | `/api/sightings/{id}`             | Full detail                               |
-| GET    | `/api/sightings/{id}/photo`       | Full image bytes                          |
-| GET    | `/api/sightings/{id}/thumbnail`   | Thumbnail bytes                           |
-| POST   | `/api/sightings/{id}/confirm`     | Confirm once per device (idempotent)      |
-| POST   | `/api/sightings/{id}/report`      | Report once per device; auto-hides at threshold |
-| DELETE | `/api/sightings/{id}`             | Delete your own (device must be creator)  |
+| GET    | `/api/v1/sightings?min_lat&max_lat&min_lng&max_lng` | Sightings in a bounding box — `id`, `lat`, `lng`, `description`, `created_at`, `thumbnail_url`, `confirmations_count` (supports `since`, `until`, `color`, `is_ear_tipped`, `is_stray`, `min_confidence`, `limit`, `offset`) |
+| POST   | `/api/v1/sightings`               | Create (multipart: `images` (1+ files, or legacy `image`), `lat`, `lng`, `description`, `color`, `is_ear_tipped`, `is_stray`) |
+| GET    | `/api/v1/sightings/{id}`          | Full detail, including a `photos` list    |
+| PATCH  | `/api/v1/sightings/{id}`          | Edit your own sighting's description/attributes |
+| GET    | `/api/v1/sightings/{id}/photo`    | Primary image bytes                       |
+| GET    | `/api/v1/sightings/{id}/thumbnail`| Primary thumbnail bytes                   |
+| GET    | `/api/v1/sightings/{id}/photos/{photo_id}` | Additional photo bytes           |
+| GET    | `/api/v1/sightings/{id}/photos/{photo_id}/thumbnail` | Additional photo thumbnail |
+| POST   | `/api/v1/sightings/{id}/confirm`  | Confirm once per device (idempotent)      |
+| POST   | `/api/v1/sightings/{id}/report`   | Report once per device; auto-hides at threshold |
+| DELETE | `/api/v1/sightings/{id}`          | Delete your own (device must be creator)  |
 | GET    | `/healthz`                        | Liveness + DB connectivity                |
 
-`POST`/`confirm`/`report`/`DELETE` require the `X-Device-Token` header. Create,
-confirm, and report are rate-limited (see `RATE_LIMIT_*` env vars).
+`POST`/`PATCH`/`confirm`/`report`/`DELETE` require the `X-Device-Token` header.
+Create, confirm, and report are rate-limited (see `RATE_LIMIT_*` env vars). A
+sighting can have up to 6 photos; at least one photo must pass cat detection
+when `CAT_DETECTION_STRICT` is enabled.
 
 ### Moderation (admin)
 
 Set `ADMIN_TOKEN` to enable token-gated moderation (sent as `X-Admin-Token`):
 
-| Method | Path                                   | Purpose                       |
-| ------ | -------------------------------------- | ----------------------------- |
-| GET    | `/api/admin/reports`                   | List reported sightings       |
-| POST   | `/api/admin/sightings/{id}/hide`       | Hide a sighting               |
-| POST   | `/api/admin/sightings/{id}/unhide`     | Restore a sighting            |
-| DELETE | `/api/admin/sightings/{id}`            | Delete a sighting             |
+| Method | Path                                      | Purpose                       |
+| ------ | ------------------------------------------ | ----------------------------- |
+| GET    | `/api/v1/admin/reports?sort&limit&offset`  | List reported sightings, paginated (`sort=reports\|date`) |
+| POST   | `/api/v1/admin/sightings/{id}/hide`        | Hide a sighting               |
+| POST   | `/api/v1/admin/sightings/{id}/unhide`      | Restore a sighting            |
+| DELETE | `/api/v1/admin/sightings/{id}`             | Delete a sighting             |
+| GET    | `/api/v1/admin/actions?limit&offset`       | Moderation audit log (newest first) |
+
+Visiting `/admin` on the frontend serves a small token-gated web UI for the
+same operations: sign in with the admin token (stored in `sessionStorage`),
+then view, sort, and paginate reported sightings, hide/unhide/delete them,
+and review the recent moderation actions log.
+
+Every hide/unhide/delete is recorded in the `admin_actions` table (action,
+sighting ID, timestamp) — this audit trail persists even after a sighting is
+deleted.
 
 Sightings reach `status="hidden"` automatically once `AUTO_HIDE_THRESHOLD`
 distinct devices report them; hidden sightings vanish from the public map.
 
+### Logging
+
+The backend logs each request as a single-line JSON object (timestamp,
+level, method, path, status code, duration, and a per-request
+`request_id`) to stdout, via the `catmap` logger. The same `request_id` is
+echoed back as the `X-Request-ID` response header (or honored if the client
+sends one). Set `LOG_LEVEL` to adjust verbosity (default `INFO`).
+
+### Error tracking (optional)
+
+Set `SENTRY_DSN` (backend) and/or `VITE_SENTRY_DSN` (frontend) to enable
+[Sentry](https://sentry.io) error reporting. Both are opt-in — leave empty to
+disable. The frontend DSN is read from `window.__CATMAP_ENV__.sentryDsn`
+(written to `/env-config.js` at container startup, like
+`VITE_GA_MEASUREMENT_ID`) or the build-time `VITE_SENTRY_DSN`, and is skipped
+in dev builds. `SENTRY_TRACES_SAMPLE_RATE` and `SENTRY_ENVIRONMENT` tune the
+backend's performance-tracing sample rate and reported environment name.
+
+### Database backups
+
+`.github/workflows/backup.yml` runs a nightly Postgres dump via
+`backend/scripts/backup_db.sh`, uploaded as a workflow artifact. It's a
+no-op until the `BACKUP_DATABASE_URL` repo secret is set — see
+[`docs/operations.md`](docs/operations.md) for setup and restore steps.
+
 ### Tests
 
-`cd backend && pip install -r requirements-dev.txt && pytest` (runs against
-SQLite; covers create/EXIF/confirm/report-auto-hide/delete-ownership/rate-limit/
-upload-hardening). CI (`.github/workflows/ci.yml`) runs lint + tests + builds.
+- Backend: `cd backend && pip install -r requirements-dev.txt && pytest` (runs
+  against SQLite; covers create/EXIF/confirm/report-auto-hide/delete-ownership/
+  rate-limit/upload-hardening).
+- Frontend unit/component tests: `cd frontend && npm test` (Vitest + React
+  Testing Library; covers `api.js`, `deviceToken.js`, filter/favorite/theme
+  helpers, and the `Modal`/`Toast`/`SegmentedControl` components).
+- Frontend end-to-end: `cd frontend && npm run e2e` (Playwright; starts the
+  dev server itself and runs the add-sighting wizard validation flow, plus
+  `@axe-core/playwright` accessibility checks on the map page and the
+  add-sighting modal). First run `npx playwright install chromium`.
+
+CI (`.github/workflows/ci.yml`) runs backend lint + tests, frontend unit
+tests + build, the Playwright e2e job, and Docker image builds.
 
 ---
 
@@ -121,6 +175,24 @@ upload-hardening). CI (`.github/workflows/ci.yml`) runs lint + tests + builds.
 
 The backend normalizes Render's `postgresql://` connection string to the
 `postgresql+psycopg://` driver form automatically (`app/database.py`).
+
+### Staging environment
+
+`render-staging.yaml` is a second Blueprint that provisions a fully separate
+staging stack (`catmap-db-staging`, `catmap-backend-staging`,
+`catmap-frontend-staging`) — its own database, services, and URLs, isolated
+from production.
+
+1. Render Dashboard → **New → Blueprint** → pick the same repo, but choose
+   `render-staging.yaml` as the blueprint file (Render lets you pick a
+   non-default blueprint path when creating the Blueprint).
+2. As with production, if Render assigns different service names, update
+   `BACKEND_URL` / `BACKEND_HOST` / `CORS_ORIGINS` / `PUBLIC_SITE_URL` in
+   `render-staging.yaml` and redeploy.
+3. Staging defaults to `LOG_LEVEL=DEBUG`, no analytics, and admin/Sentry
+   disabled until you set `ADMIN_TOKEN` / `SENTRY_DSN` / `VITE_SENTRY_DSN` in
+   the Render dashboard for that service (use a separate Sentry project or
+   environment from production).
 
 ---
 
