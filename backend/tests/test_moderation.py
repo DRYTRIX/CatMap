@@ -68,3 +68,19 @@ def test_admin_can_list_and_hide(client):
     unhide = client.post(f"/api/admin/sightings/{sid}/unhide", headers=ADMIN)
     assert unhide.json()["status"] == "active"
     assert client.get(f"/api/sightings/{sid}").status_code == 200
+
+
+def test_admin_actions_audit_log(client):
+    sid = create_sighting(client, "owner-001").json()["id"]
+
+    client.post(f"/api/admin/sightings/{sid}/hide", headers=ADMIN)
+    client.post(f"/api/admin/sightings/{sid}/unhide", headers=ADMIN)
+    client.delete(f"/api/admin/sightings/{sid}", headers=ADMIN)
+
+    assert client.get("/api/admin/actions").status_code == 401
+
+    actions = client.get("/api/admin/actions", headers=ADMIN)
+    assert actions.status_code == 200
+    rows = actions.json()
+    assert [r["action"] for r in rows[:3]] == ["delete", "unhide", "hide"]
+    assert all(r["sighting_id"] == sid for r in rows[:3])

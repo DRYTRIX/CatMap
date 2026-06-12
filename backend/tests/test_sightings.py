@@ -69,7 +69,15 @@ def test_bbox_filtering(client):
         params={"min_lat": -90, "max_lat": 90, "min_lng": -180, "max_lng": 180},
     ).json()
     assert len(all_dots) == 2
-    assert set(all_dots[0].keys()) == {"id", "lat", "lng", "confirmations_count"}
+    assert set(all_dots[0].keys()) == {
+        "id",
+        "lat",
+        "lng",
+        "confirmations_count",
+        "description",
+        "created_at",
+        "thumbnail_url",
+    }
 
     near = client.get(
         "/api/sightings",

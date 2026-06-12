@@ -83,10 +83,12 @@ def make_image():
     return _make_image
 
 
-def create_sighting(client, token, lat=40.0, lng=-3.0, description="cat"):
+def create_sighting(client, token, lat=40.0, lng=-3.0, description="cat", **extra):
+    data = {"lat": str(lat), "lng": str(lng), "description": description}
+    data.update(extra)
     return client.post(
         "/api/sightings",
         headers={"X-Device-Token": token},
         files={"image": ("cat.jpg", _make_image(), "image/jpeg")},
-        data={"lat": str(lat), "lng": str(lng), "description": description},
+        data=data,
     )
