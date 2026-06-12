@@ -1,0 +1,72 @@
+# Render Blueprint for a CatMap staging environment.
+#
+# Deploy as a *separate* Blueprint from render.yaml so staging and
+# production are fully isolated (own database, own services):
+#   Render Dashboard → New → Blueprint → select this repo → when prompted
+#   for the blueprint file, choose "render-staging.yaml" instead of the
+#   default render.yaml.
+databases:
+  - name: catmap-db-staging
+    databaseName: catmap_staging
+    user: catmap
+    plan: free
+
+services:
+  - type: web
+    name: catmap-backend-staging
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: catmap-db-staging
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://catmap-frontend-staging.onrender.com
+      - key: PUBLIC_SITE_URL
+        value: https://catmap-frontend-staging.onrender.com
+      - key: MAX_UPLOAD_MB
+        value: "10"
+      - key: CAT_DETECTION_ENABLED
+        value: "true"
+      - key: CAT_DETECTION_THRESHOLD
+        value: "0.20"
+      - key: CAT_DETECTION_STRICT
+        value: "true"
+      # More verbose logging is fine on staging.
+      - key: LOG_LEVEL
+        value: "DEBUG"
+      # Optional: set in the Render dashboard to gate /api/admin and the
+      # /admin UI on staging.
+      - key: ADMIN_TOKEN
+        sync: false
+      # Optional: set a Sentry DSN in the Render dashboard to enable error
+      # tracking (use a separate Sentry project/environment from prod).
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: "staging"
+
+  - type: web
+    name: catmap-frontend-staging
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: free
+    envVars:
+      # Empty = browser calls /api on the frontend origin (nginx proxies to backend).
+      - key: VITE_API_BASE
+        value: ""
+      - key: BACKEND_URL
+        value: https://catmap-backend-staging.onrender.com
+      - key: BACKEND_HOST
+        value: catmap-backend-staging.onrender.com
+      # No analytics on staging by default.
+      - key: VITE_GA_MEASUREMENT_ID
+        value: ""
+      # Optional: set a Sentry DSN in the Render dashboard, then redeploy.
+      - key: VITE_SENTRY_DSN
+        sync: false

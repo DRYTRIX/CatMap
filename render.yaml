@@ -35,6 +35,10 @@ services:
         value: "0.20"
       - key: CAT_DETECTION_STRICT
         value: "true"
+      # Optional: set a Sentry DSN in the Render dashboard to enable error
+      # tracking. Empty = disabled.
+      - key: SENTRY_DSN
+        sync: false
 
   - type: web
     name: catmap-frontend
@@ -52,4 +56,7 @@ services:
         value: catmap-backend.onrender.com
       # Set your real G-XXXXXXXXXX in the Render dashboard, then redeploy.
       - key: VITE_GA_MEASUREMENT_ID
+        sync: false
+      # Optional: set a Sentry DSN in the Render dashboard, then redeploy.
+      - key: VITE_SENTRY_DSN
         sync: false
