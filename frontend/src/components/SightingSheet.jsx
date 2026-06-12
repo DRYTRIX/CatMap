@@ -9,11 +9,14 @@ import {
 import { track } from "../analytics";
 import { getConfirmedSet, isMine, markConfirmed } from "../deviceToken";
 import { timeAgo } from "../lib/time";
+import { isFavorite, toggleFavorite } from "../lib/favorites";
 import Modal from "./Modal";
 import Lightbox from "./Lightbox";
+import EditSightingModal from "./EditSightingModal";
 import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShare, faFlag, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faShare, faFlag, faTrash, faPen, faHeart as faHeartSolid } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 /**
  * Bottom-sheet sighting detail. Hosts the photo (→ lightbox), confirm,
@@ -28,7 +31,10 @@ export default function SightingSheet({ id, onClose, onChanged }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmed, setConfirmed] = useState(getConfirmedSet().has(id));
+  const [activePhoto, setActivePhoto] = useState(0);
   const [lightbox, setLightbox] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [favorite, setFavorite] = useState(() => isFavorite(id));
   const mine = isMine(id);
 
   useEffect(() => {
@@ -39,6 +45,8 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     let active = true;
     setData(null);
     setError(null);
+    setActivePhoto(0);
+    setFavorite(isFavorite(id));
     fetchSighting(id)
       .then((d) => active && setData(d))
       .catch((e) => active && setError(e.message));
@@ -70,18 +78,47 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     const title = data?.description
       ? `Cat on CatMap: ${data.description.slice(0, 80)}`
       : "Cat sighting on CatMap";
+    const shareData = { title, url };
+
+    // Attach the primary photo too, when the platform's share sheet supports files.
     try {
-      if (navigator.share) {
-        await navigator.share({ title, url });
-        track("sighting_share", { method: "native" });
-      } else {
-        await navigator.clipboard.writeText(url);
-        track("sighting_share", { method: "clipboard" });
-        toast.success("Link copied to clipboard.");
+      const photoUrl = assetUrl(data?.photos?.[0]?.photo_url ?? data?.photo_url);
+      const res = await fetch(photoUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "cat-sighting.jpg", { type: blob.type || "image/jpeg" });
+      if (navigator.canShare?.({ files: [file] })) {
+        shareData.files = [file];
       }
     } catch {
-      /* user cancelled share */
+      /* share link/title only */
     }
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        track("sighting_share", { method: shareData.files ? "native_with_photo" : "native" });
+        return;
+      } catch (e) {
+        if (e?.name === "AbortError") return; // user cancelled
+        // fall through to clipboard fallback below
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      track("sighting_share", { method: "clipboard" });
+      toast.success("Link copied to clipboard.");
+    } catch {
+      track("sighting_share", { method: "manual" });
+      toast.info(url);
+    }
+  }
+
+  function onToggleFavorite() {
+    const nowFavorite = toggleFavorite(id);
+    setFavorite(nowFavorite);
+    track("sighting_favorite", { favorite: nowFavorite });
+    toast.success(nowFavorite ? "Added to favorites." : "Removed from favorites.");
   }
 
   async function onReport() {
@@ -154,12 +191,33 @@ export default function SightingSheet({ id, onClose, onChanged }) {
           >
             <img
               className={`card-img detail-img ${imgLoaded ? "is-loaded" : ""}`}
-              src={assetUrl(data.thumbnail_url)}
+              src={assetUrl(data.photos[activePhoto]?.thumbnail_url ?? data.thumbnail_url)}
               alt="Cat sighting"
               onLoad={() => setImgLoaded(true)}
             />
             <span className="card-img-zoom" aria-hidden="true">⛶</span>
           </button>
+
+          {data.photos.length > 1 && (
+            <div className="photo-thumbs" role="list">
+              {data.photos.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="listitem"
+                  className={`photo-thumb ${i === activePhoto ? "is-active" : ""}`}
+                  aria-label={`Photo ${i + 1} of ${data.photos.length}`}
+                  aria-current={i === activePhoto}
+                  onClick={() => {
+                    setActivePhoto(i);
+                    setImgLoaded(false);
+                  }}
+                >
+                  <img src={assetUrl(p.thumbnail_url)} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
 
           {data.description && <p className="card-desc">{data.description}</p>}
           <div className="card-meta">🐱 Spotted {timeAgo(data.created_at)}</div>
@@ -176,12 +234,25 @@ export default function SightingSheet({ id, onClose, onChanged }) {
           </div>
 
           <div className="sheet-actions">
+            <button
+              className={`btn btn-ghost ${favorite ? "is-favorite" : ""}`}
+              onClick={onToggleFavorite}
+              aria-pressed={favorite}
+            >
+              <FontAwesomeIcon icon={favorite ? faHeartSolid : faHeartRegular} />{" "}
+              {favorite ? "Saved" : "Save"}
+            </button>
             <button className="btn btn-ghost" onClick={onShare} disabled={busy}>
               <FontAwesomeIcon icon={faShare} /> Share
             </button>
             <button className="btn btn-ghost" onClick={onReport} disabled={busy}>
               <FontAwesomeIcon icon={faFlag} /> Report
             </button>
+            {mine && (
+              <button className="btn btn-ghost" onClick={() => setEditing(true)} disabled={busy}>
+                <FontAwesomeIcon icon={faPen} /> Edit
+              </button>
+            )}
             {mine && (
               <button className="btn btn-danger" onClick={onDelete} disabled={busy}>
                 <FontAwesomeIcon icon={faTrash} /> Delete
@@ -193,9 +264,22 @@ export default function SightingSheet({ id, onClose, onChanged }) {
 
       {lightbox && data && (
         <Lightbox
-          src={assetUrl(data.photo_url)}
-          alt="Cat sighting"
+          images={data.photos.map((p) => ({ src: assetUrl(p.photo_url), alt: "Cat sighting" }))}
+          index={activePhoto}
+          onNavigate={setActivePhoto}
           onClose={() => setLightbox(false)}
+        />
+      )}
+
+      {editing && data && (
+        <EditSightingModal
+          data={data}
+          onClose={() => setEditing(false)}
+          onSaved={(updated) => {
+            setData(updated);
+            setEditing(false);
+            onChanged?.();
+          }}
         />
       )}
     </Modal>

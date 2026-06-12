@@ -15,6 +15,7 @@ import { fetchDots } from "../api";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { catIcon, clusterIcon } from "../lib/markers";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
+import SightingList from "./SightingList";
 
 function BoundsWatcher({ onChange }) {
   const map = useMapEvents({
@@ -49,7 +50,14 @@ function GeolocateOnce() {
   return null;
 }
 
-export default function MapView({ refreshKey, onMapReady, onCountChange, onSelect }) {
+export default function MapView({
+  refreshKey,
+  filters,
+  viewMode = "map",
+  onMapReady,
+  onCountChange,
+  onSelect,
+}) {
   const [dots, setDots] = useState([]);
   const [loadedOnce, setLoadedOnce] = useState(false);
   const bboxRef = useRef(null);
@@ -62,7 +70,7 @@ export default function MapView({ refreshKey, onMapReady, onCountChange, onSelec
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const data = await fetchDots(bbox, controller.signal);
+        const data = await fetchDots(bbox, filters, controller.signal);
         setDots(data);
         setLoadedOnce(true);
         onCountChange?.(data.length);
@@ -73,15 +81,19 @@ export default function MapView({ refreshKey, onMapReady, onCountChange, onSelec
         }
       }
     },
-    [onCountChange]
+    [filters, onCountChange]
   );
 
   const debouncedLoad = useDebouncedCallback(load, 350);
 
-  // Reload immediately when a new sighting is posted.
+  // Reload immediately when a new sighting is posted, or when filters change.
   useEffect(() => {
     if (refreshKey > 0) load(bboxRef.current);
   }, [refreshKey, load]);
+
+  useEffect(() => {
+    if (bboxRef.current) load(bboxRef.current);
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -119,10 +131,15 @@ export default function MapView({ refreshKey, onMapReady, onCountChange, onSelec
         </MarkerClusterGroup>
       </MapContainer>
 
-      {loadedOnce && dots.length === 0 && (
-        <div className="empty-hint">
-          No cats spotted in this area yet — be the first! 🐾
-        </div>
+      {viewMode === "list" ? (
+        <SightingList dots={dots} loadedOnce={loadedOnce} onSelect={onSelect} />
+      ) : (
+        loadedOnce &&
+        dots.length === 0 && (
+          <div className="empty-hint">
+            No cats spotted in this area yet — be the first! 🐾
+          </div>
+        )
       )}
     </>
   );

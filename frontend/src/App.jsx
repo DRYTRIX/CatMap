@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
 import AddSightingModal from "./components/AddSightingModal";
 import SightingSheet from "./components/SightingSheet";
+import FilterPanel from "./components/FilterPanel";
+import FavoritesModal from "./components/FavoritesModal";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import MapControls from "./components/MapControls";
@@ -10,6 +12,7 @@ import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
 import { markCreated } from "./deviceToken";
 import { track } from "./analytics";
+import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
 
 function AppShell() {
   const toast = useToast();
@@ -18,6 +21,10 @@ function AppShell() {
   const [count, setCount] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [filters, setFilters] = useState(loadFilters);
+  const [filtering, setFiltering] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [viewMode, setViewMode] = useState("map");
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -86,15 +93,30 @@ function AppShell() {
     );
   }
 
+  function applyFilters(next) {
+    setFilters(next);
+    saveFilters(next);
+  }
+
+  function toggleView() {
+    setViewMode((m) => {
+      const next = m === "map" ? "list" : "map";
+      track("view_toggle", { mode: next });
+      return next;
+    });
+  }
+
   const map = mapReady ? mapRef.current : null;
 
   return (
     <div className="app">
       <Header count={count} map={map} onAdd={openAdd} donateURL="https://buymeacoffee.com/drytrix" />
 
-      <div className="map-wrap">
+      <main className="map-wrap">
         <MapView
           refreshKey={refreshKey}
+          filters={filters}
+          viewMode={viewMode}
           onCountChange={setCount}
           onSelect={setSelectedId}
           onMapReady={(m) => {
@@ -102,8 +124,16 @@ function AppShell() {
             if (m) setMapReady(true);
           }}
         />
-        <MapControls map={map} onLocate={locateMe} />
-      </div>
+        <MapControls
+          map={map}
+          onLocate={locateMe}
+          onFilter={() => setFiltering(true)}
+          onFavorites={() => setShowFavorites(true)}
+          activeFilterCount={countActiveFilters(filters)}
+          viewMode={viewMode}
+          onToggleView={toggleView}
+        />
+      </main>
 
       <Footer />
 
@@ -117,6 +147,18 @@ function AppShell() {
           onClose={() => setSelectedId(null)}
           onChanged={() => setRefreshKey((k) => k + 1)}
         />
+      )}
+
+      {filtering && (
+        <FilterPanel
+          value={filters}
+          onApply={applyFilters}
+          onClose={() => setFiltering(false)}
+        />
+      )}
+
+      {showFavorites && (
+        <FavoritesModal onClose={() => setShowFavorites(false)} onSelect={setSelectedId} />
       )}
 
       <OnboardingHint />

@@ -4,17 +4,27 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "./styles.css";
 import App from "./App";
+import AdminApp from "./admin/AdminApp";
 import AnalyticsGate from "./components/AnalyticsGate";
+import { initSentry } from "./sentry";
 import { config } from "@fortawesome/fontawesome-svg-core";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 
 // Vite bundles CSS ourselves — don't inject FA styles twice.
 config.autoAddCss = false;
 
+initSentry();
+
+const isAdmin = window.location.pathname.replace(/\/+$/, "") === "/admin";
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <AnalyticsGate>
-      <App />
-    </AnalyticsGate>
+    {isAdmin ? (
+      <AdminApp />
+    ) : (
+      <AnalyticsGate>
+        <App />
+      </AnalyticsGate>
+    )}
   </React.StrictMode>
 );

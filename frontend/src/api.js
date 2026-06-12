@@ -1,4 +1,5 @@
 import { getDeviceToken } from "./deviceToken";
+import { filtersToParams } from "./lib/filters";
 
 // In dev, VITE_API_BASE is unset and we use the Vite proxy / same origin.
 // In Docker/Render it points at the backend service URL.
@@ -32,12 +33,13 @@ export async function fetchStats() {
   return handle(res);
 }
 
-export async function fetchDots(bbox, signal) {
+export async function fetchDots(bbox, filters = {}, signal) {
   const params = new URLSearchParams({
     min_lat: bbox.minLat,
     max_lat: bbox.maxLat,
     min_lng: bbox.minLng,
     max_lng: bbox.maxLng,
+    ...filtersToParams(filters),
   });
   const res = await fetch(`${API_BASE}/api/sightings?${params}`, { signal });
   return handle(res);
@@ -49,13 +51,15 @@ export async function fetchSighting(id) {
 }
 
 /**
- * Create a sighting. Uses XMLHttpRequest (not fetch) so we can report upload
- * progress via the optional `onProgress(percent)` callback.
+ * Create a sighting (1-6 photos). Uses XMLHttpRequest (not fetch) so we can
+ * report upload progress via the optional `onProgress(percent)` callback.
  */
-export function createSighting({ file, lat, lng, description, onProgress }) {
+export function createSighting({ files, lat, lng, description, onProgress }) {
   return new Promise((resolve, reject) => {
     const form = new FormData();
-    form.append("image", file);
+    for (const file of files) {
+      form.append("images", file);
+    }
     form.append("lat", lat);
     form.append("lng", lng);
     form.append("description", description || "");
@@ -86,6 +90,23 @@ export function createSighting({ file, lat, lng, description, onProgress }) {
     xhr.onerror = () => reject(new Error("Network error during upload."));
     xhr.send(form);
   });
+}
+
+/**
+ * Edit a sighting's description/attributes. Only fields present in `fields`
+ * are changed; creator-only (enforced by the backend via device token).
+ */
+export async function updateSighting(id, fields) {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined) form.append(key, value);
+  }
+  const res = await fetch(`${API_BASE}/api/sightings/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
 }
 
 export async function confirmSighting(id) {
@@ -123,6 +144,67 @@ export async function deleteSighting(id) {
     throw new Error(detail);
   }
   return true;
+}
+
+// ---------- Admin (gated by ADMIN_TOKEN, sent as X-Admin-Token) ----------
+
+function adminHeaders(token) {
+  return { "X-Admin-Token": token };
+}
+
+export async function fetchAdminReports({ token, sort = "reports", limit = 50, offset = 0 }) {
+  const params = new URLSearchParams({ sort, limit: String(limit), offset: String(offset) });
+  const res = await fetch(`${API_BASE}/api/admin/reports?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminHideSighting(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/hide`, {
+    method: "POST",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminUnhideSighting(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/unhide`, {
+    method: "POST",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminDeleteSighting(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}`, {
+    method: "DELETE",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* 204 has no body */
+    }
+    throw new Error(detail);
+  }
+  return true;
+}
+
+export async function fetchAdminActions({ token, limit = 20, offset = 0 }) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const res = await fetch(`${API_BASE}/api/admin/actions?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
 }
 
 /**

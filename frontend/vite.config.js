@@ -58,7 +58,9 @@ export default defineConfig({
         target: process.env.VITE_DEV_API_PROXY || "http://localhost:8000",
         changeOrigin: true,
       },
-      "/s": {
+      // Regex form so this only matches /s/{id} share-link paths, not /src/*
+      // (a plain "/s" prefix would shadow every Vite module request).
+      "^/s/": {
         target: process.env.VITE_DEV_API_PROXY || "http://localhost:8000",
         changeOrigin: true,
       },

@@ -12,33 +12,36 @@ import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faCheck, faCircle } from "@fortawesome/free-solid-svg-icons";
 
-const STEPS = ["Photo", "Location", "Details"];
+const STEPS = ["Photos", "Location", "Details"];
 const STEP_KEYS = ["photo", "location", "details"];
 
-function getPhotoRequirements({ file, processing, catDetected, catCheckError }) {
-  const photoStatus = file ? "met" : "pending";
+// Mirrors MAX_PHOTOS_PER_SIGHTING in backend/app/routers/sightings.py.
+const MAX_PHOTOS = 6;
+
+function getPhotoRequirements({ photos, processing }) {
+  const photoStatus = photos.length > 0 ? "met" : "pending";
 
   let analyzedStatus = "pending";
-  if (file && !processing) {
+  if (photos.length > 0 && !processing) {
     analyzedStatus = "met";
-  } else if (file && processing) {
-    analyzedStatus = "pending";
   }
 
   let catLabel = "Cat detected";
   let catStatus = "pending";
-  if (catCheckError && !processing) {
-    catLabel = "Could not verify photo";
-    catStatus = "failed";
-  } else if (catDetected === true) {
-    catStatus = "met";
-  } else if (catDetected === false && !processing) {
-    catStatus = "failed";
+  if (photos.length > 0 && !processing) {
+    if (photos.some((p) => p.catDetected === true)) {
+      catStatus = "met";
+    } else if (photos.every((p) => p.catCheckError)) {
+      catLabel = "Could not verify photo";
+      catStatus = "failed";
+    } else {
+      catStatus = "failed";
+    }
   }
 
   return [
     { id: "photo", label: "Photo added", status: photoStatus },
-    { id: "analyzed", label: "Photo analyzed", status: analyzedStatus },
+    { id: "analyzed", label: "Photos analyzed", status: analyzedStatus },
     { id: "cat", label: catLabel, status: catStatus },
   ];
 }
@@ -56,14 +59,12 @@ function PhotoRequirementIcon({ status }) {
 export default function AddSightingModal({ onClose, onCreated }) {
   const toast = useToast();
   const submittedRef = useRef(false);
+  const nextPhotoId = useRef(0);
   const [step, setStep] = useState(0);
 
-  const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [sizes, setSizes] = useState(null); // { before, after }
+  // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, catCheckError }
+  const [photos, setPhotos] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [catDetected, setCatDetected] = useState(null);
-  const [catCheckError, setCatCheckError] = useState(false);
 
   const [location, setLocation] = useState(null);
   const [fromExif, setFromExif] = useState(false);
@@ -72,53 +73,70 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const photoRequirements = getPhotoRequirements({
-    file,
-    processing,
-    catDetected,
-    catCheckError,
-  });
+  const photoRequirements = getPhotoRequirements({ photos, processing });
   const photoRequirementsMet = photoRequirements.every((r) => r.status === "met");
 
-  async function onFileChange(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  async function addFiles(fileList) {
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) return;
+    const incoming = Array.from(fileList).slice(0, room);
+    if (incoming.length === 0) return;
+
+    const isFirstBatch = photos.length === 0;
     setProcessing(true);
-    setCatDetected(null);
-    setCatCheckError(false);
     try {
-      // 1) Read GPS from the ORIGINAL (compression strips EXIF).
-      let gps = null;
-      try {
-        gps = await exifr.gps(f);
-      } catch {
-        /* no exif */
-      }
-      if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
-        setLocation({ lat: gps.latitude, lng: gps.longitude });
-        setFromExif(true);
-      } else {
-        setFromExif(false);
-        setLocation(null);
-      }
+      for (let i = 0; i < incoming.length; i++) {
+        const f = incoming[i];
 
-      // 2) Compress for upload.
-      const compressed = await compressImage(f);
-      setFile(compressed);
-      setSizes({ before: f.size, after: compressed.size });
-      setPreviewUrl(URL.createObjectURL(compressed));
+        // Read GPS from the very first photo's ORIGINAL bytes (compression
+        // strips EXIF) so the location step can be pre-filled.
+        if (isFirstBatch && i === 0) {
+          try {
+            const gps = await exifr.gps(f);
+            if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
+              setLocation({ lat: gps.latitude, lng: gps.longitude });
+              setFromExif(true);
+            } else {
+              setFromExif(false);
+            }
+          } catch {
+            setFromExif(false);
+          }
+        }
 
-      const catCheck = await checkForCat(compressed);
-      setCatDetected(catCheck.detected);
-      setCatCheckError(Boolean(catCheck.error));
-      track("add_sighting_client_cat_check", {
-        detected: catCheck.detected,
-        score: catCheck.score,
-        error: Boolean(catCheck.error),
-      });
+        const compressed = await compressImage(f);
+        const catCheck = await checkForCat(compressed);
+        track("add_sighting_client_cat_check", {
+          detected: catCheck.detected,
+          score: catCheck.score,
+          error: Boolean(catCheck.error),
+        });
+
+        const id = nextPhotoId.current++;
+        setPhotos((prev) => [
+          ...prev,
+          {
+            id,
+            file: compressed,
+            previewUrl: URL.createObjectURL(compressed),
+            sizeBefore: f.size,
+            sizeAfter: compressed.size,
+            catDetected: catCheck.detected,
+            catCheckError: Boolean(catCheck.error),
+          },
+        ]);
+      }
     } finally {
       setProcessing(false);
     }
+  }
+
+  function removePhoto(id) {
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((p) => p.id !== id);
+    });
   }
 
   async function onSubmit() {
@@ -126,7 +144,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
     setProgress(0);
     try {
       const created = await createSighting({
-        file,
+        files: photos.map((p) => p.file),
         lat: location.lat,
         lng: location.lng,
         description,
@@ -137,6 +155,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
       onCreated(created, {
         location_source: fromExif ? "exif" : "manual",
         has_description: Boolean(description.trim()),
+        photo_count: photos.length,
       });
     } catch (e) {
       toast.error(e.message);
@@ -150,6 +169,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   function closeModal() {
     if (!submittedRef.current) {
       track("add_sighting_abandon", { step: STEP_KEYS[step] });
+      for (const p of photos) URL.revokeObjectURL(p.previewUrl);
     }
     onClose();
   }
@@ -158,6 +178,9 @@ export default function AddSightingModal({ onClose, onCreated }) {
     track("add_sighting_step", { step: STEP_KEYS[step] });
     setStep((s) => s + 1);
   }
+
+  const totalBefore = photos.reduce((sum, p) => sum + p.sizeBefore, 0);
+  const totalAfter = photos.reduce((sum, p) => sum + p.sizeAfter, 0);
 
   return (
     <Modal onClose={closeModal} labelledBy="add-title" className="sheet">
@@ -184,36 +207,58 @@ export default function AddSightingModal({ onClose, onCreated }) {
         ))}
       </ol>
 
-      {/* Step 1: Photo */}
+      {/* Step 1: Photos */}
       {step === 0 && (
         <div className="field">
           <div className="photo-step">
             <div className="photo-preview-col">
-              {previewUrl ? (
-                <img className="preview-img" src={previewUrl} alt="Preview" />
+              {photos.length > 0 ? (
+                <div className="photo-grid">
+                  {photos.map((p) => (
+                    <div className="photo-grid-item" key={p.id}>
+                      <img className="photo-grid-img" src={p.previewUrl} alt="Preview" />
+                      <button
+                        type="button"
+                        className="photo-grid-remove"
+                        aria-label="Remove photo"
+                        onClick={() => removePhoto(p.id)}
+                        disabled={processing}
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="photo-placeholder" aria-hidden="true">
                   📷
                 </div>
               )}
-              <label className="btn btn-ghost btn-block" style={{ marginTop: 8 }}>
-                {processing
-                  ? "Processing…"
-                  : file
-                    ? "Choose a different photo"
-                    : "📷 Take or choose a photo"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  style={{ display: "none" }}
-                  onChange={onFileChange}
-                />
-              </label>
-              {sizes && (
+
+              {photos.length < MAX_PHOTOS && (
+                <label className="btn btn-ghost btn-block" style={{ marginTop: 8 }}>
+                  {processing
+                    ? "Processing…"
+                    : photos.length === 0
+                      ? "📷 Take or choose a photo"
+                      : `📷 Add another photo (${photos.length}/${MAX_PHOTOS})`}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+              {photos.length > 0 && (
                 <p className="hint">
-                  Optimized {formatBytes(sizes.before)} → {formatBytes(sizes.after)} for
-                  a faster upload.
+                  Optimized {formatBytes(totalBefore)} → {formatBytes(totalAfter)} for a
+                  faster upload.
                 </p>
               )}
             </div>
