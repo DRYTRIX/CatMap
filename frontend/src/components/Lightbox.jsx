@@ -10,8 +10,11 @@ import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons
  * for a swipeable/arrow-key gallery.
  */
 export default function Lightbox({ src, images, index = 0, alt = "", onClose, onNavigate }) {
-  const gallery = images && images.length > 1;
-  const current = gallery ? images[index] : { src, alt };
+  const hasImages = Array.isArray(images) && images.length > 0;
+  const gallery = hasImages && images.length > 1; // controls nav arrows/counter
+  // Show the selected image whenever an `images` array is given (even a single
+  // one); fall back to the legacy single `src` prop otherwise.
+  const current = hasImages ? images[index] : { src, alt };
 
   useEffect(() => {
     function onKey(e) {
