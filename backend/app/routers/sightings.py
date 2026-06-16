@@ -40,6 +40,11 @@ MAX_DESCRIPTION = 1000
 ALLOWED_REPORT_REASONS = {"not_a_cat", "spam", "wrong_location", "duplicate", "other"}
 
 
+def no_cache(response: Response) -> None:
+    """Mark a dynamic response uncacheable so deletes/edits propagate promptly."""
+    response.headers["Cache-Control"] = "no-cache"
+
+
 def _photo_url(sighting_id: str) -> str:
     return f"/api/sightings/{sighting_id}/photo"
 
@@ -86,6 +91,7 @@ def list_sightings(
     min_lng: float,
     max_lng: float,
     db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
 ) -> list[SightingDot]:
     """Return lightweight dots within the given bounding box."""
     if min_lat > max_lat or min_lng > max_lng:
@@ -131,6 +137,7 @@ def cluster_sightings(
     max_lng: float,
     zoom: int = Query(..., ge=0, le=22),
     db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
 ) -> list[SightingCluster]:
     """Aggregate active sightings into a grid so zoomed-out views never drop dots.
 
@@ -250,6 +257,7 @@ def recent_sightings(
     offset: int = Query(0, ge=0),
     sort: str = Query("recent", pattern="^(recent|confirmed)$"),
     db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
 ) -> list[dict]:
     """Browse active sightings as a feed — newest first, or most-confirmed."""
     order = (
@@ -283,7 +291,11 @@ def my_sightings(
 
 
 @router.get("/{sighting_id}", response_model=SightingDetail)
-def get_sighting(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+def get_sighting(
+    sighting_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> dict:
     sighting = db.get(Sighting, sighting_id)
     if sighting is None or sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")

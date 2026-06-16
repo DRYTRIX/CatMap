@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import { defaultIcon } from "../leafletIcon";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
+import { getPosition } from "../lib/geolocate";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLocationDot } from "@fortawesome/free-solid-svg-icons";
 function ClickCapture({ onPick }) {
@@ -20,18 +21,14 @@ export default function LocationPicker({ value, onChange }) {
   const zoom = value ? 13 : 2;
 
   function useMyLocation() {
-    if (!navigator.geolocation) return;
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    getPosition({ highAccuracy: true })
+      .then((pos) => {
         const { latitude, longitude } = pos.coords;
         onChange({ lat: latitude, lng: longitude });
         if (map) map.setView([latitude, longitude], 15);
-        setLocating(false);
-      },
-      () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      })
+      .finally(() => setLocating(false));
   }
 
   return (

@@ -13,6 +13,7 @@ const MarkerClusterGroup =
   MarkerClusterGroupImport?.default ?? MarkerClusterGroupImport;
 import { fetchClusters, fetchDots } from "../api";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
+import { getPosition } from "../lib/geolocate";
 import { catIcon, clusterIcon, serverClusterIcon } from "../lib/markers";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 
@@ -46,12 +47,9 @@ function BoundsWatcher({ onChange }) {
 function GeolocateOnce() {
   const map = useMap();
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 13),
-      () => {},
-      { timeout: 8000 }
-    );
+    getPosition({ highAccuracy: false })
+      .then((pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 13))
+      .catch(() => {});
   }, [map]);
   return null;
 }
@@ -101,6 +99,23 @@ export default function MapView({ refreshKey, onMapReady, onCountChange, onSelec
       load(viewRef.current.bbox, viewRef.current.zoom);
     }
   }, [refreshKey, load]);
+
+  // Refetch when the tab regains visibility/focus, so changes made elsewhere
+  // (e.g. an admin deleting a cat on /admin, or a sighting added in another tab)
+  // are reflected without a manual reload.
+  useEffect(() => {
+    function refreshIfVisible() {
+      if (document.visibilityState === "visible" && viewRef.current) {
+        load(viewRef.current.bbox, viewRef.current.zoom);
+      }
+    }
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
+  }, [load]);
 
   const isEmpty = loadedOnce && dots.length === 0 && clusters.length === 0;
 

@@ -89,12 +89,17 @@ export default function AddSightingModal({ onClose, onCreated }) {
     try {
       // 1) Read GPS from the ORIGINAL (compression strips EXIF).
       let gps = null;
+      let exifError = false;
       try {
         gps = await exifr.gps(f);
-      } catch {
-        /* no exif */
+      } catch (err) {
+        exifError = true;
+        console.warn("EXIF GPS read failed for this photo.", err);
       }
-      if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
+      const foundGps =
+        !!gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude);
+      track("exif_gps_read", { found: foundGps, error: exifError });
+      if (foundGps) {
         setLocation({ lat: gps.latitude, lng: gps.longitude });
         setFromExif(true);
       } else {
