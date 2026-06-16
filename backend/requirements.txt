@@ -5,7 +5,7 @@ psycopg[binary]==3.2.3
 pillow==12.2.0
 pillow-heif==0.21.0
 pydantic-settings==2.7.0
-python-multipart==0.0.27
+python-multipart==0.0.31
 slowapi==0.1.9
 alembic==1.14.0
 onnxruntime==1.20.1
