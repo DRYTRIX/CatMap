@@ -263,10 +263,13 @@ export default function AddSightingModal({ onClose, onCreated }) {
                     : photos.length === 0
                       ? "📷 Take or choose a photo"
                       : `📷 Add another photo (${photos.length}/${MAX_PHOTOS})`}
+                  {/* No `capture` attribute: it forces the camera and hides the
+                      "Photo Library / Take Photo" chooser on iOS, and conflicts
+                      with `multiple`. Without it both platforms show the native
+                      picker so the user can take or choose a photo. */}
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     multiple
                     style={{ display: "none" }}
                     onChange={(e) => {
