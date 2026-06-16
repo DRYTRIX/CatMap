@@ -4,6 +4,7 @@ import {
   confirmSighting,
   deleteSighting,
   fetchSighting,
+  markGone,
   reportSighting,
 } from "../api";
 import { track } from "../analytics";
@@ -15,14 +16,31 @@ import Lightbox from "./Lightbox";
 import EditSightingModal from "./EditSightingModal";
 import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShare, faFlag, faTrash, faPen, faHeart as faHeartSolid } from "@fortawesome/free-solid-svg-icons";
+import {
+  faShare,
+  faFlag,
+  faTrash,
+  faPen,
+  faCat,
+  faXmark,
+  faHeart as faHeartSolid,
+} from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
+
+const REPORT_REASONS = [
+  { id: "not_a_cat", label: "Not a cat" },
+  { id: "spam", label: "Spam" },
+  { id: "wrong_location", label: "Wrong location" },
+  { id: "duplicate", label: "Duplicate" },
+  { id: "other", label: "Something else" },
+];
+
 /**
  * Bottom-sheet sighting detail. Hosts the photo (→ lightbox), confirm,
- * share, report, and (for the creator) delete.
+ * share, report, and (for the creator) edit / mark-gone / delete.
  *
- * Props: id, onClose, onChanged (called after delete/auto-hide so the map refreshes).
+ * Props: id, onClose, onChanged (called after edit/delete/gone/auto-hide so the
+ * map refreshes).
  */
 export default function SightingSheet({ id, onClose, onChanged }) {
   const toast = useToast();
@@ -35,6 +53,7 @@ export default function SightingSheet({ id, onClose, onChanged }) {
   const [lightbox, setLightbox] = useState(false);
   const [editing, setEditing] = useState(false);
   const [favorite, setFavorite] = useState(() => isFavorite(id));
+  const [reportOpen, setReportOpen] = useState(false);
   const mine = isMine(id);
 
   useEffect(() => {
@@ -121,18 +140,18 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     toast.success(nowFavorite ? "Added to favorites." : "Removed from favorites.");
   }
 
-  async function onReport() {
-    if (!window.confirm("Report this as not a cat or spam?")) return;
+  async function submitReport(reason) {
+    setReportOpen(false);
     setBusy(true);
     try {
-      const res = await reportSighting(id, "not_a_cat");
+      const res = await reportSighting(id, reason);
       if (res.hidden) {
-        track("sighting_report", { outcome: "hidden" });
+        track("sighting_report", { outcome: "hidden", reason });
         toast.success("Reported — this sighting has been hidden.");
         onChanged?.();
         onClose();
       } else if (res.reported) {
-        track("sighting_report", { outcome: "submitted" });
+        track("sighting_report", { outcome: "submitted", reason });
         toast.success("Thanks — your report was submitted.");
       } else {
         toast.info("You've already reported this one.");
@@ -140,6 +159,21 @@ export default function SightingSheet({ id, onClose, onChanged }) {
     } catch (e) {
       toast.error(e.message);
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onMarkGone() {
+    if (!window.confirm("Mark this cat as gone? It will be removed from the map.")) return;
+    setBusy(true);
+    try {
+      await markGone(id);
+      track("sighting_gone");
+      toast.success("Marked as gone. Thanks for keeping the map fresh!");
+      onChanged?.();
+      onClose();
+    } catch (e) {
+      toast.error(e.message);
       setBusy(false);
     }
   }
@@ -220,18 +254,21 @@ export default function SightingSheet({ id, onClose, onChanged }) {
           )}
 
           {data.description && <p className="card-desc">{data.description}</p>}
-          <div className="card-meta">🐱 Spotted {timeAgo(data.created_at)}</div>
-
-          <div className="confirm-row">
-            <button
-              className="btn btn-primary btn-confirm"
-              onClick={onConfirm}
-              disabled={busy || confirmed}
-            >
-              {confirmed ? "Confirmed ✓" : "Confirm sighting"}
-            </button>
-            <span className="count">{data.confirmations_count}</span>
+          <div className="card-meta">
+            🐱 Spotted {timeAgo(data.created_at)}
+            {data.stale && <span className="stale-badge">may be outdated</span>}
           </div>
+
+              <div className="confirm-row">
+                <button
+                  className="btn btn-primary btn-confirm"
+                  onClick={onConfirm}
+                  disabled={busy || confirmed}
+                >
+                  {confirmed ? "Confirmed ✓" : "Still here? Confirm"}
+                </button>
+                <span className="count">{data.confirmations_count}</span>
+              </div>
 
           <div className="sheet-actions">
             <button
@@ -245,18 +282,29 @@ export default function SightingSheet({ id, onClose, onChanged }) {
             <button className="btn btn-ghost" onClick={onShare} disabled={busy}>
               <FontAwesomeIcon icon={faShare} /> Share
             </button>
-            <button className="btn btn-ghost" onClick={onReport} disabled={busy}>
+            <button
+              className="btn btn-ghost"
+              onClick={() => setReportOpen(true)}
+              disabled={busy}
+            >
               <FontAwesomeIcon icon={faFlag} /> Report
             </button>
             {mine && (
-              <button className="btn btn-ghost" onClick={() => setEditing(true)} disabled={busy}>
-                <FontAwesomeIcon icon={faPen} /> Edit
-              </button>
-            )}
-            {mine && (
-              <button className="btn btn-danger" onClick={onDelete} disabled={busy}>
-                <FontAwesomeIcon icon={faTrash} /> Delete
-              </button>
+              <>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setEditing(true)}
+                  disabled={busy}
+                >
+                  <FontAwesomeIcon icon={faPen} /> Edit
+                </button>
+                <button className="btn btn-ghost" onClick={onMarkGone} disabled={busy}>
+                  <FontAwesomeIcon icon={faCat} /> Gone
+                </button>
+                <button className="btn btn-danger" onClick={onDelete} disabled={busy}>
+                  <FontAwesomeIcon icon={faTrash} /> Delete
+                </button>
+              </>
             )}
           </div>
         </>
@@ -281,6 +329,37 @@ export default function SightingSheet({ id, onClose, onChanged }) {
             onChanged?.();
           }}
         />
+      )}
+
+      {reportOpen && (
+        <Modal
+          onClose={() => setReportOpen(false)}
+          labelledBy="report-title"
+          className="sheet report-sheet"
+        >
+          <div className="wizard-head">
+            <h2 id="report-title">Report this sighting</h2>
+            <button
+              className="icon-btn"
+              aria-label="Close"
+              onClick={() => setReportOpen(false)}
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+          <p className="hint">Why are you reporting it?</p>
+          <div className="report-reasons">
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r.id}
+                className="btn btn-ghost btn-block"
+                onClick={() => submitReport(r.id)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </Modal>
       )}
     </Modal>
   );

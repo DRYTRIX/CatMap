@@ -45,8 +45,34 @@ export async function fetchDots(bbox, filters = {}, signal) {
   return handle(res);
 }
 
+export async function fetchClusters(bbox, zoom, signal) {
+  const params = new URLSearchParams({
+    min_lat: bbox.minLat,
+    max_lat: bbox.maxLat,
+    min_lng: bbox.minLng,
+    max_lng: bbox.maxLng,
+    zoom,
+  });
+  const res = await fetch(`${API_BASE}/api/sightings/clusters?${params}`, { signal });
+  return handle(res);
+}
+
 export async function fetchSighting(id) {
   const res = await fetch(`${API_BASE}/api/sightings/${id}`);
+  return handle(res);
+}
+
+export async function fetchRecent({ limit = 20, offset = 0, sort = "recent" } = {}, signal) {
+  const params = new URLSearchParams({ limit, offset, sort });
+  const res = await fetch(`${API_BASE}/api/sightings/recent?${params}`, { signal });
+  return handle(res);
+}
+
+export async function fetchMine(signal) {
+  const res = await fetch(`${API_BASE}/api/sightings/mine`, {
+    headers: authHeaders(),
+    signal,
+  });
   return handle(res);
 }
 
@@ -124,6 +150,14 @@ export async function reportSighting(id, reason = "") {
     method: "POST",
     headers: authHeaders(),
     body: form,
+  });
+  return handle(res);
+}
+
+export async function markGone(id) {
+  const res = await fetch(`${API_BASE}/api/sightings/${id}/gone`, {
+    method: "POST",
+    headers: authHeaders(),
   });
   return handle(res);
 }
@@ -224,4 +258,18 @@ export async function geocode(query, signal) {
   });
   if (!res.ok) throw new Error("Search failed");
   return res.json();
+}
+
+/**
+ * Fetch an admin image (served even for hidden/gone rows) as an object URL.
+ * Uses fetch + blob so the admin token travels in a header, not the URL —
+ * lets the moderation UI show thumbnails of hidden sightings. Caller must
+ * URL.revokeObjectURL() the result when done.
+ */
+export async function adminImageObjectUrl(path, token) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "X-Admin-Token": token },
+  });
+  if (!res.ok) throw new Error(`Image failed (${res.status})`);
+  return URL.createObjectURL(await res.blob());
 }

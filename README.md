@@ -73,23 +73,30 @@ clients should prefer `/api/v1`.
 
 | Method | Path                              | Purpose                                   |
 | ------ | --------------------------------- | ----------------------------------------- |
-| GET    | `/api/v1/sightings?min_lat&max_lat&min_lng&max_lng` | Sightings in a bounding box — `id`, `lat`, `lng`, `description`, `created_at`, `thumbnail_url`, `confirmations_count` (supports `since`, `until`, `color`, `is_ear_tipped`, `is_stray`, `min_confidence`, `limit`, `offset`) |
+| GET    | `/api/v1/sightings?min_lat&max_lat&min_lng&max_lng` | Sightings in a bounding box — `id`, `lat`, `lng`, `description`, `created_at`, `thumbnail_url`, `confirmations_count`, `stale` (supports `since`, `until`, `color`, `is_ear_tipped`, `is_stray`, `min_confidence`, `limit`, `offset`) |
+| GET    | `/api/v1/sightings/clusters?min_lat&max_lat&min_lng&max_lng&zoom` | Grid-aggregated counts for zoomed-out views (no cap) |
+| GET    | `/api/v1/sightings/recent?limit&offset&sort=recent\|confirmed` | Browse feed of active sightings |
+| GET    | `/api/v1/sightings/mine`          | Your device's own sightings (needs token) |
 | POST   | `/api/v1/sightings`               | Create (multipart: `images` (1+ files, or legacy `image`), `lat`, `lng`, `description`, `color`, `is_ear_tipped`, `is_stray`) |
 | GET    | `/api/v1/sightings/{id}`          | Full detail, including a `photos` list    |
-| PATCH  | `/api/v1/sightings/{id}`          | Edit your own sighting's description/attributes |
+| PATCH  | `/api/v1/sightings/{id}`          | Edit your own sighting's description/attributes/location |
 | GET    | `/api/v1/sightings/{id}/photo`    | Primary image bytes                       |
 | GET    | `/api/v1/sightings/{id}/thumbnail`| Primary thumbnail bytes                   |
 | GET    | `/api/v1/sightings/{id}/photos/{photo_id}` | Additional photo bytes           |
 | GET    | `/api/v1/sightings/{id}/photos/{photo_id}/thumbnail` | Additional photo thumbnail |
-| POST   | `/api/v1/sightings/{id}/confirm`  | Confirm once per device (idempotent)      |
+| POST   | `/api/v1/sightings/{id}/confirm`  | Confirm once per device (idempotent; refreshes "last seen") |
 | POST   | `/api/v1/sightings/{id}/report`   | Report once per device; auto-hides at threshold |
+| POST   | `/api/v1/sightings/{id}/gone`     | Mark your own cat as gone (off the map)   |
 | DELETE | `/api/v1/sightings/{id}`          | Delete your own (device must be creator)  |
 | GET    | `/healthz`                        | Liveness + DB connectivity                |
 
-`POST`/`PATCH`/`confirm`/`report`/`DELETE` require the `X-Device-Token` header.
-Create, confirm, and report are rate-limited (see `RATE_LIMIT_*` env vars). A
-sighting can have up to 6 photos; at least one photo must pass cat detection
-when `CAT_DETECTION_STRICT` is enabled.
+`POST`/`PATCH`/`confirm`/`report`/`gone`/`DELETE`/`mine` require the
+`X-Device-Token` header. Create, confirm, and report are rate-limited (see
+`RATE_LIMIT_*` env vars). A sighting can have up to 6 photos; at least one photo
+must pass cat detection when `CAT_DETECTION_STRICT` is enabled. `report` accepts
+a `reason` of `not_a_cat`, `spam`, `wrong_location`, `duplicate`, or `other`.
+Sightings not confirmed within `STALE_AFTER_DAYS` (default 30) are flagged
+`stale` and dimmed on the map.
 
 ### Moderation (admin)
 

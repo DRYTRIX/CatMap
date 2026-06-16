@@ -11,11 +11,16 @@ import MarkerClusterGroupImport from "react-leaflet-cluster";
 // Vite 8 + "type":"module" can resolve CJS default exports as the module namespace.
 const MarkerClusterGroup =
   MarkerClusterGroupImport?.default ?? MarkerClusterGroupImport;
-import { fetchDots } from "../api";
+import { fetchClusters, fetchDots } from "../api";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
-import { catIcon, clusterIcon } from "../lib/markers";
+import { getPosition } from "../lib/geolocate";
+import { catIcon, clusterIcon, serverClusterIcon } from "../lib/markers";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import SightingList from "./SightingList";
+
+// Below this zoom the server aggregates into a grid (counts everything, never
+// drops dots); at or above it we fetch exact dots and cluster them client-side.
+const CLUSTER_ZOOM = 12;
 
 function BoundsWatcher({ onChange }) {
   const map = useMapEvents({
@@ -24,12 +29,15 @@ function BoundsWatcher({ onChange }) {
   });
   function emit() {
     const b = map.getBounds();
-    onChange({
-      minLat: b.getSouth(),
-      maxLat: b.getNorth(),
-      minLng: b.getWest(),
-      maxLng: b.getEast(),
-    });
+    onChange(
+      {
+        minLat: b.getSouth(),
+        maxLat: b.getNorth(),
+        minLng: b.getWest(),
+        maxLng: b.getEast(),
+      },
+      map.getZoom()
+    );
   }
   useEffect(() => emit(), []); // eslint-disable-line
   return null;
@@ -40,12 +48,9 @@ function BoundsWatcher({ onChange }) {
 function GeolocateOnce() {
   const map = useMap();
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 13),
-      () => {},
-      { timeout: 8000 }
-    );
+    getPosition({ highAccuracy: false })
+      .then((pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 13))
+      .catch(() => {});
   }, [map]);
   return null;
 }
@@ -59,41 +64,75 @@ export default function MapView({
   onSelect,
 }) {
   const [dots, setDots] = useState([]);
+  const [clusters, setClusters] = useState([]);
   const [loadedOnce, setLoadedOnce] = useState(false);
-  const bboxRef = useRef(null);
+  const viewRef = useRef(null); // { bbox, zoom }
   const abortRef = useRef(null);
+  const mapRef = useRef(null);
 
   const load = useCallback(
-    async (bbox) => {
+    async (bbox, zoom) => {
       if (!bbox) return;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const data = await fetchDots(bbox, filters, controller.signal);
-        setDots(data);
+        // The list view always needs individual sightings; the map aggregates
+        // into server-side clusters when zoomed out so no dots are dropped.
+        if (viewMode !== "list" && zoom < CLUSTER_ZOOM) {
+          const data = await fetchClusters(bbox, zoom, controller.signal);
+          setClusters(data);
+          setDots([]);
+          onCountChange?.(data.reduce((sum, c) => sum + c.count, 0));
+        } else {
+          const data = await fetchDots(bbox, filters, controller.signal);
+          setDots(data);
+          setClusters([]);
+          onCountChange?.(data.length);
+        }
         setLoadedOnce(true);
-        onCountChange?.(data.length);
       } catch (err) {
-        // Ignore aborts; keep existing dots on transient errors.
+        // Ignore aborts; keep existing markers on transient errors.
         if (err.name !== "AbortError") {
-          /* keep old dots */
+          /* keep old markers */
         }
       }
     },
-    [filters, onCountChange]
+    [filters, viewMode, onCountChange]
   );
 
   const debouncedLoad = useDebouncedCallback(load, 350);
 
   // Reload immediately when a new sighting is posted, or when filters change.
   useEffect(() => {
-    if (refreshKey > 0) load(bboxRef.current);
+    if (refreshKey > 0 && viewRef.current) {
+      load(viewRef.current.bbox, viewRef.current.zoom);
+    }
   }, [refreshKey, load]);
 
+  // Reload when filters change or the map/list view toggles.
   useEffect(() => {
-    if (bboxRef.current) load(bboxRef.current);
-  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (viewRef.current) load(viewRef.current.bbox, viewRef.current.zoom);
+  }, [filters, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch when the tab regains visibility/focus, so changes made elsewhere
+  // (e.g. an admin deleting a cat on /admin, or a sighting added in another tab)
+  // are reflected without a manual reload.
+  useEffect(() => {
+    function refreshIfVisible() {
+      if (document.visibilityState === "visible" && viewRef.current) {
+        load(viewRef.current.bbox, viewRef.current.zoom);
+      }
+    }
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
+  }, [load]);
+
+  const isEmpty = loadedOnce && dots.length === 0 && clusters.length === 0;
 
   return (
     <>
@@ -104,38 +143,58 @@ export default function MapView({
         zoomControl={false}
         attributionControl={false}
         style={{ height: "100%", width: "100%" }}
-        ref={onMapReady}
+        ref={(m) => {
+          mapRef.current = m;
+          onMapReady?.(m);
+        }}
       >
         <TileLayer {...OSM_TILE_PROPS} />
         <GeolocateOnce />
         <BoundsWatcher
-          onChange={(b) => {
-            bboxRef.current = b;
-            debouncedLoad(b);
+          onChange={(bbox, zoom) => {
+            viewRef.current = { bbox, zoom };
+            debouncedLoad(bbox, zoom);
           }}
         />
-        <MarkerClusterGroup
-          chunkedLoading
-          showCoverageOnHover={false}
-          maxClusterRadius={50}
-          iconCreateFunction={clusterIcon}
-        >
-          {dots.map((d) => (
+
+        {clusters.length > 0 &&
+          clusters.map((c) => (
             <Marker
-              key={d.id}
-              position={[d.lat, d.lng]}
-              icon={catIcon(d.confirmations_count)}
-              eventHandlers={{ click: () => onSelect?.(d.id) }}
+              key={`c-${c.lat}-${c.lng}`}
+              position={[c.lat, c.lng]}
+              icon={serverClusterIcon(c.count)}
+              eventHandlers={{
+                click: () => {
+                  const map = mapRef.current;
+                  if (map) map.flyTo([c.lat, c.lng], CLUSTER_ZOOM);
+                },
+              }}
             />
           ))}
-        </MarkerClusterGroup>
+
+        {dots.length > 0 && (
+          <MarkerClusterGroup
+            chunkedLoading
+            showCoverageOnHover={false}
+            maxClusterRadius={50}
+            iconCreateFunction={clusterIcon}
+          >
+            {dots.map((d) => (
+              <Marker
+                key={d.id}
+                position={[d.lat, d.lng]}
+                icon={catIcon(d.confirmations_count, d.stale)}
+                eventHandlers={{ click: () => onSelect?.(d.id) }}
+              />
+            ))}
+          </MarkerClusterGroup>
+        )}
       </MapContainer>
 
       {viewMode === "list" ? (
         <SightingList dots={dots} loadedOnce={loadedOnce} onSelect={onSelect} />
       ) : (
-        loadedOnce &&
-        dots.length === 0 && (
+        isEmpty && (
           <div className="empty-hint">
             No cats spotted in this area yet — be the first! 🐾
           </div>

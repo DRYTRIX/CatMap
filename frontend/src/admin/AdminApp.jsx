@@ -2,13 +2,40 @@ import { useCallback, useEffect, useState } from "react";
 import {
   adminDeleteSighting,
   adminHideSighting,
+  adminImageObjectUrl,
   adminUnhideSighting,
-  assetUrl,
   fetchAdminActions,
   fetchAdminReports,
 } from "../api";
 import { timeAgo } from "../lib/time";
 import { ToastProvider, useToast } from "../components/Toast";
+
+/**
+ * Reported thumbnail loaded as a blob with the admin token in a header, so it
+ * renders even for hidden/gone rows (the admin image route is token-gated).
+ */
+function AdminThumb({ url, token }) {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    let objectUrl = null;
+    let active = true;
+    adminImageObjectUrl(url, token)
+      .then((u) => {
+        if (active) {
+          objectUrl = u;
+          setSrc(u);
+        } else {
+          URL.revokeObjectURL(u);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url, token]);
+  return <img className="admin-thumb" src={src || undefined} alt="" loading="lazy" />;
+}
 
 const TOKEN_KEY = "catmap_admin_token";
 const PAGE_SIZE = 25;
@@ -170,7 +197,7 @@ function AdminPanel() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <img className="admin-thumb" src={assetUrl(r.thumbnail_url)} alt="" loading="lazy" />
+                    <AdminThumb url={r.thumbnail_url} token={token} />
                   </td>
                   <td className="admin-desc">{r.description || "—"}</td>
                   <td>

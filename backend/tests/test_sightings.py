@@ -7,6 +7,27 @@ def test_health(client):
     assert r.json()["status"] == "ok"
 
 
+def test_dynamic_endpoints_are_no_cache(client):
+    """Dynamic reads must not be cached, so deletes/edits propagate promptly."""
+    sid = create_sighting(client, "device-aaaaaaaa").json()["id"]
+    box = {"min_lat": -90, "max_lat": 90, "min_lng": -180, "max_lng": 180}
+
+    paths = [
+        ("/api/sightings", box),
+        ("/api/sightings/clusters", {**box, "zoom": 4}),
+        ("/api/sightings/recent", {}),
+        (f"/api/sightings/{sid}", {}),
+    ]
+    for path, params in paths:
+        res = client.get(path, params=params)
+        assert res.status_code == 200, path
+        assert res.headers.get("cache-control") == "no-cache", path
+
+    # Images, by contrast, stay aggressively cached.
+    photo = client.get(f"/api/sightings/{sid}/thumbnail")
+    assert "immutable" in photo.headers.get("cache-control", "")
+
+
 def test_create_and_get(client):
     r = create_sighting(client, "device-aaaaaaaa")
     assert r.status_code == 201
@@ -77,6 +98,7 @@ def test_bbox_filtering(client):
         "description",
         "created_at",
         "thumbnail_url",
+        "stale",
     }
 
     near = client.get(

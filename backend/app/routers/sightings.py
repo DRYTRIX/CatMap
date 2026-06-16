@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import (
     APIRouter,
@@ -6,11 +6,12 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -26,6 +27,7 @@ from ..schemas import (
     CreateSightingResult,
     PhotoOut,
     ReportResult,
+    SightingCluster,
     SightingDetail,
     SightingDot,
 )
@@ -36,6 +38,14 @@ settings = get_settings()
 MAX_DESCRIPTION = 1000
 MAX_COLOR = 30
 MAX_PHOTOS_PER_SIGHTING = 6
+
+# Reasons accepted by the report endpoint (empty string = unspecified).
+ALLOWED_REPORT_REASONS = {"not_a_cat", "spam", "wrong_location", "duplicate", "other"}
+
+
+def no_cache(response: Response) -> None:
+    """Mark a dynamic response uncacheable so deletes/edits propagate promptly."""
+    response.headers["Cache-Control"] = "no-cache"
 
 
 def _photo_url(sighting_id: str) -> str:
@@ -67,7 +77,23 @@ def _photos(s: Sighting) -> list[PhotoOut]:
     return items
 
 
+def _last_seen(s: Sighting) -> datetime:
+    """Effective last-seen time (falls back to creation for pre-migration rows)."""
+    return s.last_seen_at or s.created_at
+
+
+def _is_stale(last_seen: datetime) -> bool:
+    """True when a sighting hasn't been confirmed within the staleness window."""
+    if settings.stale_after_days <= 0:
+        return False
+    # created_at/last_seen_at may be naive when read back from SQLite in tests.
+    if last_seen.tzinfo is None:
+        last_seen = last_seen.replace(tzinfo=UTC)
+    return last_seen < datetime.now(UTC) - timedelta(days=settings.stale_after_days)
+
+
 def _detail(s: Sighting) -> dict:
+    last_seen = _last_seen(s)
     return {
         "id": s.id,
         "lat": s.lat,
@@ -75,6 +101,8 @@ def _detail(s: Sighting) -> dict:
         "description": s.description,
         "confirmations_count": s.confirmations_count,
         "created_at": s.created_at,
+        "last_seen_at": last_seen,
+        "stale": _is_stale(last_seen),
         "photo_url": _photo_url(s.id),
         "thumbnail_url": _thumb_url(s.id),
         "photos": _photos(s),
@@ -99,6 +127,7 @@ def list_sightings(
     limit: int | None = None,
     offset: int = 0,
     db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
 ) -> list[SightingDot]:
     """Return lightweight dots within the given bounding box."""
     if min_lat > max_lat or min_lng > max_lng:
@@ -140,6 +169,7 @@ def list_sightings(
             Sighting.confirmations_count,
             Sighting.description,
             Sighting.created_at,
+            Sighting.last_seen_at,
         )
         .where(*conditions)
         .order_by(Sighting.created_at.desc())
@@ -156,7 +186,50 @@ def list_sightings(
             description=r.description,
             created_at=r.created_at,
             thumbnail_url=_thumb_url(r.id),
+            stale=_is_stale(r.last_seen_at or r.created_at),
         )
+        for r in rows
+    ]
+
+
+@router.get("/clusters", response_model=list[SightingCluster])
+def cluster_sightings(
+    min_lat: float,
+    max_lat: float,
+    min_lng: float,
+    max_lng: float,
+    zoom: int = Query(..., ge=0, le=22),
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> list[SightingCluster]:
+    """Aggregate active sightings into a grid so zoomed-out views never drop dots.
+
+    Unlike ``list_sightings`` (which caps at ``max_dots_per_query``), this counts
+    *every* sighting in the box by binning to a zoom-dependent grid. ``round`` is
+    used for the grid key because it exists on both SQLite and PostgreSQL.
+    """
+    if min_lat > max_lat or min_lng > max_lng:
+        raise HTTPException(status_code=400, detail="Invalid bounding box.")
+
+    cell = settings.cluster_base_degrees / (2**zoom)
+    lat_key = func.round(Sighting.lat / cell)
+    lng_key = func.round(Sighting.lng / cell)
+
+    stmt = (
+        select(lat_key.label("lat_key"), lng_key.label("lng_key"), func.count().label("n"))
+        .where(
+            Sighting.status == "active",
+            Sighting.lat >= min_lat,
+            Sighting.lat <= max_lat,
+            Sighting.lng >= min_lng,
+            Sighting.lng <= max_lng,
+        )
+        .group_by("lat_key", "lng_key")
+    )
+    rows = db.execute(stmt).all()
+    # Cell centre = key * cell. Counts are exact — nothing is silently dropped.
+    return [
+        SightingCluster(lat=r.lat_key * cell, lng=r.lng_key * cell, count=r.n)
         for r in rows
     ]
 
@@ -284,8 +357,53 @@ async def create_sighting(
     return _detail(sighting)
 
 
+# NOTE: these literal paths must precede "/{sighting_id}" so the path param
+# doesn't capture "recent" / "mine".
+@router.get("/recent", response_model=list[SightingDetail])
+def recent_sightings(
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    sort: str = Query("recent", pattern="^(recent|confirmed)$"),
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> list[dict]:
+    """Browse active sightings as a feed — newest first, or most-confirmed."""
+    order = (
+        (Sighting.confirmations_count.desc(), Sighting.created_at.desc())
+        if sort == "confirmed"
+        else (Sighting.created_at.desc(),)
+    )
+    stmt = (
+        select(Sighting)
+        .where(Sighting.status == "active")
+        .order_by(*order)
+        .offset(offset)
+        .limit(limit)
+    )
+    return [_detail(s) for s in db.execute(stmt).scalars().all()]
+
+
+@router.get("/mine", response_model=list[SightingDetail])
+def my_sightings(
+    token: str = Depends(device_token),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Active sightings created by the calling device, newest first."""
+    stmt = (
+        select(Sighting)
+        .where(Sighting.creator_token == token, Sighting.status == "active")
+        .order_by(Sighting.created_at.desc())
+        .limit(200)
+    )
+    return [_detail(s) for s in db.execute(stmt).scalars().all()]
+
+
 @router.get("/{sighting_id}", response_model=SightingDetail)
-def get_sighting(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+def get_sighting(
+    sighting_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> dict:
     sighting = db.get(Sighting, sighting_id)
     if sighting is None or sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")
@@ -375,6 +493,7 @@ def confirm_sighting(
         )
 
     sighting.confirmations_count += 1
+    sighting.last_seen_at = datetime.now(UTC)  # a fresh confirmation = recently seen
     db.commit()
     return ConfirmResult(
         confirmations=sighting.confirmations_count, already_confirmed=False
@@ -395,10 +514,14 @@ def report_sighting(
     if sighting is None or sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")
 
+    reason = (reason or "").strip()
+    if reason and reason not in ALLOWED_REPORT_REASONS:
+        raise HTTPException(status_code=400, detail="Invalid report reason.")
+
     report = Report(
         sighting_id=sighting_id,
         device_token=token,
-        reason=(reason or "").strip()[:280],
+        reason=reason[:280],
     )
     db.add(report)
     try:
@@ -414,6 +537,16 @@ def report_sighting(
     return ReportResult(reported=True, hidden=sighting.status == "hidden")
 
 
+def _get_own_sighting(db: Session, sighting_id: str, token: str) -> Sighting:
+    """Fetch a sighting the calling device created, or raise 404/403."""
+    sighting = db.get(Sighting, sighting_id)
+    if sighting is None:
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+    if sighting.creator_token != token:
+        raise HTTPException(status_code=403, detail="Not your sighting.")
+    return sighting
+
+
 @router.patch("/{sighting_id}", response_model=SightingDetail)
 def update_sighting(
     sighting_id: str,
@@ -421,15 +554,15 @@ def update_sighting(
     color: str | None = Form(None),
     is_ear_tipped: bool | None = Form(None),
     is_stray: bool | None = Form(None),
+    lat: float | None = Form(None),
+    lng: float | None = Form(None),
     token: str = Depends(device_token),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Edit a sighting's description/attributes — creator-only."""
-    sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status != "active":
+    """Edit a sighting's description/attributes/location — creator-only."""
+    sighting = _get_own_sighting(db, sighting_id, token)
+    if sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")
-    if sighting.creator_token != token:
-        raise HTTPException(status_code=403, detail="Not your sighting.")
 
     if description is not None:
         sighting.description = description.strip()[:MAX_DESCRIPTION]
@@ -439,7 +572,28 @@ def update_sighting(
         sighting.is_ear_tipped = is_ear_tipped
     if is_stray is not None:
         sighting.is_stray = is_stray
+    if lat is not None or lng is not None:
+        if lat is None or lng is None:
+            raise HTTPException(status_code=400, detail="Provide both lat and lng.")
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            raise HTTPException(status_code=400, detail="Coordinates out of range.")
+        sighting.lat = lat
+        sighting.lng = lng
 
+    db.commit()
+    db.refresh(sighting)
+    return _detail(sighting)
+
+
+@router.post("/{sighting_id}/gone", response_model=SightingDetail)
+def mark_gone(
+    sighting_id: str,
+    token: str = Depends(device_token),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Mark your own sighting as 'gone' — the cat has moved on (off the map)."""
+    sighting = _get_own_sighting(db, sighting_id, token)
+    sighting.status = "gone"
     db.commit()
     db.refresh(sighting)
     return _detail(sighting)
@@ -452,11 +606,7 @@ def delete_sighting(
     db: Session = Depends(get_db),
 ) -> Response:
     """Delete a sighting — only the device that created it may do so."""
-    sighting = db.get(Sighting, sighting_id)
-    if sighting is None:
-        raise HTTPException(status_code=404, detail="Sighting not found.")
-    if sighting.creator_token != token:
-        raise HTTPException(status_code=403, detail="Not your sighting.")
+    sighting = _get_own_sighting(db, sighting_id, token)
     db.delete(sighting)  # cascades to confirmations and reports
     db.commit()
     return Response(status_code=204)

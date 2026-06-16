@@ -91,15 +91,21 @@ export default function AddSightingModal({ onClose, onCreated }) {
         // Read GPS from the very first photo's ORIGINAL bytes (compression
         // strips EXIF) so the location step can be pre-filled.
         if (isFirstBatch && i === 0) {
+          let gps = null;
+          let exifError = false;
           try {
-            const gps = await exifr.gps(f);
-            if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
-              setLocation({ lat: gps.latitude, lng: gps.longitude });
-              setFromExif(true);
-            } else {
-              setFromExif(false);
-            }
-          } catch {
+            gps = await exifr.gps(f);
+          } catch (err) {
+            exifError = true;
+            console.warn("EXIF GPS read failed for this photo.", err);
+          }
+          const foundGps =
+            !!gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude);
+          track("exif_gps_read", { found: foundGps, error: exifError });
+          if (foundGps) {
+            setLocation({ lat: gps.latitude, lng: gps.longitude });
+            setFromExif(true);
+          } else {
             setFromExif(false);
           }
         }

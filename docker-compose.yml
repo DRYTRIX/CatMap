@@ -18,14 +18,22 @@ services:
   backend:
     build: ./backend
     environment:
+      # Fixed for local Docker: must point at the "db" service, not localhost.
       DATABASE_URL: postgresql+psycopg://catmap:catmap@db:5432/catmap
       CORS_ORIGINS: "*"
       PUBLIC_SITE_URL: http://localhost:5173
-      MAX_UPLOAD_MB: "10"
-      CAT_DETECTION_ENABLED: "true"
-      CAT_DETECTION_THRESHOLD: "0.20"
-      CAT_DETECTION_STRICT: "true"
       PORT: "8000"
+      # Overridable from your shell or repo-root .env (defaults match the app's).
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      AUTO_HIDE_THRESHOLD: ${AUTO_HIDE_THRESHOLD:-3}
+      STALE_AFTER_DAYS: ${STALE_AFTER_DAYS:-30}
+      RATE_LIMIT_CREATE: ${RATE_LIMIT_CREATE:-20/hour}
+      RATE_LIMIT_CONFIRM: ${RATE_LIMIT_CONFIRM:-120/hour}
+      RATE_LIMIT_REPORT: ${RATE_LIMIT_REPORT:-40/hour}
+      CAT_DETECTION_ENABLED: ${CAT_DETECTION_ENABLED:-true}
+      CAT_DETECTION_THRESHOLD: ${CAT_DETECTION_THRESHOLD:-0.20}
+      CAT_DETECTION_STRICT: ${CAT_DETECTION_STRICT:-true}
     ports:
       - "8000:8000"
     depends_on:

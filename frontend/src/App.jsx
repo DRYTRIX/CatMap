@@ -11,6 +11,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
 import { markCreated } from "./deviceToken";
+import { getPosition } from "./lib/geolocate";
 import { track } from "./analytics";
 import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
 
@@ -84,13 +85,13 @@ function AppShell() {
   }
 
   function locateMe() {
-    if (!navigator.geolocation || !mapRef.current) return;
+    if (!mapRef.current) return;
     track("map_locate");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => mapRef.current.setView([pos.coords.latitude, pos.coords.longitude], 15),
-      () => toast.error("Couldn't get your location."),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    getPosition({ highAccuracy: false })
+      .then((pos) =>
+        mapRef.current.setView([pos.coords.latitude, pos.coords.longitude], 15)
+      )
+      .catch(() => toast.error("Couldn't get your location."));
   }
 
   function applyFilters(next) {

@@ -1573,3 +1573,25 @@ input[type="range"] {
   font-weight: 600;
   color: var(--ink-700);
 }
+
+/* ---------- Stale (outdated) sightings & report reasons ---------- */
+.cat-pin--stale {
+  filter: grayscale(0.85);
+  opacity: 0.6;
+}
+.stale-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--ink-400);
+}
+.report-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}

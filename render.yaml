@@ -39,6 +39,10 @@ services:
       # tracking. Empty = disabled.
       - key: SENTRY_DSN
         sync: false
+      # Set a secret value in the Render dashboard to enable the /admin
+      # moderation UI + /api/admin endpoints. Empty/unset = admin disabled.
+      - key: ADMIN_TOKEN
+        sync: false
 
   - type: web
     name: catmap-frontend
