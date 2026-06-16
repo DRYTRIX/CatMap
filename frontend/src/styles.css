@@ -1102,3 +1102,235 @@ textarea:focus {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---- Browse list / feed ---- */
+.list-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+.list-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.list-tab {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  cursor: pointer;
+}
+.list-tab.active {
+  background: var(--amber-grad);
+  color: #fff;
+  border-color: transparent;
+}
+.list-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.list-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+.list-card:hover {
+  background: var(--surface-2);
+}
+.list-card-img {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+.list-card-body {
+  min-width: 0;
+}
+.list-card-desc {
+  margin: 0 0 2px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-card-meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-400);
+}
+
+/* ---- Stale (outdated) sightings & report reasons ---- */
+.cat-pin--stale {
+  filter: grayscale(0.85);
+  opacity: 0.6;
+}
+.stale-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--ink-400);
+}
+.report-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ---- Admin / moderation page ---- */
+.admin-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px calc(24px + var(--safe-bottom));
+  min-height: 100vh;
+}
+.admin-page--gate {
+  display: grid;
+  place-items: center;
+}
+.admin-gate {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  padding: 24px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2);
+}
+.admin-gate h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.admin-gate input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 1rem;
+}
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.admin-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px;
+  box-shadow: var(--sh-1);
+}
+.admin-row--hidden,
+.admin-row--gone {
+  opacity: 0.7;
+}
+.admin-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+}
+.admin-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.admin-row-body {
+  min-width: 0;
+}
+.admin-row-desc {
+  margin: 0 0 4px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.admin-row-meta,
+.admin-row-coords {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-400);
+}
+.admin-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--surface-2);
+  color: var(--ink-500);
+}
+.admin-badge--active {
+  background: #dcfce7;
+  color: #166534;
+}
+.admin-badge--hidden,
+.admin-badge--gone {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.admin-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .admin-row {
+    grid-template-columns: 56px 1fr;
+  }
+  .admin-row-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+  }
+}

@@ -43,8 +43,13 @@ class Sighting(Base):
     confirmations_count: Mapped[int] = mapped_column(
         Integer, default=0, nullable=False
     )
+    # Bumped on each confirmation; drives the "stale" indicator. NULL for rows
+    # created before this column existed (treated as created_at).
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=True
+    )
     creator_token: Mapped[str] = mapped_column(String(64), nullable=False)
-    # "active" or "hidden" (hook for future moderation).
+    # "active", "hidden" (moderation) or "gone" (creator marked the cat left).
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
 
     # Distinct device reports; auto-hidden once this reaches the threshold.

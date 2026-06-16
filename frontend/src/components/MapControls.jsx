@@ -1,8 +1,8 @@
-/** Grouped, consistently-styled on-map controls: zoom + locate. */
+/** Grouped, consistently-styled on-map controls: zoom + locate + browse. */
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faMinus, faLocationDot } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faMinus, faLocationDot, faList } from "@fortawesome/free-solid-svg-icons";
 
-export default function MapControls({ map, onLocate }) {
+export default function MapControls({ map, onLocate, onBrowse }) {
   return (
     <div className="map-controls">
       <button
@@ -28,6 +28,9 @@ export default function MapControls({ map, onLocate }) {
         disabled={!map}
       >
         <FontAwesomeIcon icon={faLocationDot} />
+      </button>
+      <button className="map-ctrl" aria-label="Browse cats" onClick={onBrowse}>
+        <FontAwesomeIcon icon={faList} />
       </button>
     </div>
   );

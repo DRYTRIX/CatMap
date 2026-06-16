@@ -69,18 +69,26 @@ npm run dev
 
 | Method | Path                              | Purpose                                   |
 | ------ | --------------------------------- | ----------------------------------------- |
-| GET    | `/api/sightings?min_lat&max_lat&min_lng&max_lng` | Dots in a bounding box        |
+| GET    | `/api/sightings?min_lat&max_lat&min_lng&max_lng` | Dots in a bounding box (capped) |
+| GET    | `/api/sightings/clusters?min_lat&max_lat&min_lng&max_lng&zoom` | Grid-aggregated counts for zoomed-out views (no cap) |
+| GET    | `/api/sightings/recent?limit&offset&sort=recent\|confirmed` | Browse feed of active sightings |
+| GET    | `/api/sightings/mine`             | Your device's own sightings (needs token) |
 | POST   | `/api/sightings`                  | Create (multipart: image, lat, lng, description) |
 | GET    | `/api/sightings/{id}`             | Full detail                               |
 | GET    | `/api/sightings/{id}/photo`       | Full image bytes                          |
 | GET    | `/api/sightings/{id}/thumbnail`   | Thumbnail bytes                           |
-| POST   | `/api/sightings/{id}/confirm`     | Confirm once per device (idempotent)      |
+| POST   | `/api/sightings/{id}/confirm`     | Confirm once per device (idempotent; refreshes "last seen") |
+| PATCH  | `/api/sightings/{id}`             | Edit your own description/location        |
 | POST   | `/api/sightings/{id}/report`      | Report once per device; auto-hides at threshold |
+| POST   | `/api/sightings/{id}/gone`        | Mark your own cat as gone (off the map)   |
 | DELETE | `/api/sightings/{id}`             | Delete your own (device must be creator)  |
 | GET    | `/healthz`                        | Liveness + DB connectivity                |
 
-`POST`/`confirm`/`report`/`DELETE` require the `X-Device-Token` header. Create,
-confirm, and report are rate-limited (see `RATE_LIMIT_*` env vars).
+`POST`/`confirm`/`report`/`PATCH`/`gone`/`DELETE`/`mine` require the
+`X-Device-Token` header. Create, confirm, and report are rate-limited (see
+`RATE_LIMIT_*` env vars). `report` accepts a `reason` of `not_a_cat`, `spam`,
+`wrong_location`, `duplicate`, or `other`. Sightings not confirmed within
+`STALE_AFTER_DAYS` (default 30) are flagged `stale` and dimmed on the map.
 
 ### Moderation (admin)
 
@@ -95,6 +103,11 @@ Set `ADMIN_TOKEN` to enable token-gated moderation (sent as `X-Admin-Token`):
 
 Sightings reach `status="hidden"` automatically once `AUTO_HIDE_THRESHOLD`
 distinct devices report them; hidden sightings vanish from the public map.
+
+A web moderation UI is served at **`/admin`** (the SPA): enter the `ADMIN_TOKEN`
+to review reported sightings (thumbnails shown even when hidden) and hide /
+unhide / delete them. For Docker, set `ADMIN_TOKEN` in your environment (wired
+through `docker-compose.yml`).
 
 ### Tests
 

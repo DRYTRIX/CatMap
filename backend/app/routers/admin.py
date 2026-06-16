@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,7 +34,9 @@ def list_reported(db: Session = Depends(get_db)) -> list[AdminReportRow]:
             confirmations_count=s.confirmations_count,
             cat_confidence=s.cat_confidence,
             created_at=s.created_at,
-            thumbnail_url=f"/api/sightings/{s.id}/thumbnail",
+            # Public image routes 404 on hidden rows, so moderators use the
+            # admin image routes below, which serve bytes regardless of status.
+            thumbnail_url=f"/api/admin/sightings/{s.id}/thumbnail",
         )
         for s in rows
     ]
@@ -45,6 +47,20 @@ def _get_or_404(db: Session, sighting_id: str) -> Sighting:
     if sighting is None:
         raise HTTPException(status_code=404, detail="Sighting not found.")
     return sighting
+
+
+@router.get("/sightings/{sighting_id}/thumbnail")
+def admin_thumbnail(sighting_id: str, db: Session = Depends(get_db)) -> Response:
+    """Thumbnail bytes for moderation — served even when hidden/gone."""
+    sighting = _get_or_404(db, sighting_id)
+    return Response(content=sighting.thumbnail, media_type=sighting.photo_mime)
+
+
+@router.get("/sightings/{sighting_id}/photo")
+def admin_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
+    """Full image bytes for moderation — served even when hidden/gone."""
+    sighting = _get_or_404(db, sighting_id)
+    return Response(content=sighting.photo, media_type=sighting.photo_mime)
 
 
 @router.post("/sightings/{sighting_id}/hide")

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
 import AddSightingModal from "./components/AddSightingModal";
 import SightingSheet from "./components/SightingSheet";
+import SightingList from "./components/SightingList";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
 import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
+import AdminPage from "./components/AdminPage";
 import { markCreated } from "./deviceToken";
 import { track } from "./analytics";
 
@@ -18,6 +20,9 @@ function AppShell() {
   const [count, setCount] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [listOpen, setListOpen] = useState(
+    () => new URLSearchParams(window.location.search).get("view") === "list"
+  );
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -86,6 +91,16 @@ function AppShell() {
     );
   }
 
+  function openList() {
+    track("list_open");
+    setListOpen(true);
+  }
+
+  function selectFromList(id) {
+    setListOpen(false);
+    setSelectedId(id);
+  }
+
   const map = mapReady ? mapRef.current : null;
 
   return (
@@ -102,13 +117,17 @@ function AppShell() {
             if (m) setMapReady(true);
           }}
         />
-        <MapControls map={map} onLocate={locateMe} />
+        <MapControls map={map} onLocate={locateMe} onBrowse={openList} />
       </div>
 
       <Footer />
 
       {adding && (
         <AddSightingModal onClose={closeAdd} onCreated={handleCreated} />
+      )}
+
+      {listOpen && (
+        <SightingList onClose={() => setListOpen(false)} onSelect={selectFromList} />
       )}
 
       {selectedId && (
@@ -126,6 +145,11 @@ function AppShell() {
 }
 
 export default function App() {
+  // Lightweight routing: /admin renders the moderation page (mirrors the
+  // existing /s/{id} pathname handling). nginx SPA-falls-back all paths.
+  if (window.location.pathname.replace(/\/$/, "") === "/admin") {
+    return <AdminPage />;
+  }
   return (
     <ToastProvider>
       <AppShell />

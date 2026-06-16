@@ -26,3 +26,4 @@ def test_alembic_upgrade_head(tmp_path):
 
     columns = {c["name"] for c in insp.get_columns("sightings")}
     assert "cat_confidence" in columns
+    assert "last_seen_at" in columns

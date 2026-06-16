@@ -10,6 +10,7 @@ class SightingDot(BaseModel):
     lat: float
     lng: float
     confirmations_count: int
+    stale: bool = False
 
 
 class SightingDetail(BaseModel):
@@ -19,8 +20,18 @@ class SightingDetail(BaseModel):
     description: str
     confirmations_count: int
     created_at: datetime
+    last_seen_at: datetime | None = None
+    stale: bool = False
     photo_url: str
     thumbnail_url: str
+
+
+class SightingCluster(BaseModel):
+    """Aggregated grid cell of sightings for zoomed-out map views."""
+
+    lat: float
+    lng: float
+    count: int
 
 
 class ConfirmResult(BaseModel):
@@ -53,6 +64,8 @@ class CreateSightingResult(BaseModel):
     description: str
     confirmations_count: int
     created_at: datetime
+    last_seen_at: datetime | None = None
+    stale: bool = False
     photo_url: str
     thumbnail_url: str
 

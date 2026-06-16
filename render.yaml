@@ -35,6 +35,10 @@ services:
         value: "0.20"
       - key: CAT_DETECTION_STRICT
         value: "true"
+      # Set a secret value in the Render dashboard to enable the /admin
+      # moderation UI + /api/admin endpoints. Empty/unset = admin disabled.
+      - key: ADMIN_TOKEN
+        sync: false
 
   - type: web
     name: catmap-frontend

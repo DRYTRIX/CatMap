@@ -14,7 +14,10 @@ from .config import get_settings
 
 logger = logging.getLogger("catmap")
 
-# TensorFlow object-detection API label id for COCO "cat" (1-based).
+# Class id for COCO "cat" (1-based) as emitted by the SSD MobileNet v1 detector
+# (ssd_mobilenet_v1_12.onnx). This only matches that object-detection model — the
+# bundled mobilenet_v2.onnx is an ImageNet *classifier* with a different label
+# space and a different output signature, so it is NOT interchangeable here.
 COCO_CAT_CLASS_ID = 17
 
 _session = None

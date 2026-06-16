@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins, or "*" for any.
     cors_origins: str = "*"
 
+    # Public site URL used to build absolute share-page Open Graph URLs.
+    public_site_url: str = "http://localhost:5173"
+
     # Maximum accepted upload size in megabytes.
     max_upload_mb: int = 10
 
@@ -23,6 +26,11 @@ class Settings(BaseSettings):
 
     # Cap on how many dots a single bounding-box query may return.
     max_dots_per_query: int = 2000
+
+    # Server-side clustering: grid cell size (degrees) = base / 2**zoom. Used by
+    # the /clusters endpoint so zoomed-out views aggregate instead of dropping
+    # dots past the cap.
+    cluster_base_degrees: float = 360.0
 
     # Guard against decompression bombs: reject images above this pixel count.
     max_image_pixels: int = 50_000_000  # ~50 MP
@@ -34,6 +42,10 @@ class Settings(BaseSettings):
 
     # Moderation: hide a sighting once it reaches this many distinct reports.
     auto_hide_threshold: int = 3
+
+    # A sighting is "stale" (dimmed on the map) if not confirmed within this many
+    # days. Cats are transient, so old unconfirmed pins are visually de-emphasized.
+    stale_after_days: int = 30
 
     # Token protecting the /api/admin endpoints. Empty disables admin routes.
     admin_token: str = ""

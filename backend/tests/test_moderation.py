@@ -68,3 +68,34 @@ def test_admin_can_list_and_hide(client):
     unhide = client.post(f"/api/admin/sightings/{sid}/unhide", headers=ADMIN)
     assert unhide.json()["status"] == "active"
     assert client.get(f"/api/sightings/{sid}").status_code == 200
+
+
+def test_admin_reports_thumbnail_url_points_at_admin_route(client):
+    sid = create_sighting(client, "owner-001").json()["id"]
+    client.post(f"/api/sightings/{sid}/report", headers={"X-Device-Token": "rep-0001"})
+    row = client.get("/api/admin/reports", headers=ADMIN).json()[0]
+    assert row["thumbnail_url"] == f"/api/admin/sightings/{sid}/thumbnail"
+
+
+def test_admin_images_served_even_when_hidden(client):
+    """The public image routes 404 on hidden rows; admin routes must not."""
+    sid = create_sighting(client, "owner-001").json()["id"]
+    client.post(f"/api/admin/sightings/{sid}/hide", headers=ADMIN)
+
+    # Public routes 404 once hidden.
+    assert client.get(f"/api/sightings/{sid}/thumbnail").status_code == 404
+
+    # Admin routes still serve the bytes.
+    thumb = client.get(f"/api/admin/sightings/{sid}/thumbnail", headers=ADMIN)
+    assert thumb.status_code == 200
+    assert thumb.headers["content-type"] == "image/jpeg"
+    assert len(thumb.content) > 0
+
+    photo = client.get(f"/api/admin/sightings/{sid}/photo", headers=ADMIN)
+    assert photo.status_code == 200
+    assert len(photo.content) > 0
+
+
+def test_admin_images_require_token(client):
+    sid = create_sighting(client, "owner-001").json()["id"]
+    assert client.get(f"/api/admin/sightings/{sid}/thumbnail").status_code == 401
