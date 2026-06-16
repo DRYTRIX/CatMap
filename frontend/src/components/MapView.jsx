@@ -80,7 +80,7 @@ export default function MapView({
         // The list view always needs individual sightings; the map aggregates
         // into server-side clusters when zoomed out so no dots are dropped.
         if (viewMode !== "list" && zoom < CLUSTER_ZOOM) {
-          const data = await fetchClusters(bbox, zoom, controller.signal);
+          const data = await fetchClusters(bbox, zoom, filters, controller.signal);
           setClusters(data);
           setDots([]);
           onCountChange?.(data.reduce((sum, c) => sum + c.count, 0));

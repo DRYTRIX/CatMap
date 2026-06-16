@@ -112,6 +112,46 @@ def _detail(s: Sighting) -> dict:
     }
 
 
+def _bbox_filter_conditions(
+    min_lat: float,
+    max_lat: float,
+    min_lng: float,
+    max_lng: float,
+    since: datetime | None,
+    until: datetime | None,
+    color: str | None,
+    is_ear_tipped: bool | None,
+    is_stray: bool | None,
+    min_confidence: float | None,
+) -> list:
+    """Build the active-status + bounding-box + discovery-filter WHERE clauses.
+
+    Shared by ``list_sightings`` and ``cluster_sightings`` so the map applies the
+    same filters whether it's showing exact dots (zoomed in) or grid clusters
+    (zoomed out).
+    """
+    conditions = [
+        Sighting.status == "active",
+        Sighting.lat >= min_lat,
+        Sighting.lat <= max_lat,
+        Sighting.lng >= min_lng,
+        Sighting.lng <= max_lng,
+    ]
+    if since is not None:
+        conditions.append(Sighting.created_at >= since)
+    if until is not None:
+        conditions.append(Sighting.created_at <= until)
+    if color is not None:
+        conditions.append(Sighting.color == color)
+    if is_ear_tipped is not None:
+        conditions.append(Sighting.is_ear_tipped == is_ear_tipped)
+    if is_stray is not None:
+        conditions.append(Sighting.is_stray == is_stray)
+    if min_confidence is not None:
+        conditions.append(Sighting.cat_confidence >= min_confidence)
+    return conditions
+
+
 @router.get("", response_model=list[SightingDot])
 def list_sightings(
     min_lat: float,
@@ -141,25 +181,10 @@ def list_sightings(
             raise HTTPException(status_code=400, detail="limit must be >= 1.")
         effective_limit = min(limit, settings.max_dots_per_query)
 
-    conditions = [
-        Sighting.status == "active",
-        Sighting.lat >= min_lat,
-        Sighting.lat <= max_lat,
-        Sighting.lng >= min_lng,
-        Sighting.lng <= max_lng,
-    ]
-    if since is not None:
-        conditions.append(Sighting.created_at >= since)
-    if until is not None:
-        conditions.append(Sighting.created_at <= until)
-    if color is not None:
-        conditions.append(Sighting.color == color)
-    if is_ear_tipped is not None:
-        conditions.append(Sighting.is_ear_tipped == is_ear_tipped)
-    if is_stray is not None:
-        conditions.append(Sighting.is_stray == is_stray)
-    if min_confidence is not None:
-        conditions.append(Sighting.cat_confidence >= min_confidence)
+    conditions = _bbox_filter_conditions(
+        min_lat, max_lat, min_lng, max_lng,
+        since, until, color, is_ear_tipped, is_stray, min_confidence,
+    )
 
     stmt = (
         select(
@@ -199,6 +224,12 @@ def cluster_sightings(
     min_lng: float,
     max_lng: float,
     zoom: int = Query(..., ge=0, le=22),
+    since: datetime | None = None,
+    until: datetime | None = None,
+    color: str | None = None,
+    is_ear_tipped: bool | None = None,
+    is_stray: bool | None = None,
+    min_confidence: float | None = None,
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> list[SightingCluster]:
@@ -206,7 +237,9 @@ def cluster_sightings(
 
     Unlike ``list_sightings`` (which caps at ``max_dots_per_query``), this counts
     *every* sighting in the box by binning to a zoom-dependent grid. ``round`` is
-    used for the grid key because it exists on both SQLite and PostgreSQL.
+    used for the grid key because it exists on both SQLite and PostgreSQL. Honors
+    the same discovery filters as ``list_sightings`` so filtering works at every
+    zoom level.
     """
     if min_lat > max_lat or min_lng > max_lng:
         raise HTTPException(status_code=400, detail="Invalid bounding box.")
@@ -215,15 +248,14 @@ def cluster_sightings(
     lat_key = func.round(Sighting.lat / cell)
     lng_key = func.round(Sighting.lng / cell)
 
+    conditions = _bbox_filter_conditions(
+        min_lat, max_lat, min_lng, max_lng,
+        since, until, color, is_ear_tipped, is_stray, min_confidence,
+    )
+
     stmt = (
         select(lat_key.label("lat_key"), lng_key.label("lng_key"), func.count().label("n"))
-        .where(
-            Sighting.status == "active",
-            Sighting.lat >= min_lat,
-            Sighting.lat <= max_lat,
-            Sighting.lng >= min_lng,
-            Sighting.lng <= max_lng,
-        )
+        .where(*conditions)
         .group_by("lat_key", "lng_key")
     )
     rows = db.execute(stmt).all()

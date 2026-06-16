@@ -2,11 +2,11 @@ import logging
 from collections.abc import Generator
 from pathlib import Path
 
+from alembic.config import Config
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from alembic import command
-from alembic.config import Config
 
 from .config import get_settings
 

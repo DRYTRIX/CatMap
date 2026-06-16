@@ -45,13 +45,14 @@ export async function fetchDots(bbox, filters = {}, signal) {
   return handle(res);
 }
 
-export async function fetchClusters(bbox, zoom, signal) {
+export async function fetchClusters(bbox, zoom, filters = {}, signal) {
   const params = new URLSearchParams({
     min_lat: bbox.minLat,
     max_lat: bbox.maxLat,
     min_lng: bbox.minLng,
     max_lng: bbox.maxLng,
     zoom,
+    ...filtersToParams(filters),
   });
   const res = await fetch(`${API_BASE}/api/sightings/clusters?${params}`, { signal });
   return handle(res);
