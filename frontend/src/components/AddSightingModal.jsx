@@ -6,8 +6,10 @@ const exifr = exifrImport?.default ?? exifrImport;
 import { createSighting } from "../api";
 import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
+import { CAT_COLORS } from "../lib/filters";
 import LocationPicker from "./LocationPicker";
 import Modal from "./Modal";
+import SegmentedControl from "./SegmentedControl";
 import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faCheck, faCircle } from "@fortawesome/free-solid-svg-icons";
@@ -17,6 +19,12 @@ const STEP_KEYS = ["photo", "location", "details"];
 
 // Mirrors MAX_PHOTOS_PER_SIGHTING in backend/app/routers/sightings.py.
 const MAX_PHOTOS = 6;
+
+const TRI_STATE_OPTIONS = [
+  { value: "", label: "Unknown" },
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+];
 
 function getPhotoRequirements({ photos, processing }) {
   const photoStatus = photos.length > 0 ? "met" : "pending";
@@ -70,6 +78,9 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [fromExif, setFromExif] = useState(false);
 
   const [description, setDescription] = useState("");
+  const [color, setColor] = useState("");
+  const [isEarTipped, setIsEarTipped] = useState("");
+  const [isStray, setIsStray] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -154,6 +165,9 @@ export default function AddSightingModal({ onClose, onCreated }) {
         lat: location.lat,
         lng: location.lng,
         description,
+        color,
+        isEarTipped,
+        isStray,
         onProgress: setProgress,
       });
       submittedRef.current = true;
@@ -162,6 +176,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
         location_source: fromExif ? "exif" : "manual",
         has_description: Boolean(description.trim()),
         photo_count: photos.length,
+        has_attributes: Boolean(color || isEarTipped || isStray),
       });
     } catch (e) {
       toast.error(e.message);
@@ -315,6 +330,33 @@ export default function AddSightingModal({ onClose, onCreated }) {
             onChange={(e) => setDescription(e.target.value)}
           />
           <p className="hint char-count">{description.length}/1000</p>
+
+          <label htmlFor="add-color">Color / pattern</label>
+          <select id="add-color" value={color} onChange={(e) => setColor(e.target.value)}>
+            <option value="">Unknown</option>
+            {CAT_COLORS.map((c) => (
+              <option key={c} value={c}>
+                {c.charAt(0).toUpperCase() + c.slice(1)}
+              </option>
+            ))}
+          </select>
+
+          <label>Ear-tipped (TNR)</label>
+          <SegmentedControl
+            name="Ear-tipped"
+            value={isEarTipped}
+            options={TRI_STATE_OPTIONS}
+            onChange={setIsEarTipped}
+          />
+
+          <label>Stray</label>
+          <SegmentedControl
+            name="Stray"
+            value={isStray}
+            options={TRI_STATE_OPTIONS}
+            onChange={setIsStray}
+          />
+
           {submitting && (
             <div className="progress" aria-label="Upload progress">
               <div className="progress-bar" style={{ width: `${progress}%` }} />

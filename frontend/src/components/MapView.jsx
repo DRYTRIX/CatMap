@@ -166,7 +166,12 @@ export default function MapView({
               eventHandlers={{
                 click: () => {
                   const map = mapRef.current;
-                  if (map) map.flyTo([c.lat, c.lng], CLUSTER_ZOOM);
+                  if (!map) return;
+                  // Drill in toward the cluster's centroid; big cells split into
+                  // smaller clusters/dots over the actual cats instead of jumping
+                  // to a fixed zoom over empty space.
+                  const next = Math.min(map.getZoom() + 3, CLUSTER_ZOOM + 2);
+                  map.flyTo([c.lat, c.lng], next);
                 },
               }}
             />

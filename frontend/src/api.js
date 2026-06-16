@@ -81,7 +81,16 @@ export async function fetchMine(signal) {
  * Create a sighting (1-6 photos). Uses XMLHttpRequest (not fetch) so we can
  * report upload progress via the optional `onProgress(percent)` callback.
  */
-export function createSighting({ files, lat, lng, description, onProgress }) {
+export function createSighting({
+  files,
+  lat,
+  lng,
+  description,
+  color = "",
+  isEarTipped = "",
+  isStray = "",
+  onProgress,
+}) {
   return new Promise((resolve, reject) => {
     const form = new FormData();
     for (const file of files) {
@@ -90,6 +99,9 @@ export function createSighting({ files, lat, lng, description, onProgress }) {
     form.append("lat", lat);
     form.append("lng", lng);
     form.append("description", description || "");
+    if (color) form.append("color", color);
+    if (isEarTipped !== "") form.append("is_ear_tipped", isEarTipped);
+    if (isStray !== "") form.append("is_stray", isStray);
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/api/sightings`);

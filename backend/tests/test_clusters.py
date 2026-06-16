@@ -51,6 +51,21 @@ def test_clusters_split_by_zoom(client):
     assert {c["count"] for c in fine} == {1}
 
 
+def test_clusters_position_is_centroid_not_grid_node(client):
+    """A cluster sits on its cats' centroid so clicking flies to the right place."""
+    # Two nearby cats that land in the same coarse cell, offset from any grid node.
+    create_sighting(client, "owner-001", lat=40.0, lng=-3.0)
+    create_sighting(client, "owner-001", lat=40.4, lng=-3.4)
+
+    clusters = _clusters(client, zoom=4)
+    assert len(clusters) == 1
+    c = clusters[0]
+    assert c["count"] == 2
+    # Centroid of the two cats — not round(lat/cell)*cell (which would be 45.0/0.0).
+    assert abs(c["lat"] - 40.2) < 1e-6
+    assert abs(c["lng"] - (-3.2)) < 1e-6
+
+
 def test_clusters_respects_bbox(client):
     create_sighting(client, "owner-001", lat=40.0, lng=-3.0)
     create_sighting(client, "owner-001", lat=-33.0, lng=151.0)

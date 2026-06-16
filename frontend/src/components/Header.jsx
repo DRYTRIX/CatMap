@@ -11,10 +11,12 @@ function formatCount(n) {
 }
 
 /** Solid site header: brand + counts, search, and the Add action. */
-export default function Header({ count, map, onAdd, donateURL }) {
+export default function Header({ count, map, onAdd, donateURL, refreshKey = 0 }) {
   const [globalTotal, setGlobalTotal] = useState(null);
   const [theme, setThemeState] = useState(getTheme);
 
+  // Re-fetch when refreshKey changes (after a create/delete) so the worldwide
+  // total stays in sync instead of going stale after the initial load.
   useEffect(() => {
     let active = true;
     fetchStats()
@@ -23,7 +25,7 @@ export default function Header({ count, map, onAdd, donateURL }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";

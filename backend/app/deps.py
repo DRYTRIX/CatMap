@@ -1,7 +1,7 @@
 import re
 import secrets
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Response
 
 from .config import get_settings
 
@@ -17,6 +17,11 @@ def device_token(x_device_token: str | None = Header(default=None)) -> str:
             detail="Missing or invalid X-Device-Token header.",
         )
     return x_device_token
+
+
+def no_cache(response: Response) -> None:
+    """Mark a dynamic response uncacheable so deletes/edits propagate promptly."""
+    response.headers["Cache-Control"] = "no-cache"
 
 
 def require_admin(x_admin_token: str | None = Header(default=None)) -> None:

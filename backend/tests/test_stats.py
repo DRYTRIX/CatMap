@@ -7,6 +7,12 @@ def test_stats_empty(client):
     assert client.get("/api/stats").json() == {"total_cats": 0}
 
 
+def test_stats_is_no_cache(client):
+    """The worldwide count must not be cached, so it can't go stale."""
+    res = client.get("/api/stats")
+    assert res.headers.get("cache-control") == "no-cache"
+
+
 def test_stats_counts_active(client):
     create_sighting(client, "device-aaaa")
     create_sighting(client, "device-bbbb")

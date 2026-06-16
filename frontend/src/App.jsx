@@ -111,7 +111,7 @@ function AppShell() {
 
   return (
     <div className="app">
-      <Header count={count} map={map} onAdd={openAdd} donateURL="https://buymeacoffee.com/drytrix" />
+      <Header count={count} map={map} onAdd={openAdd} refreshKey={refreshKey} donateURL="https://buymeacoffee.com/drytrix" />
 
       <main className="map-wrap">
         <MapView

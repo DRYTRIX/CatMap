@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from ..cat_detection import detect_cat, get_detection_status
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token
+from ..deps import device_token, no_cache
 from ..images import InvalidImageError, extract_gps, process_upload
 from ..models import Confirmation, Photo, Report, Sighting
 from ..ratelimit import limiter
@@ -41,11 +41,6 @@ MAX_PHOTOS_PER_SIGHTING = 6
 
 # Reasons accepted by the report endpoint (empty string = unspecified).
 ALLOWED_REPORT_REASONS = {"not_a_cat", "spam", "wrong_location", "duplicate", "other"}
-
-
-def no_cache(response: Response) -> None:
-    """Mark a dynamic response uncacheable so deletes/edits propagate promptly."""
-    response.headers["Cache-Control"] = "no-cache"
 
 
 def _photo_url(sighting_id: str) -> str:
@@ -253,15 +248,22 @@ def cluster_sightings(
         since, until, color, is_ear_tipped, is_stray, min_confidence,
     )
 
+    # Group into a zoom-dependent grid for binning, but return each cluster at the
+    # centroid of its cats (avg lat/lng) — not the grid node — so the marker sits
+    # on the real sightings and clicking flies to the right place.
     stmt = (
-        select(lat_key.label("lat_key"), lng_key.label("lng_key"), func.count().label("n"))
+        select(
+            func.avg(Sighting.lat).label("c_lat"),
+            func.avg(Sighting.lng).label("c_lng"),
+            func.count().label("n"),
+        )
         .where(*conditions)
-        .group_by("lat_key", "lng_key")
+        .group_by(lat_key, lng_key)
     )
     rows = db.execute(stmt).all()
-    # Cell centre = key * cell. Counts are exact — nothing is silently dropped.
+    # Counts are exact — nothing is silently dropped.
     return [
-        SightingCluster(lat=r.lat_key * cell, lng=r.lng_key * cell, count=r.n)
+        SightingCluster(lat=r.c_lat, lng=r.c_lng, count=r.n)
         for r in rows
     ]
 
