@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  adminApproveSighting,
   adminDeleteSighting,
   adminHideSighting,
   adminImageObjectUrl,
   adminUnhideSighting,
   fetchAdminActions,
+  fetchAdminPending,
   fetchAdminReports,
 } from "../api";
 import { timeAgo } from "../lib/time";
@@ -50,6 +52,7 @@ function AdminPanel() {
   const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || "");
   const [tokenInput, setTokenInput] = useState("");
   const [rows, setRows] = useState(null);
+  const [pending, setPending] = useState(null);
   const [actions, setActions] = useState(null);
   const [sort, setSort] = useState("reports");
   const [offset, setOffset] = useState(0);
@@ -73,6 +76,16 @@ function AdminPanel() {
     }
   }, [token, sort, offset]);
 
+  const loadPending = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await fetchAdminPending({ token });
+      setPending(data);
+    } catch {
+      /* non-critical */
+    }
+  }, [token]);
+
   const loadActions = useCallback(async () => {
     if (!token) return;
     try {
@@ -86,6 +99,10 @@ function AdminPanel() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadPending();
+  }, [loadPending]);
 
   useEffect(() => {
     loadActions();
@@ -110,6 +127,7 @@ function AdminPanel() {
       await action(id, token);
       toast.success(label);
       load();
+      loadPending();
       loadActions();
     } catch (e) {
       if (e.message === "UNAUTHORIZED") {
@@ -150,11 +168,66 @@ function AdminPanel() {
   return (
     <div className="admin-app">
       <header className="admin-header">
-        <h1>🐱 CatMap Admin — Reports</h1>
+        <h1>🐱 CatMap Admin</h1>
         <button className="btn btn-ghost" onClick={signOut}>
           Sign out
         </button>
       </header>
+
+      <h2 className="admin-section-title">
+        Pending review{pending?.length > 0 ? ` (${pending.length})` : ""}
+      </h2>
+      {pending === null && <p>Loading…</p>}
+      {pending?.length === 0 && <p>No sightings pending review.</p>}
+      {pending && pending.length > 0 && (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Description</th>
+                <th>Cat confidence</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pending.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <AdminThumb url={r.thumbnail_url} token={token} />
+                  </td>
+                  <td className="admin-desc">{r.description || "—"}</td>
+                  <td>{formatConfidence(r.cat_confidence)}</td>
+                  <td>{timeAgo(r.created_at)}</td>
+                  <td className="admin-actions">
+                    <button
+                      className="btn btn-primary"
+                      disabled={busyId === r.id}
+                      onClick={() => act("Sighting approved.", adminApproveSighting, r.id)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      disabled={busyId === r.id}
+                      onClick={() => {
+                        if (window.confirm("Permanently delete this sighting?")) {
+                          act("Sighting deleted.", adminDeleteSighting, r.id);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 className="admin-section-title">Reports</h2>
 
       <div className="admin-controls">
         <label htmlFor="admin-sort">

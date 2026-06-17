@@ -85,7 +85,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [progress, setProgress] = useState(0);
 
   const photoRequirements = getPhotoRequirements({ photos, processing });
-  const photoRequirementsMet = photoRequirements.every((r) => r.status === "met");
+  const photoRequirementsMet = photos.length > 0 && !processing;
 
   async function addFiles(fileList) {
     const room = MAX_PHOTOS - photos.length;
@@ -171,13 +171,18 @@ export default function AddSightingModal({ onClose, onCreated }) {
         onProgress: setProgress,
       });
       submittedRef.current = true;
-      toast.success("Cat added to the map! 🐱");
-      onCreated(created, {
-        location_source: fromExif ? "exif" : "manual",
-        has_description: Boolean(description.trim()),
-        photo_count: photos.length,
-        has_attributes: Boolean(color || isEarTipped || isStray),
-      });
+      if (created.pending) {
+        toast.success("Your sighting is under review. We'll check it shortly!");
+        onClose();
+      } else {
+        toast.success("Cat added to the map! 🐱");
+        onCreated(created, {
+          location_source: fromExif ? "exif" : "manual",
+          has_description: Boolean(description.trim()),
+          photo_count: photos.length,
+          has_attributes: Boolean(color || isEarTipped || isStray),
+        });
+      }
     } catch (e) {
       toast.error(e.message);
       setSubmitting(false);

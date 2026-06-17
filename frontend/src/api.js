@@ -245,6 +245,24 @@ export async function adminDeleteSighting(id, token) {
   return true;
 }
 
+export async function fetchAdminPending({ token, limit = 50, offset = 0 }) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const res = await fetch(`${API_BASE}/api/admin/pending?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminApproveSighting(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/approve`, {
+    method: "POST",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
 export async function fetchAdminActions({ token, limit = 20, offset = 0 }) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   const res = await fetch(`${API_BASE}/api/admin/actions?${params}`, {

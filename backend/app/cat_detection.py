@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 from .config import get_settings
 
@@ -117,6 +117,7 @@ def detect_cat(image_bytes: bytes) -> float | None:
 
     try:
         with Image.open(io.BytesIO(image_bytes)) as img:
+            img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
             score = max(_cat_score_for_image(session, crop) for crop in _crops(img))
         return score

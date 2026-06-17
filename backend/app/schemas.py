@@ -95,6 +95,7 @@ class CreateSightingResult(BaseModel):
     color: str | None = None
     is_ear_tipped: bool | None = None
     is_stray: bool | None = None
+    pending: bool = False
 
 
 class BBox(BaseModel):

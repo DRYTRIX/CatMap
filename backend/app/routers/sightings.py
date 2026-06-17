@@ -359,12 +359,10 @@ async def create_sighting(
     scores = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
     valid_scores = [s for s in scores if s is not None]
     best_score = max(valid_scores) if valid_scores else None
+    pending = False
     if settings.cat_detection_enabled and best_score is not None:
         if settings.cat_detection_strict and best_score < settings.cat_detection_threshold:
-            raise HTTPException(
-                status_code=400,
-                detail="We couldn't spot a cat in this photo. Try a clearer, closer shot.",
-            )
+            pending = True
 
     primary_main, primary_thumb, primary_mime = processed[0]
     sighting = Sighting(
@@ -379,6 +377,7 @@ async def create_sighting(
         color=_normalize_color(color),
         is_ear_tipped=is_ear_tipped,
         is_stray=is_stray,
+        status="pending" if pending else "active",
     )
     for position, (main_bytes, thumb_bytes, mime) in enumerate(processed[1:], start=1):
         sighting.photos.append(
@@ -388,7 +387,9 @@ async def create_sighting(
     db.add(sighting)
     db.commit()
     db.refresh(sighting)
-    return _detail(sighting)
+    result = _detail(sighting)
+    result["pending"] = pending
+    return result
 
 
 # NOTE: these literal paths must precede "/{sighting_id}" so the path param

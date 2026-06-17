@@ -67,6 +67,43 @@ def list_reported(
     ]
 
 
+@router.get("/pending", response_model=list[AdminReportRow])
+def list_pending(
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+) -> list[AdminReportRow]:
+    """Sightings queued for review because cat detection was inconclusive."""
+    if limit < 1 or limit > MAX_PAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"limit must be 1-{MAX_PAGE_SIZE}.")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0.")
+
+    stmt = (
+        select(Sighting)
+        .where(Sighting.status == "pending")
+        .order_by(Sighting.created_at.asc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = db.execute(stmt).scalars().all()
+    return [
+        AdminReportRow(
+            id=s.id,
+            lat=s.lat,
+            lng=s.lng,
+            description=s.description,
+            status=s.status,
+            reports_count=s.reports_count,
+            confirmations_count=s.confirmations_count,
+            cat_confidence=s.cat_confidence,
+            created_at=s.created_at,
+            thumbnail_url=f"/api/admin/sightings/{s.id}/thumbnail",
+        )
+        for s in rows
+    ]
+
+
 def _get_or_404(db: Session, sighting_id: str) -> Sighting:
     sighting = db.get(Sighting, sighting_id)
     if sighting is None:
@@ -106,6 +143,15 @@ def unhide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
     sighting = _get_or_404(db, sighting_id)
     sighting.status = "active"
     _record_action(db, "unhide", sighting.id)
+    db.commit()
+    return {"id": sighting.id, "status": sighting.status}
+
+
+@router.post("/sightings/{sighting_id}/approve")
+def approve(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+    sighting = _get_or_404(db, sighting_id)
+    sighting.status = "active"
+    _record_action(db, "approve", sighting.id)
     db.commit()
     return {"id": sighting.id, "status": sighting.status}
 

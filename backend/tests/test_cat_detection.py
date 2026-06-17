@@ -96,7 +96,7 @@ def test_detect_cat_returns_cat_score(monkeypatch):
     get_settings.cache_clear()
 
 
-def test_create_rejects_low_cat_score(client):
+def test_create_queues_low_cat_score_as_pending(client):
     from app.routers import sightings as sightings_router
 
     with (
@@ -113,8 +113,16 @@ def test_create_rejects_low_cat_score(client):
             data={"lat": "40.0", "lng": "-3.0"},
         )
 
-    assert res.status_code == 400
-    assert "couldn't spot a cat" in res.json()["detail"].lower()
+    assert res.status_code == 201
+    body = res.json()
+    assert body["pending"] is True
+
+    import app.database as db
+    from app.models import Sighting
+
+    with db.SessionLocal() as session:
+        sighting = session.get(Sighting, body["id"])
+        assert sighting.status == "pending"
 
 
 def test_create_rejects_when_detection_unavailable(client):
