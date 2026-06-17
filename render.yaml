@@ -4,7 +4,7 @@ databases:
   - name: catmap-db
     databaseName: catmap
     user: catmap
-    plan: starter
+    plan: basic-256mb
 
 services:
   - type: web
