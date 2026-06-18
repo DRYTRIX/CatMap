@@ -80,6 +80,29 @@ class AdminActionRow(BaseModel):
     created_at: datetime
 
 
+class AdminDailyCount(BaseModel):
+    date: str
+    count: int
+
+
+class AdminMetrics(BaseModel):
+    """Aggregate counts for the admin dashboard overview."""
+
+    total_sightings: int
+    active_sightings: int
+    hidden_sightings: int
+    pending_sightings: int
+    gone_sightings: int
+    stale_sightings: int
+    reported_sightings: int
+    total_reports: int
+    total_confirmations: int
+    extra_photos: int
+    avg_cat_confidence: float | None
+    actions_last_7d: dict[str, int]
+    new_sightings_by_day: list[AdminDailyCount]
+
+
 class CreateSightingResult(BaseModel):
     id: str
     lat: float

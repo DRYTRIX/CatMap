@@ -1473,6 +1473,8 @@ input[type="range"] {
   background: var(--surface-2);
   color: var(--ink-700);
   padding: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 .admin-header {
   display: flex;
@@ -1567,11 +1569,142 @@ input[type="range"] {
   font-size: 13px;
   color: var(--ink-400);
 }
-.admin-section-title {
-  margin: 32px 0 12px;
+.admin-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.admin-panel--overview {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.07), var(--surface) 65%);
+}
+.admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.admin-panel-header h2 {
+  margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-panel-header h2 svg {
+  color: var(--amber-500);
+}
+.admin-panel-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--ink-500);
+}
+
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.admin-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.admin-stat-card--warn {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+}
+.admin-stat-card--danger {
+  border-color: rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+}
+.admin-stat-icon {
+  color: var(--amber-500);
+  font-size: 15px;
+}
+.admin-stat-card--warn .admin-stat-icon {
+  color: var(--amber-600);
+}
+.admin-stat-card--danger .admin-stat-icon {
+  color: var(--danger);
+}
+.admin-stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--ink-900);
+  line-height: 1.1;
+}
+.admin-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-500);
+}
+.admin-stat-caption {
+  font-size: 11px;
+  color: var(--ink-400);
+}
+
+.admin-trend {
+  margin-bottom: 16px;
+}
+.admin-trend-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 64px;
+  padding: 6px 0;
+}
+.admin-trend-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.admin-trend-bar-fill {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+  background: var(--amber-grad);
+}
+.admin-trend-label {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-400);
+  text-align: center;
+}
+
+.admin-actions-7d {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.admin-actions-7d-label {
+  font-weight: 700;
+  color: var(--ink-500);
+}
+.admin-action-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-700);
+  text-transform: capitalize;
 }
 
 /* ---------- Stale (outdated) sightings & report reasons ---------- */

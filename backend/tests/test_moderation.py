@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from tests.conftest import create_sighting
 
 ADMIN = {"X-Admin-Token": "test-admin"}
@@ -115,3 +117,41 @@ def test_admin_images_served_even_when_hidden(client):
 def test_admin_images_require_token(client):
     sid = create_sighting(client, "owner-001").json()["id"]
     assert client.get(f"/api/admin/sightings/{sid}/thumbnail").status_code == 401
+
+
+def test_admin_metrics_requires_token(client):
+    assert client.get("/api/admin/metrics").status_code == 401
+    assert client.get(
+        "/api/admin/metrics", headers={"X-Admin-Token": "wrong"}
+    ).status_code == 401
+
+
+def test_admin_metrics_counts(client):
+    active_id = create_sighting(client, "owner-001").json()["id"]
+    hidden_id = create_sighting(client, "owner-002").json()["id"]
+    client.post(f"/api/admin/sightings/{hidden_id}/hide", headers=ADMIN)
+
+    client.post(
+        f"/api/sightings/{active_id}/confirm", headers={"X-Device-Token": "conf-0001"}
+    )
+    client.post(
+        f"/api/sightings/{active_id}/report", headers={"X-Device-Token": "rep-0001"}
+    )
+
+    metrics = client.get("/api/admin/metrics", headers=ADMIN)
+    assert metrics.status_code == 200
+    body = metrics.json()
+
+    assert body["total_sightings"] == 2
+    assert body["active_sightings"] == 1
+    assert body["hidden_sightings"] == 1
+    assert body["reported_sightings"] == 1
+    assert body["total_reports"] == 1
+    assert body["total_confirmations"] == 1
+    assert body["actions_last_7d"] == {"hide": 1}
+
+    days = body["new_sightings_by_day"]
+    assert len(days) == 14
+    assert sum(d["count"] for d in days) == 2
+    assert days[-1]["date"] == datetime.now(UTC).date().isoformat()
+    assert [d["date"] for d in days] == sorted(d["date"] for d in days)

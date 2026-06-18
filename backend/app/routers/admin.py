@@ -1,11 +1,15 @@
+from collections import Counter
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
-from ..models import AdminAction, Sighting
-from ..schemas import AdminActionRow, AdminReportRow
+from ..models import AdminAction, Confirmation, Photo, Report, Sighting
+from ..schemas import AdminActionRow, AdminMetrics, AdminReportRow
 
 router = APIRouter(
     prefix="/admin",
@@ -15,6 +19,8 @@ router = APIRouter(
 
 
 MAX_PAGE_SIZE = 200
+METRICS_TREND_DAYS = 14
+METRICS_ACTIONS_WINDOW_DAYS = 7
 
 
 @router.get("/reports", response_model=list[AdminReportRow])
@@ -102,6 +108,80 @@ def list_pending(
         )
         for s in rows
     ]
+
+
+def _count(db: Session, *where) -> int:
+    stmt = select(func.count()).select_from(Sighting)
+    if where:
+        stmt = stmt.where(*where)
+    return int(db.scalar(stmt) or 0)
+
+
+@router.get("/metrics", response_model=AdminMetrics)
+def get_metrics(db: Session = Depends(get_db)) -> AdminMetrics:
+    """Aggregate counts for the admin dashboard overview."""
+    settings = get_settings()
+    now = datetime.now(UTC)
+
+    active_sightings = _count(db, Sighting.status == "active")
+    stale_cutoff = now - timedelta(days=settings.stale_after_days)
+    stale_sightings = (
+        _count(
+            db,
+            Sighting.status == "active",
+            Sighting.last_seen_at.is_not(None),
+            Sighting.last_seen_at < stale_cutoff,
+        )
+        if settings.stale_after_days > 0
+        else 0
+    )
+
+    avg_confidence = db.scalar(
+        select(func.avg(Sighting.cat_confidence)).where(
+            Sighting.cat_confidence.is_not(None)
+        )
+    )
+
+    actions_cutoff = now - timedelta(days=METRICS_ACTIONS_WINDOW_DAYS)
+    action_rows = db.execute(
+        select(AdminAction.action, func.count())
+        .where(AdminAction.created_at >= actions_cutoff)
+        .group_by(AdminAction.action)
+    ).all()
+
+    trend_cutoff = now - timedelta(days=METRICS_TREND_DAYS)
+    created_at_rows = db.scalars(
+        select(Sighting.created_at).where(Sighting.created_at >= trend_cutoff)
+    ).all()
+    by_day = Counter(c.date() for c in created_at_rows)
+    new_sightings_by_day = [
+        {
+            "date": day.isoformat(),
+            "count": by_day.get(day, 0),
+        }
+        for day in (
+            (now - timedelta(days=offset)).date()
+            for offset in range(METRICS_TREND_DAYS - 1, -1, -1)
+        )
+    ]
+
+    return AdminMetrics(
+        total_sightings=_count(db),
+        active_sightings=active_sightings,
+        hidden_sightings=_count(db, Sighting.status == "hidden"),
+        pending_sightings=_count(db, Sighting.status == "pending"),
+        gone_sightings=_count(db, Sighting.status == "gone"),
+        stale_sightings=stale_sightings,
+        reported_sightings=_count(db, Sighting.reports_count > 0),
+        total_reports=int(db.scalar(select(func.count()).select_from(Report)) or 0),
+        total_confirmations=int(
+            db.scalar(select(func.count()).select_from(Confirmation)) or 0
+        ),
+        extra_photos=int(db.scalar(select(func.count()).select_from(Photo)) or 0),
+        avg_cat_confidence=float(avg_confidence) if avg_confidence is not None else None,
+        actions_last_7d={action: count for action, count in action_rows},
+        new_sightings_by_day=new_sightings_by_day,
+    )
 
 
 def _get_or_404(db: Session, sighting_id: str) -> Sighting:
