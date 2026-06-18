@@ -125,6 +125,37 @@ def test_create_queues_low_cat_score_as_pending(client):
         assert sighting.status == "pending"
 
 
+def test_create_queues_as_pending_when_inference_fails(client):
+    """Per-image inference errors (detect_cat -> None) must fail safe into review,
+    not silently bypass moderation and publish straight to "active"."""
+    from app.routers import sightings as sightings_router
+
+    with (
+        patch.object(sightings_router.settings, "cat_detection_enabled", True),
+        patch.object(sightings_router.settings, "cat_detection_strict", True),
+        patch("app.routers.sightings.get_detection_status", return_value="ready"),
+        patch("app.routers.sightings.detect_cat", return_value=None),
+    ):
+        res = client.post(
+            "/api/sightings",
+            headers={"X-Device-Token": "user-noscore"},
+            files={"image": ("cat.jpg", _jpeg_bytes(), "image/jpeg")},
+            data={"lat": "40.0", "lng": "-3.0"},
+        )
+
+    assert res.status_code == 201
+    body = res.json()
+    assert body["pending"] is True
+
+    import app.database as db
+    from app.models import Sighting
+
+    with db.SessionLocal() as session:
+        sighting = session.get(Sighting, body["id"])
+        assert sighting.status == "pending"
+        assert sighting.cat_confidence is None
+
+
 def test_create_rejects_when_detection_unavailable(client):
     from app.routers import sightings as sightings_router
 

@@ -92,11 +92,14 @@ clients should prefer `/api/v1`.
 
 `POST`/`PATCH`/`confirm`/`report`/`gone`/`DELETE`/`mine` require the
 `X-Device-Token` header. Create, confirm, and report are rate-limited (see
-`RATE_LIMIT_*` env vars). A sighting can have up to 6 photos; at least one photo
-must pass cat detection when `CAT_DETECTION_STRICT` is enabled. `report` accepts
-a `reason` of `not_a_cat`, `spam`, `wrong_location`, `duplicate`, or `other`.
-Sightings not confirmed within `STALE_AFTER_DAYS` (default 30) are flagged
-`stale` and dimmed on the map.
+`RATE_LIMIT_*` env vars). A sighting can have up to 6 photos. When
+`CAT_DETECTION_STRICT` is enabled, a sighting whose photos don't score above
+`CAT_DETECTION_THRESHOLD` (or that couldn't be scored at all) is created with
+`status="pending"` instead of being rejected — the response's `pending` field
+reflects this — and it stays off the public map until an admin approves it
+(see Moderation below). `report` accepts a `reason` of `not_a_cat`, `spam`,
+`wrong_location`, `duplicate`, or `other`. Sightings not confirmed within
+`STALE_AFTER_DAYS` (default 30) are flagged `stale` and dimmed on the map.
 
 ### Moderation (admin)
 
@@ -105,6 +108,8 @@ Set `ADMIN_TOKEN` to enable token-gated moderation (sent as `X-Admin-Token`):
 | Method | Path                                      | Purpose                       |
 | ------ | ------------------------------------------ | ----------------------------- |
 | GET    | `/api/v1/admin/reports?sort&limit&offset`  | List reported sightings, paginated (`sort=reports\|date`) |
+| GET    | `/api/v1/admin/pending?limit&offset`       | List sightings queued for review (failed cat detection) |
+| POST   | `/api/v1/admin/sightings/{id}/approve`     | Approve a pending sighting (sets `status="active"`) |
 | POST   | `/api/v1/admin/sightings/{id}/hide`        | Hide a sighting               |
 | POST   | `/api/v1/admin/sightings/{id}/unhide`      | Restore a sighting            |
 | DELETE | `/api/v1/admin/sightings/{id}`             | Delete a sighting             |
@@ -112,8 +117,9 @@ Set `ADMIN_TOKEN` to enable token-gated moderation (sent as `X-Admin-Token`):
 
 Visiting `/admin` on the frontend serves a small token-gated web UI for the
 same operations: sign in with the admin token (stored in `sessionStorage`),
-then view, sort, and paginate reported sightings, hide/unhide/delete them,
-and review the recent moderation actions log.
+then review sightings pending cat-detection approval, view/sort/paginate
+reported sightings, hide/unhide/delete them, and review the recent
+moderation actions log.
 
 Every hide/unhide/delete is recorded in the `admin_actions` table (action,
 sighting ID, timestamp) — this audit trail persists even after a sighting is

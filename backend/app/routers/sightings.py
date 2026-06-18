@@ -360,8 +360,10 @@ async def create_sighting(
     valid_scores = [s for s in scores if s is not None]
     best_score = max(valid_scores) if valid_scores else None
     pending = False
-    if settings.cat_detection_enabled and best_score is not None:
-        if settings.cat_detection_strict and best_score < settings.cat_detection_threshold:
+    if settings.cat_detection_enabled and settings.cat_detection_strict:
+        # No valid score (every photo failed inference) is treated the same as a
+        # low score: fail safe into review rather than silently publishing.
+        if best_score is None or best_score < settings.cat_detection_threshold:
             pending = True
 
     primary_main, primary_thumb, primary_mime = processed[0]
