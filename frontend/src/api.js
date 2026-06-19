@@ -271,6 +271,14 @@ export async function fetchAdminMetrics({ token }) {
   return handle(res);
 }
 
+export async function fetchAdminDatabaseUsage({ token }) {
+  const res = await fetch(`${API_BASE}/api/admin/database-usage`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
 export async function fetchAdminActions({ token, limit = 20, offset = 0 }) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   const res = await fetch(`${API_BASE}/api/admin/actions?${params}`, {

@@ -103,6 +103,25 @@ class AdminMetrics(BaseModel):
     new_sightings_by_day: list[AdminDailyCount]
 
 
+class DatabaseTableUsage(BaseModel):
+    """Storage footprint and row count for a single table."""
+
+    name: str
+    size_bytes: int
+    row_count: int
+
+
+class DatabaseUsage(BaseModel):
+    """Database storage overview for the admin dashboard."""
+
+    total_size_bytes: int
+    capacity_bytes: int | None  # None when DB_CAPACITY_MB is unset
+    image_storage_bytes: int  # sightings + photos table totals
+    avg_photo_size_bytes: int | None
+    avg_thumbnail_size_bytes: int | None
+    tables: list[DatabaseTableUsage]  # sorted largest-first
+
+
 class CreateSightingResult(BaseModel):
     id: str
     lat: float

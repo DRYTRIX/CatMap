@@ -5,10 +5,15 @@ import {
   faChartLine,
   faClipboardList,
   faClockRotateLeft,
+  faDatabase,
   faEyeSlash,
   faFlag,
+  faHardDrive,
   faHourglassHalf,
+  faImage,
   faImages,
+  faServer,
+  faTable,
   faThumbsUp,
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
@@ -19,6 +24,7 @@ import {
   adminImageObjectUrl,
   adminUnhideSighting,
   fetchAdminActions,
+  fetchAdminDatabaseUsage,
   fetchAdminMetrics,
   fetchAdminPending,
   fetchAdminReports,
@@ -59,6 +65,40 @@ const ACTIONS_PAGE_SIZE = 10;
 
 function formatConfidence(c) {
   return c == null ? "—" : `${Math.round(c * 100)}%`;
+}
+
+function formatBytes(n) {
+  if (n == null) return "—";
+  if (n < 1024) return `${n} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = n / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i += 1;
+  }
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
+}
+
+function CapacityBar({ used, total }) {
+  const pct = total > 0 ? Math.min(100, (used / total) * 100) : 0;
+  const tone = pct > 90 ? "danger" : pct > 70 ? "warn" : null;
+  return (
+    <div className="admin-capacity">
+      <div className="admin-capacity-head">
+        <span className="admin-capacity-label">
+          {formatBytes(used)} of {formatBytes(total)} used
+        </span>
+        <span className="admin-capacity-pct">{Math.round(pct)}%</span>
+      </div>
+      <div className="admin-capacity-track">
+        <div
+          className={`admin-capacity-fill${tone ? ` admin-capacity-fill--${tone}` : ""}`}
+          style={{ width: `${Math.max(2, pct)}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function MetricCard({ icon, label, value, caption, tone }) {
@@ -117,6 +157,7 @@ function AdminPanel() {
   const [pending, setPending] = useState(null);
   const [actions, setActions] = useState(null);
   const [metrics, setMetrics] = useState(null);
+  const [dbUsage, setDbUsage] = useState(null);
   const [sort, setSort] = useState("reports");
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState(null);
@@ -169,6 +210,16 @@ function AdminPanel() {
     }
   }, [token]);
 
+  const loadDbUsage = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await fetchAdminDatabaseUsage({ token });
+      setDbUsage(data);
+    } catch {
+      /* non-critical; leave previous usage in place */
+    }
+  }, [token]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -184,6 +235,10 @@ function AdminPanel() {
   useEffect(() => {
     loadMetrics();
   }, [loadMetrics]);
+
+  useEffect(() => {
+    loadDbUsage();
+  }, [loadDbUsage]);
 
   function signIn(e) {
     e.preventDefault();
@@ -310,6 +365,72 @@ function AdminPanel() {
                   </span>
                 ))
               )}
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="admin-panel admin-panel--overview">
+        <PanelHeader icon={faDatabase} title="Database usage" />
+        {dbUsage === null && <p>Loading…</p>}
+        {dbUsage && (
+          <>
+            {dbUsage.capacity_bytes != null && (
+              <CapacityBar used={dbUsage.total_size_bytes} total={dbUsage.capacity_bytes} />
+            )}
+            <div className="admin-metrics-grid">
+              <MetricCard
+                icon={faDatabase}
+                label="Total database size"
+                value={formatBytes(dbUsage.total_size_bytes)}
+                caption={
+                  dbUsage.capacity_bytes != null
+                    ? `of ${formatBytes(dbUsage.capacity_bytes)} capacity`
+                    : null
+                }
+                tone={
+                  dbUsage.capacity_bytes != null
+                    ? dbUsage.total_size_bytes / dbUsage.capacity_bytes > 0.9
+                      ? "danger"
+                      : dbUsage.total_size_bytes / dbUsage.capacity_bytes > 0.7
+                        ? "warn"
+                        : undefined
+                    : undefined
+                }
+              />
+              <MetricCard
+                icon={faHardDrive}
+                label="Photo storage"
+                value={formatBytes(dbUsage.image_storage_bytes)}
+                caption={
+                  dbUsage.total_size_bytes > 0
+                    ? `${Math.round((dbUsage.image_storage_bytes / dbUsage.total_size_bytes) * 100)}% of database`
+                    : null
+                }
+              />
+              <MetricCard
+                icon={faImage}
+                label="Avg. photo size"
+                value={formatBytes(dbUsage.avg_photo_size_bytes)}
+              />
+              <MetricCard
+                icon={faServer}
+                label="Avg. thumbnail size"
+                value={formatBytes(dbUsage.avg_thumbnail_size_bytes)}
+              />
+            </div>
+            <div className="admin-table-usage">
+              <div className="admin-table-usage-head">
+                <FontAwesomeIcon icon={faTable} /> Per-table breakdown
+              </div>
+              {dbUsage.tables.map((t) => (
+                <div key={t.name} className="admin-table-usage-row">
+                  <span className="admin-table-usage-name">{t.name}</span>
+                  <span className="admin-table-usage-meta">
+                    {t.row_count.toLocaleString()} rows · {formatBytes(t.size_bytes)}
+                  </span>
+                </div>
+              ))}
             </div>
           </>
         )}

@@ -43,6 +43,10 @@ services:
       # moderation UI + /api/admin endpoints. Empty/unset = admin disabled.
       - key: ADMIN_TOKEN
         sync: false
+      # Optional: total database storage (MB) for the admin dashboard capacity
+      # bar. Match the database plan's disk size. Unset/0 = bar hidden.
+      - key: DB_CAPACITY_MB
+        value: "1024"
 
   - type: web
     name: catmap-frontend

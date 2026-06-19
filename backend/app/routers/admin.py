@@ -2,14 +2,20 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
 from ..models import AdminAction, Confirmation, Photo, Report, Sighting
-from ..schemas import AdminActionRow, AdminMetrics, AdminReportRow
+from ..schemas import (
+    AdminActionRow,
+    AdminMetrics,
+    AdminReportRow,
+    DatabaseTableUsage,
+    DatabaseUsage,
+)
 
 router = APIRouter(
     prefix="/admin",
@@ -181,6 +187,70 @@ def get_metrics(db: Session = Depends(get_db)) -> AdminMetrics:
         avg_cat_confidence=float(avg_confidence) if avg_confidence is not None else None,
         actions_last_7d={action: count for action, count in action_rows},
         new_sightings_by_day=new_sightings_by_day,
+    )
+
+
+# Tables surfaced in the database-usage overview, in a fixed allowlist so the
+# raw count query below never interpolates user input. The two image tables come
+# first because their bytea blobs dominate storage.
+_USAGE_TABLES = ("sightings", "photos", "confirmations", "reports", "admin_actions")
+
+# Blob columns per table, used as a best-effort size estimate on engines (e.g.
+# SQLite in tests) that lack Postgres' pg_total_relation_size().
+_TABLE_BLOB_COLUMNS = {
+    "sightings": ("photo", "thumbnail"),
+    "photos": ("photo", "thumbnail"),
+}
+
+
+def _table_size_bytes(db: Session, name: str) -> int:
+    """Storage used by a table. Uses Postgres' relation size when available,
+    otherwise sums the byte length of its blob columns (0 for metadata tables)."""
+    if db.bind.dialect.name == "postgresql":
+        return int(db.scalar(text("SELECT pg_total_relation_size(:t)").bindparams(t=name)) or 0)
+    cols = _TABLE_BLOB_COLUMNS.get(name)
+    if not cols:
+        return 0
+    sums = " + ".join(f"coalesce(sum(length({c})), 0)" for c in cols)
+    return int(db.scalar(text(f"SELECT {sums} FROM {name}")) or 0)
+
+
+@router.get("/database-usage", response_model=DatabaseUsage)
+def get_database_usage(db: Session = Depends(get_db)) -> DatabaseUsage:
+    """Storage footprint of the database for the admin dashboard.
+
+    Photos are stored as blobs in the DB, so this shows how much space they use
+    and how close the database is to its configured capacity.
+    """
+    settings = get_settings()
+
+    tables = [
+        DatabaseTableUsage(
+            name=name,
+            size_bytes=_table_size_bytes(db, name),
+            row_count=int(db.scalar(text(f"SELECT count(*) FROM {name}")) or 0),
+        )
+        for name in _USAGE_TABLES
+    ]
+    tables.sort(key=lambda t: t.size_bytes, reverse=True)
+
+    if db.bind.dialect.name == "postgresql":
+        total = int(db.scalar(text("SELECT pg_database_size(current_database())")) or 0)
+    else:
+        total = sum(t.size_bytes for t in tables)
+
+    image_storage = sum(t.size_bytes for t in tables if t.name in ("sightings", "photos"))
+    avg_photo = db.scalar(select(func.avg(func.length(Sighting.photo))))
+    avg_thumb = db.scalar(select(func.avg(func.length(Sighting.thumbnail))))
+    capacity = settings.db_capacity_mb * 1024 * 1024 if settings.db_capacity_mb > 0 else None
+
+    return DatabaseUsage(
+        total_size_bytes=total,
+        capacity_bytes=capacity,
+        image_storage_bytes=image_storage,
+        avg_photo_size_bytes=int(avg_photo) if avg_photo is not None else None,
+        avg_thumbnail_size_bytes=int(avg_thumb) if avg_thumb is not None else None,
+        tables=tables,
     )
 
 

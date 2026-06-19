@@ -155,3 +155,46 @@ def test_admin_metrics_counts(client):
     assert sum(d["count"] for d in days) == 2
     assert days[-1]["date"] == datetime.now(UTC).date().isoformat()
     assert [d["date"] for d in days] == sorted(d["date"] for d in days)
+
+
+def test_admin_database_usage_requires_token(client):
+    assert client.get("/api/admin/database-usage").status_code == 401
+    assert (
+        client.get(
+            "/api/admin/database-usage", headers={"X-Admin-Token": "wrong"}
+        ).status_code
+        == 401
+    )
+
+
+def test_admin_database_usage_overview(client):
+    create_sighting(client, "owner-001")
+    create_sighting(client, "owner-002")
+
+    res = client.get("/api/admin/database-usage", headers=ADMIN)
+    assert res.status_code == 200
+    body = res.json()
+
+    # Structure: all expected keys present.
+    assert set(body) == {
+        "total_size_bytes",
+        "capacity_bytes",
+        "image_storage_bytes",
+        "avg_photo_size_bytes",
+        "avg_thumbnail_size_bytes",
+        "tables",
+    }
+
+    # DB_CAPACITY_MB is unset in tests, so no capacity bar.
+    assert body["capacity_bytes"] is None
+
+    tables = {t["name"]: t for t in body["tables"]}
+    assert "sightings" in tables
+    assert tables["sightings"]["row_count"] == 2
+    # Photos are stored as blobs, so sightings carries real bytes even on SQLite.
+    assert body["image_storage_bytes"] > 0
+    assert body["total_size_bytes"] >= body["image_storage_bytes"]
+    assert body["avg_photo_size_bytes"] > 0
+    # Tables are sorted largest-first.
+    sizes = [t["size_bytes"] for t in body["tables"]]
+    assert sizes == sorted(sizes, reverse=True)

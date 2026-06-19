@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     # Token protecting the /api/admin endpoints. Empty disables admin routes.
     admin_token: str = ""
 
+    # Total storage available to the database (MB), used to show a capacity bar
+    # on the admin dashboard. 0 = unknown (capacity bar hidden).
+    db_capacity_mb: int = 0
+
     # Cat detection (ONNX ImageNet classifier).
     cat_detection_enabled: bool = True
     cat_detection_threshold: float = 0.20
