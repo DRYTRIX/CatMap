@@ -132,6 +132,46 @@ export function createSighting({
 }
 
 /**
+ * Add 1+ photos to an existing sighting (community contribution). Uses
+ * XMLHttpRequest so we can report upload progress via `onProgress(percent)`.
+ * Resolves to the updated sighting detail.
+ */
+export function addSightingPhotos(id, files, onProgress) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    for (const file of files) {
+      form.append("images", file);
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE}/api/sightings/${id}/photos`);
+    xhr.setRequestHeader("X-Device-Token", getDeviceToken());
+
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+    }
+
+    xhr.onload = () => {
+      let body = null;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        /* ignore */
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body);
+      } else {
+        reject(new Error(body?.detail || `Upload failed (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.send(form);
+  });
+}
+
+/**
  * Edit a sighting's description/attributes. Only fields present in `fields`
  * are changed; creator-only (enforced by the backend via device token).
  */

@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     rate_limit_create: str = "20/hour"
     rate_limit_confirm: str = "120/hour"
     rate_limit_report: str = "40/hour"
+    rate_limit_add_photo: str = "30/hour"
 
     # Moderation: hide a sighting once it reaches this many distinct reports.
     auto_hide_threshold: int = 3

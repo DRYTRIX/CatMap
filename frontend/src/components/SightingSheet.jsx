@@ -14,6 +14,7 @@ import { isFavorite, toggleFavorite } from "../lib/favorites";
 import Modal from "./Modal";
 import Lightbox from "./Lightbox";
 import EditSightingModal from "./EditSightingModal";
+import AddPhotosModal from "./AddPhotosModal";
 import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -23,9 +24,13 @@ import {
   faPen,
   faCat,
   faXmark,
+  faImages,
   faHeart as faHeartSolid,
 } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
+
+// Mirrors MAX_PHOTOS_PER_SIGHTING in backend/app/routers/sightings.py.
+const MAX_PHOTOS = 6;
 
 const REPORT_REASONS = [
   { id: "not_a_cat", label: "Not a cat" },
@@ -52,6 +57,7 @@ export default function SightingSheet({ id, onClose, onChanged }) {
   const [activePhoto, setActivePhoto] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [addingPhotos, setAddingPhotos] = useState(false);
   const [favorite, setFavorite] = useState(() => isFavorite(id));
   const [reportOpen, setReportOpen] = useState(false);
   const mine = isMine(id);
@@ -289,6 +295,15 @@ export default function SightingSheet({ id, onClose, onChanged }) {
             >
               <FontAwesomeIcon icon={faFlag} /> Report
             </button>
+            {data.photos.length < MAX_PHOTOS && (
+              <button
+                className="btn btn-ghost"
+                onClick={() => setAddingPhotos(true)}
+                disabled={busy}
+              >
+                <FontAwesomeIcon icon={faImages} /> Add photos
+              </button>
+            )}
             {mine && (
               <>
                 <button
@@ -327,6 +342,20 @@ export default function SightingSheet({ id, onClose, onChanged }) {
             setData(updated);
             setEditing(false);
             onChanged?.();
+          }}
+        />
+      )}
+
+      {addingPhotos && data && (
+        <AddPhotosModal
+          sighting={data}
+          remaining={MAX_PHOTOS - data.photos.length}
+          onClose={() => setAddingPhotos(false)}
+          onAdded={(updated) => {
+            setData(updated);
+            setActivePhoto(updated.photos.length - 1);
+            setImgLoaded(false);
+            setAddingPhotos(false);
           }}
         />
       )}

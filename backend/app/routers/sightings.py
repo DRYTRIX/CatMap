@@ -503,6 +503,102 @@ def get_extra_thumbnail(
     )
 
 
+@router.post("/{sighting_id}/photos", response_model=SightingDetail)
+@limiter.limit(settings.rate_limit_add_photo)
+async def add_photos(
+    request: Request,
+    sighting_id: str,
+    images: list[UploadFile] = File(default=[]),
+    image: UploadFile | None = File(None),
+    token: str = Depends(device_token),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Add one or more photos to an existing sighting.
+
+    Community contribution: any device may add to an active sighting (not just
+    the creator). The sighting's status is never changed; uploads that don't
+    look like a cat are rejected rather than queued for review.
+    """
+    sighting = db.get(Sighting, sighting_id)
+    if sighting is None or sighting.status != "active":
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+
+    files = [f for f in images if f is not None and f.filename] or (
+        [image] if image is not None else []
+    )
+    if not files:
+        raise HTTPException(status_code=400, detail="No image provided.")
+
+    remaining = MAX_PHOTOS_PER_SIGHTING - (1 + len(sighting.photos))  # 1 = primary photo
+    if remaining <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"This sighting already has the maximum {MAX_PHOTOS_PER_SIGHTING} photos.",
+        )
+    if len(files) > remaining:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only {remaining} more photo(s) can be added.",
+        )
+
+    raw_list: list[bytes] = []
+    for f in files:
+        raw = await f.read()
+        if len(raw) == 0:
+            raise HTTPException(status_code=400, detail="Empty upload.")
+        if len(raw) > settings.max_upload_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Image exceeds {settings.max_upload_mb} MB limit.",
+            )
+        raw_list.append(raw)
+
+    processed: list[tuple[bytes, bytes, str]] = []
+    for raw in raw_list:
+        try:
+            processed.append(
+                process_upload(
+                    raw,
+                    settings.image_max_edge,
+                    settings.thumbnail_max_edge,
+                    settings.max_image_pixels,
+                )
+            )
+        except InvalidImageError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if settings.cat_detection_enabled and settings.cat_detection_strict:
+        if get_detection_status() == "unavailable":
+            raise HTTPException(
+                status_code=503,
+                detail="Cat detection is temporarily unavailable. Please try again later.",
+            )
+        scores = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+        valid_scores = [s for s in scores if s is not None]
+        best_score = max(valid_scores) if valid_scores else None
+        if best_score is None or best_score < settings.cat_detection_threshold:
+            raise HTTPException(
+                status_code=400,
+                detail="That photo doesn't look like a cat.",
+            )
+
+    start = max((p.position for p in sighting.photos), default=0) + 1
+    for offset, (main_bytes, thumb_bytes, mime) in enumerate(processed):
+        sighting.photos.append(
+            Photo(
+                photo=main_bytes,
+                thumbnail=thumb_bytes,
+                photo_mime=mime,
+                position=start + offset,
+                contributor_token=token,
+            )
+        )
+
+    db.commit()
+    db.refresh(sighting)
+    return _detail(sighting)
+
+
 @router.post("/{sighting_id}/confirm", response_model=ConfirmResult)
 @limiter.limit(settings.rate_limit_confirm)
 def confirm_sighting(

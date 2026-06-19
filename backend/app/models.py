@@ -116,6 +116,9 @@ class Photo(Base):
     thumbnail: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     photo_mime: Mapped[str] = mapped_column(String(50), nullable=False)
     position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    # Device token of whoever uploaded this photo. Null for photos added at
+    # creation; set for community contributions added to an existing sighting.
+    contributor_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, nullable=False
     )
