@@ -1,4 +1,5 @@
 import imageCompressionImport from "browser-image-compression";
+import imageCompressionLibUrl from "browser-image-compression/dist/browser-image-compression.js?url";
 
 const imageCompression = imageCompressionImport?.default ?? imageCompressionImport;
 
@@ -16,6 +17,7 @@ export async function compressImage(file) {
     maxSizeMB: 1,
     maxWidthOrHeight: 1600,
     useWebWorker: true,
+    libURL: imageCompressionLibUrl,
     fileType: "image/jpeg",
     initialQuality: 0.82,
   };

@@ -33,22 +33,7 @@
     />
     <meta name="twitter:image" content="https://catmap.drytrix.com/icon-512.png" />
     <title>CatMap — Cat Sightings</title>
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem("catmap_theme");
-          var theme =
-            stored === "light" || stored === "dark"
-              ? stored
-              : window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-          document.documentElement.setAttribute("data-theme", theme);
-        } catch (e) {
-          /* localStorage unavailable */
-        }
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
