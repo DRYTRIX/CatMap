@@ -825,6 +825,12 @@ textarea:focus {
 .photo-req--failed .photo-req-icon {
   color: var(--danger);
 }
+.photo-req--soft {
+  color: var(--amber, #b45309);
+}
+.photo-req--soft .photo-req-icon {
+  color: var(--amber, #b45309);
+}
 @media (max-width: 480px) {
   .photo-step {
     grid-template-columns: 1fr;

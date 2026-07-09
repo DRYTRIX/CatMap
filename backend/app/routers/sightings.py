@@ -356,9 +356,9 @@ async def create_sighting(
             detail="Cat detection is temporarily unavailable. Please try again later.",
         )
 
-    scores = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
-    valid_scores = [s for s in scores if s is not None]
-    best_score = max(valid_scores) if valid_scores else None
+    results = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+    valid_results = [r for r in results if r is not None]
+    best_score = max((r.cat_score for r in valid_results), default=None)
     pending = False
     if settings.cat_detection_enabled and settings.cat_detection_strict:
         # No valid score (every photo failed inference) is treated the same as a
@@ -573,10 +573,15 @@ async def add_photos(
                 status_code=503,
                 detail="Cat detection is temporarily unavailable. Please try again later.",
             )
-        scores = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
-        valid_scores = [s for s in scores if s is not None]
-        best_score = max(valid_scores) if valid_scores else None
-        if best_score is None or best_score < settings.cat_detection_threshold:
+        results = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+        valid_results = [r for r in results if r is not None]
+        if not valid_results:
+            raise HTTPException(
+                status_code=400,
+                detail="That photo doesn't look like a cat.",
+            )
+        best_animal = max(r.animal_score for r in valid_results)
+        if best_animal < settings.cat_detection_animal_threshold:
             raise HTTPException(
                 status_code=400,
                 detail="That photo doesn't look like a cat.",

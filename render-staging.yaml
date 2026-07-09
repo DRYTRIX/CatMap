@@ -34,6 +34,8 @@ services:
         value: "true"
       - key: CAT_DETECTION_THRESHOLD
         value: "0.20"
+      - key: CAT_DETECTION_ANIMAL_THRESHOLD
+        value: "0.30"
       - key: CAT_DETECTION_STRICT
         value: "true"
       # More verbose logging is fine on staging.

@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts ./scripts
 RUN python scripts/fetch_model.py \
-    && test "$(stat -c%s models/ssd_mobilenet_v1_12.onnx)" -gt 20000000
+    && test "$(stat -c%s models/yolov10s.onnx)" -gt 10000000
 
 COPY app ./app
 COPY alembic ./alembic

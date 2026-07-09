@@ -34,6 +34,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // ONNX runtime WASM + model are loaded on demand; don't precache multi-MB assets.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+        globIgnores: ["**/ort-*.wasm", "**/models/*.onnx"],
         // Cache OpenStreetMap tiles for smoother panning / offline shell.
         runtimeCaching: [
           {

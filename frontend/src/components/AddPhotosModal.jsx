@@ -5,6 +5,7 @@ import { track } from "../analytics";
 import { addSightingPhotos } from "../api";
 import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
+import { fileInputAccept, filterImageFiles } from "../lib/photoGps";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
 
@@ -20,7 +21,7 @@ import { useToast } from "./Toast";
 export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }) {
   const toast = useToast();
   const nextPhotoId = useRef(0);
-  // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, catCheckError }
+  // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, possibleAnimal, catCheckError }
   const [photos, setPhotos] = useState([]);
   const [processing, setProcessing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +31,7 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
 
   async function addFiles(fileList) {
     if (room <= 0) return;
-    const incoming = Array.from(fileList).slice(0, room);
+    const incoming = filterImageFiles(fileList).slice(0, room);
     if (incoming.length === 0) return;
 
     setProcessing(true);
@@ -48,6 +49,7 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
             sizeBefore: f.size,
             sizeAfter: compressed.size,
             catDetected: catCheck.detected,
+            possibleAnimal: Boolean(catCheck.possibleAnimal),
             catCheckError: Boolean(catCheck.error),
           },
         ]);
@@ -91,9 +93,15 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
 
   const totalBefore = photos.reduce((sum, p) => sum + p.sizeBefore, 0);
   const totalAfter = photos.reduce((sum, p) => sum + p.sizeAfter, 0);
-  // Soft warning: production rejects non-cat uploads, so flag them early.
   const someNotCat =
-    !processing && photos.length > 0 && photos.some((p) => !p.catDetected && !p.catCheckError);
+    !processing &&
+    photos.length > 0 &&
+    photos.some((p) => !p.catDetected && !p.possibleAnimal && !p.catCheckError);
+  const somePossibleCat =
+    !processing &&
+    photos.length > 0 &&
+    photos.some((p) => p.possibleAnimal) &&
+    !photos.some((p) => p.catDetected);
 
   return (
     <Modal onClose={closeModal} labelledBy="add-photos-title" className="sheet">
@@ -143,7 +151,7 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
                 : `📷 Add another photo (${photos.length}/${remaining})`}
             <input
               type="file"
-              accept="image/*"
+              accept={fileInputAccept()}
               multiple
               style={{ display: "none" }}
               disabled={submitting}
@@ -159,6 +167,13 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
           <p className="hint">
             Optimized {formatBytes(totalBefore)} → {formatBytes(totalAfter)} for a faster
             upload.
+          </p>
+        )}
+
+        {somePossibleCat && (
+          <p className="hint photo-req--soft" role="status">
+            <FontAwesomeIcon icon={faTriangleExclamation} /> Possible cat in one of these
+            photos — it will be reviewed after upload.
           </p>
         )}
 

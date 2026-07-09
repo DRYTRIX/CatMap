@@ -1,18 +1,21 @@
 import { useRef, useState } from "react";
 import { track } from "../analytics";
-import exifrImport from "exifr";
-
-const exifr = exifrImport?.default ?? exifrImport;
 import { createSighting } from "../api";
 import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
+import {
+  fileInputAccept,
+  filterImageFiles,
+  isMobile,
+  readGpsFromFile,
+} from "../lib/photoGps";
 import { CAT_COLORS } from "../lib/filters";
 import LocationPicker from "./LocationPicker";
 import Modal from "./Modal";
 import SegmentedControl from "./SegmentedControl";
 import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faCheck, faCircle } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faCheck, faCircle, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 
 const STEPS = ["Photos", "Location", "Details"];
 const STEP_KEYS = ["photo", "location", "details"];
@@ -42,7 +45,11 @@ function getPhotoRequirements({ photos, processing }) {
     } else if (photos.every((p) => p.catCheckError)) {
       catLabel = "Could not verify photo";
       catStatus = "failed";
+    } else if (photos.some((p) => p.possibleAnimal)) {
+      catLabel = "Possible cat — will be reviewed after posting";
+      catStatus = "soft";
     } else {
+      catLabel = "No cat detected";
       catStatus = "failed";
     }
   }
@@ -61,6 +68,11 @@ function PhotoRequirementIcon({ status }) {
   if (status === "failed") {
     return <FontAwesomeIcon icon={faXmark} className="photo-req-icon" aria-hidden="true" />;
   }
+  if (status === "soft") {
+    return (
+      <FontAwesomeIcon icon={faTriangleExclamation} className="photo-req-icon" aria-hidden="true" />
+    );
+  }
   return <FontAwesomeIcon icon={faCircle} className="photo-req-icon" aria-hidden="true" />;
 }
 
@@ -70,7 +82,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const nextPhotoId = useRef(0);
   const [step, setStep] = useState(0);
 
-  // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, catCheckError }
+  // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, possibleAnimal, catCheckError }
   const [photos, setPhotos] = useState([]);
   const [processing, setProcessing] = useState(false);
 
@@ -90,34 +102,26 @@ export default function AddSightingModal({ onClose, onCreated }) {
   async function addFiles(fileList) {
     const room = MAX_PHOTOS - photos.length;
     if (room <= 0) return;
-    const incoming = Array.from(fileList).slice(0, room);
+    const incoming = filterImageFiles(fileList).slice(0, room);
     if (incoming.length === 0) return;
 
     const isFirstBatch = photos.length === 0;
+    const hadLocation = Boolean(location);
+    let gpsFound = hadLocation;
     setProcessing(true);
     try {
       for (let i = 0; i < incoming.length; i++) {
         const f = incoming[i];
 
-        // Read GPS from the very first photo's ORIGINAL bytes (compression
-        // strips EXIF) so the location step can be pre-filled.
-        if (isFirstBatch && i === 0) {
-          let gps = null;
-          let exifError = false;
-          try {
-            gps = await exifr.gps(f);
-          } catch (err) {
-            exifError = true;
-            console.warn("EXIF GPS read failed for this photo.", err);
-          }
-          const foundGps =
-            !!gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude);
-          track("exif_gps_read", { found: foundGps, error: exifError });
-          if (foundGps) {
+        // Read GPS from ORIGINAL bytes (compression strips EXIF). Scan every
+        // photo in the batch until coordinates are found.
+        if (!gpsFound) {
+          const gps = await readGpsFromFile(f);
+          if (gps) {
             setLocation({ lat: gps.latitude, lng: gps.longitude });
             setFromExif(true);
-          } else {
-            setFromExif(false);
+            gpsFound = true;
+            track("exif_gps_read", { found: true, error: false, photo_index: i });
           }
         }
 
@@ -126,6 +130,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
         track("add_sighting_client_cat_check", {
           detected: catCheck.detected,
           score: catCheck.score,
+          animal_score: catCheck.animalScore,
           error: Boolean(catCheck.error),
         });
 
@@ -139,9 +144,15 @@ export default function AddSightingModal({ onClose, onCreated }) {
             sizeBefore: f.size,
             sizeAfter: compressed.size,
             catDetected: catCheck.detected,
+            possibleAnimal: Boolean(catCheck.possibleAnimal),
             catCheckError: Boolean(catCheck.error),
           },
         ]);
+      }
+
+      if (!gpsFound && isFirstBatch && !hadLocation) {
+        track("exif_gps_read", { found: false, error: false });
+        setFromExif(false);
       }
     } finally {
       setProcessing(false);
@@ -274,7 +285,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
                       picker so the user can take or choose a photo. */}
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={fileInputAccept()}
                     multiple
                     style={{ display: "none" }}
                     onChange={(e) => {
@@ -320,7 +331,9 @@ export default function AddSightingModal({ onClose, onCreated }) {
           <p className="hint">
             {fromExif
               ? "Found GPS in the photo. Drag the pin to fine-tune."
-              : "No GPS in this photo — drop a pin or use your location."}
+              : isMobile()
+                ? "Your phone may have removed location data from the photo — use My location or drop a pin."
+                : "No GPS in this photo — drop a pin or use your location."}
           </p>
           <LocationPicker value={location} onChange={setLocation} />
         </div>

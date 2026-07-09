@@ -58,6 +58,7 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
+npm run fetch-model   # downloads YOLOv10n for client cat pre-check (~9 MB)
 # talk to a backend on :8000
 echo "VITE_API_BASE=http://localhost:8000" > .env.local
 npm run dev
@@ -239,14 +240,16 @@ scratch.
 
 ## Cat detection
 
-Uploads are checked server-side with a COCO SSD object detector (cat class). Tune via
-env vars (`CAT_DETECTION_ENABLED`, `CAT_DETECTION_THRESHOLD`, `CAT_DETECTION_STRICT`).
-The browser shows an optional pre-check hint; the server is authoritative.
+Uploads are checked server-side with a YOLOv10 COCO object detector (cat class).
+Tune via env vars (`CAT_DETECTION_ENABLED`, `CAT_DETECTION_THRESHOLD`,
+`CAT_DETECTION_ANIMAL_THRESHOLD`, `CAT_DETECTION_STRICT`). The browser runs a
+matching YOLOv10n pre-check; the server is authoritative.
 
-Download the model for local backend dev:
+Download models for local dev:
 
 ```bash
 cd backend && python scripts/fetch_model.py
+cd ../frontend && npm run fetch-model
 ```
 
 ## Notes & future work

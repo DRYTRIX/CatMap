@@ -55,11 +55,12 @@ class Settings(BaseSettings):
     # on the admin dashboard. 0 = unknown (capacity bar hidden).
     db_capacity_mb: int = 0
 
-    # Cat detection (ONNX ImageNet classifier).
+    # Cat detection (YOLOv10 COCO object detector).
     cat_detection_enabled: bool = True
     cat_detection_threshold: float = 0.20
+    cat_detection_animal_threshold: float = 0.30
     cat_detection_strict: bool = True
-    cat_detection_model_path: str = "models/ssd_mobilenet_v1_12.onnx"
+    cat_detection_model_path: str = "models/yolov10s.onnx"
 
     # Error tracking (Sentry). Empty DSN disables it entirely.
     sentry_dsn: str = ""

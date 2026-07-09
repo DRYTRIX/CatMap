@@ -10,6 +10,7 @@ import pytest
 from PIL import Image
 
 from app import cat_detection
+from app.cat_detection import DetectionResult
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from fetch_model import is_valid_model  # noqa: E402
@@ -28,6 +29,14 @@ def _jpeg_bytes() -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (64, 64), (200, 160, 90)).save(buf, format="JPEG")
     return buf.getvalue()
+
+
+def _yolo_output(cat_score: float = 0.95, dog_score: float = 0.0) -> np.ndarray:
+    output = np.zeros((1, 300, 6), dtype=np.float32)
+    output[0, 0] = [0, 0, 100, 100, cat_score, cat_detection.COCO_CAT_CLASS_ID]
+    if dog_score > 0:
+        output[0, 1] = [0, 0, 100, 100, dog_score, cat_detection.COCO_DOG_CLASS_ID]
+    return output
 
 
 def test_is_valid_model_rejects_lfs_pointer(tmp_path):
@@ -71,27 +80,21 @@ def test_detect_cat_no_model_returns_none(monkeypatch):
 
 def test_detect_cat_returns_cat_score(monkeypatch):
     monkeypatch.setenv("CAT_DETECTION_ENABLED", "true")
-    monkeypatch.setenv("CAT_DETECTION_MODEL_PATH", "models/ssd_mobilenet_v1_12.onnx")
+    monkeypatch.setenv("CAT_DETECTION_MODEL_PATH", "models/yolov10s.onnx")
     from app.config import get_settings
 
     get_settings.cache_clear()
 
-    boxes = np.zeros((1, 10, 4), dtype=np.float32)
-    classes = np.zeros((1, 10), dtype=np.float32)
-    classes[0, 0] = cat_detection.COCO_CAT_CLASS_ID
-    scores = np.zeros((1, 10), dtype=np.float32)
-    scores[0, 0] = 0.95
-    num = np.array([1.0], dtype=np.float32)
-
     mock_session = MagicMock()
-    mock_session.get_inputs.return_value = [MagicMock(name="input")]
-    mock_session.run.return_value = [boxes, classes, scores, num]
+    mock_session.get_inputs.return_value = [MagicMock(name="images")]
+    mock_session.run.return_value = [_yolo_output(0.95)]
 
     cat_detection._session = mock_session
-    score = cat_detection.detect_cat(_jpeg_bytes())
+    result = cat_detection.detect_cat(_jpeg_bytes())
 
-    assert score is not None
-    assert score > 0.9
+    assert result is not None
+    assert result.cat_score > 0.9
+    assert result.animal_score >= result.cat_score
     assert cat_detection.get_detection_status() == "ready"
     get_settings.cache_clear()
 
@@ -104,7 +107,10 @@ def test_create_queues_low_cat_score_as_pending(client):
         patch.object(sightings_router.settings, "cat_detection_strict", True),
         patch.object(sightings_router.settings, "cat_detection_threshold", 0.99),
         patch("app.routers.sightings.get_detection_status", return_value="ready"),
-        patch("app.routers.sightings.detect_cat", return_value=0.1),
+        patch(
+            "app.routers.sightings.detect_cat",
+            return_value=DetectionResult(cat_score=0.1, animal_score=0.1),
+        ),
     ):
         res = client.post(
             "/api/sightings",
@@ -183,7 +189,10 @@ def test_create_stores_cat_confidence(client):
         patch.object(sightings_router.settings, "cat_detection_strict", True),
         patch.object(sightings_router.settings, "cat_detection_threshold", 0.01),
         patch("app.routers.sightings.get_detection_status", return_value="ready"),
-        patch("app.routers.sightings.detect_cat", return_value=0.85),
+        patch(
+            "app.routers.sightings.detect_cat",
+            return_value=DetectionResult(cat_score=0.85, animal_score=0.85),
+        ),
     ):
         res = client.post(
             "/api/sightings",
@@ -217,3 +226,54 @@ def test_healthz_reports_cat_detection(client, monkeypatch):
     assert body["status"] == "ok"
     assert body["cat_detection"] == "unavailable"
     get_settings.cache_clear()
+
+
+def test_add_photos_accepts_animal_signal(client):
+    from app.routers import sightings as sightings_router
+    from tests.conftest import create_sighting
+
+    sid = create_sighting(client, "owner-animal").json()["id"]
+
+    with (
+        patch.object(sightings_router.settings, "cat_detection_enabled", True),
+        patch.object(sightings_router.settings, "cat_detection_strict", True),
+        patch.object(sightings_router.settings, "cat_detection_animal_threshold", 0.30),
+        patch("app.routers.sightings.get_detection_status", return_value="ready"),
+        patch(
+            "app.routers.sightings.detect_cat",
+            return_value=DetectionResult(cat_score=0.1, animal_score=0.35),
+        ),
+    ):
+        res = client.post(
+            f"/api/sightings/{sid}/photos",
+            headers={"X-Device-Token": "owner-animal"},
+            files={"images": ("extra.jpg", _jpeg_bytes(), "image/jpeg")},
+        )
+
+    assert res.status_code == 200
+
+
+def test_add_photos_rejects_low_animal_signal(client):
+    from app.routers import sightings as sightings_router
+    from tests.conftest import create_sighting
+
+    sid = create_sighting(client, "owner-reject").json()["id"]
+
+    with (
+        patch.object(sightings_router.settings, "cat_detection_enabled", True),
+        patch.object(sightings_router.settings, "cat_detection_strict", True),
+        patch.object(sightings_router.settings, "cat_detection_animal_threshold", 0.30),
+        patch("app.routers.sightings.get_detection_status", return_value="ready"),
+        patch(
+            "app.routers.sightings.detect_cat",
+            return_value=DetectionResult(cat_score=0.1, animal_score=0.2),
+        ),
+    ):
+        res = client.post(
+            f"/api/sightings/{sid}/photos",
+            headers={"X-Device-Token": "owner-reject"},
+            files={"images": ("extra.jpg", _jpeg_bytes(), "image/jpeg")},
+        )
+
+    assert res.status_code == 400
+    assert "doesn't look like a cat" in res.json()["detail"].lower()

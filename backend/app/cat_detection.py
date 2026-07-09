@@ -1,9 +1,10 @@
-"""Server-side cat detection using a COCO SSD object detector."""
+"""Server-side cat detection using a YOLOv10 COCO object detector."""
 
 from __future__ import annotations
 
 import io
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -14,16 +15,23 @@ from .config import get_settings
 
 logger = logging.getLogger("catmap")
 
-# Class id for COCO "cat" (1-based) as emitted by the SSD MobileNet v1 detector
-# (ssd_mobilenet_v1_12.onnx). This only matches that object-detection model — the
-# bundled mobilenet_v2.onnx is an ImageNet *classifier* with a different label
-# space and a different output signature, so it is NOT interchangeable here.
-COCO_CAT_CLASS_ID = 17
+# COCO class ids (0-based) in the YOLOv10 ONNX export.
+COCO_CAT_CLASS_ID = 15
+COCO_DOG_CLASS_ID = 16
+YOLO_INPUT_SIZE = 640
 
 _session = None
 _session_failed = False
 
 DetectionStatus = Literal["disabled", "ready", "unavailable"]
+
+
+@dataclass(frozen=True)
+class DetectionResult:
+    """Best cat and animal (cat or dog) scores across multi-crop inference."""
+
+    cat_score: float
+    animal_score: float
 
 
 def _model_path() -> Path:
@@ -90,23 +98,40 @@ def _crops(img: Image.Image) -> list[Image.Image]:
     ]
 
 
-def _cat_score_for_image(session, img: Image.Image) -> float:
+def _letterbox(img: Image.Image, size: int = YOLO_INPUT_SIZE) -> np.ndarray:
+    w, h = img.size
+    scale = size / max(w, h)
+    nw, nh = int(round(w * scale)), int(round(h * scale))
+    resized = img.resize((nw, nh), Image.Resampling.BILINEAR)
+    canvas = Image.new("RGB", (size, size), (114, 114, 114))
+    canvas.paste(resized, ((size - nw) // 2, (size - nh) // 2))
+    arr = np.asarray(canvas, dtype=np.float32) / 255.0
+    return arr.transpose(2, 0, 1)[np.newaxis, ...]
+
+
+def _scores_for_image(session, img: Image.Image) -> tuple[float, float]:
     input_name = session.get_inputs()[0].name
-    arr = np.asarray(img.convert("RGB"), dtype=np.uint8)[np.newaxis, ...]
+    arr = _letterbox(img)
     outputs = session.run(None, {input_name: arr})
-    classes = outputs[1]
-    scores = outputs[2]
-    num = int(outputs[3][0])
+    detections = outputs[0][0]  # [300, 6] -> x1, y1, x2, y2, score, class
 
-    best = 0.0
-    for i in range(num):
-        if int(classes[0][i]) == COCO_CAT_CLASS_ID:
-            best = max(best, float(scores[0][i]))
-    return best
+    best_cat = 0.0
+    best_dog = 0.0
+    for row in detections:
+        score = float(row[4])
+        if score < 0.01:
+            continue
+        cls_id = int(row[5])
+        if cls_id == COCO_CAT_CLASS_ID:
+            best_cat = max(best_cat, score)
+        elif cls_id == COCO_DOG_CLASS_ID:
+            best_dog = max(best_dog, score)
+
+    return best_cat, max(best_cat, best_dog)
 
 
-def detect_cat(image_bytes: bytes) -> float | None:
-    """Return best COCO cat detection score, or None if detection is unavailable."""
+def detect_cat(image_bytes: bytes) -> DetectionResult | None:
+    """Return best cat/animal scores, or None if detection is unavailable."""
     settings = get_settings()
     if not settings.cat_detection_enabled:
         return None
@@ -119,8 +144,13 @@ def detect_cat(image_bytes: bytes) -> float | None:
         with Image.open(io.BytesIO(image_bytes)) as img:
             img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
-            score = max(_cat_score_for_image(session, crop) for crop in _crops(img))
-        return score
+            best_cat = 0.0
+            best_animal = 0.0
+            for crop in _crops(img):
+                cat_score, animal_score = _scores_for_image(session, crop)
+                best_cat = max(best_cat, cat_score)
+                best_animal = max(best_animal, animal_score)
+        return DetectionResult(cat_score=best_cat, animal_score=best_animal)
     except Exception:  # noqa: BLE001
         logger.exception("Cat detection inference failed.")
         return None

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download the COCO SSD ONNX model used for cat detection."""
+"""Download the YOLOv10s ONNX model used for cat detection."""
 
 from __future__ import annotations
 
@@ -7,15 +7,12 @@ import sys
 import urllib.request
 from pathlib import Path
 
-# Hugging Face mirror — detects COCO "cat" objects (better than breed classifiers).
+# Hugging Face mirror — YOLOv10s COCO detector (cat class id 15).
 MODEL_URL = (
-    "https://huggingface.co/onnxmodelzoo/ssd_mobilenet_v1_12/resolve/main/"
-    "ssd_mobilenet_v1_12.onnx"
+    "https://huggingface.co/onnx-community/yolov10s/resolve/main/onnx/model.onnx"
 )
-OUTPUT = (
-    Path(__file__).resolve().parent.parent / "models" / "ssd_mobilenet_v1_12.onnx"
-)
-MIN_BYTES = 20_000_000  # Real model is ~29 MB; LFS pointers are tiny.
+OUTPUT = Path(__file__).resolve().parent.parent / "models" / "yolov10s.onnx"
+MIN_BYTES = 10_000_000  # Real model is ~29 MB; LFS pointers are tiny.
 
 
 def is_valid_model(path: Path) -> bool:
