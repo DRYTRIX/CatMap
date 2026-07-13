@@ -92,6 +92,16 @@ def build_sighting_notification(
     return "\n".join(lines)
 
 
+def notify_startup() -> None:
+    settings = get_settings()
+    text = (
+        "<b>CatMap backend started</b>\n"
+        f"Environment: {_escape(settings.sentry_environment)}\n"
+        f"Site: {_escape(settings.public_site_url)}"
+    )
+    notify_telegram(text)
+
+
 def notify_sighting_created(
     *,
     sighting_id: str,

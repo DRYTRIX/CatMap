@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 import uuid
@@ -14,6 +15,7 @@ from .cat_detection import get_detection_status
 from .config import get_settings
 from .database import engine, run_migrations
 from .logging_config import configure_logging
+from .notifications import notify_startup
 from .ratelimit import limiter
 from .routers import admin, share, sightings, stats
 
@@ -39,6 +41,7 @@ async def lifespan(app: FastAPI):
         )
     if not settings.admin_token:
         logger.warning("ADMIN_TOKEN is unset — /api/admin moderation is disabled.")
+    await asyncio.to_thread(notify_startup)
     yield
 
 

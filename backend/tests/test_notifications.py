@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from app.config import get_settings
-from app.notifications import build_sighting_notification, notify_telegram
+from app.notifications import build_sighting_notification, notify_startup, notify_telegram
 from tests.conftest import create_sighting
 
 
@@ -64,6 +64,19 @@ def test_notify_telegram_noop_when_unconfigured(monkeypatch):
         post.assert_not_called()
 
     get_settings.cache_clear()
+
+
+def test_notify_startup_sends_when_configured(telegram_env):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+
+    with patch("app.notifications.httpx.post", return_value=mock_response) as post:
+        notify_startup()
+
+    post.assert_called_once()
+    text = post.call_args.kwargs["json"]["text"]
+    assert "started" in text
+    assert "production" in text
 
 
 def test_notify_telegram_sends_when_configured(telegram_env):
