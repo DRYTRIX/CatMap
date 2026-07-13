@@ -1528,6 +1528,41 @@ input[type="range"] {
   color: var(--ink-500);
   white-space: nowrap;
 }
+.admin-thumb-btn {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  line-height: 0;
+}
+.admin-thumb-btn:hover .admin-thumb,
+.admin-thumb-btn:focus-visible .admin-thumb {
+  transform: scale(1.05);
+}
+.admin-thumb-btn:hover .admin-thumb-zoom,
+.admin-thumb-btn:focus-visible .admin-thumb-zoom {
+  opacity: 1;
+}
+.admin-thumb-btn--loading {
+  cursor: wait;
+  opacity: 0.7;
+}
+.admin-thumb-zoom {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: var(--r-sm);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+}
 .admin-thumb {
   width: 48px;
   height: 48px;
@@ -1535,6 +1570,7 @@ input[type="range"] {
   border-radius: var(--r-sm);
   display: block;
   background: var(--surface-2);
+  transition: transform 0.15s ease;
 }
 .admin-desc {
   max-width: 280px;

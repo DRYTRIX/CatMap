@@ -12,6 +12,7 @@ import {
   faHourglassHalf,
   faImage,
   faImages,
+  faMagnifyingGlassPlus,
   faServer,
   faTable,
   faThumbsUp,
@@ -30,13 +31,14 @@ import {
   fetchAdminReports,
 } from "../api";
 import { timeAgo } from "../lib/time";
+import Lightbox from "../components/Lightbox";
 import { ToastProvider, useToast } from "../components/Toast";
 
 /**
  * Reported thumbnail loaded as a blob with the admin token in a header, so it
  * renders even for hidden/gone rows (the admin image route is token-gated).
  */
-function AdminThumb({ url, token }) {
+function AdminThumb({ url, token, onClick, loading }) {
   const [src, setSrc] = useState(null);
   useEffect(() => {
     let objectUrl = null;
@@ -56,7 +58,25 @@ function AdminThumb({ url, token }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [url, token]);
-  return <img className="admin-thumb" src={src || undefined} alt="" loading="lazy" />;
+
+  const img = <img className="admin-thumb" src={src || undefined} alt="" loading="lazy" />;
+
+  if (!onClick) return img;
+
+  return (
+    <button
+      type="button"
+      className={`admin-thumb-btn${loading ? " admin-thumb-btn--loading" : ""}`}
+      onClick={onClick}
+      disabled={loading}
+      aria-label="View full image"
+    >
+      {img}
+      <span className="admin-thumb-zoom" aria-hidden="true">
+        <FontAwesomeIcon icon={faMagnifyingGlassPlus} />
+      </span>
+    </button>
+  );
 }
 
 const TOKEN_KEY = "catmap_admin_token";
@@ -162,6 +182,8 @@ function AdminPanel() {
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
+  const [lightboxLoadingId, setLightboxLoadingId] = useState(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -251,6 +273,27 @@ function AdminPanel() {
     sessionStorage.removeItem(TOKEN_KEY);
     setToken("");
     setRows(null);
+  }
+
+  async function openLightbox(sightingId, description) {
+    if (lightboxLoadingId) return;
+    setLightboxLoadingId(sightingId);
+    try {
+      const objectUrl = await adminImageObjectUrl(
+        `/api/admin/sightings/${sightingId}/photo`,
+        token
+      );
+      setLightbox({ src: objectUrl, alt: description || "Sighting photo" });
+    } catch {
+      toast.error("Could not load full image.");
+    } finally {
+      setLightboxLoadingId(null);
+    }
+  }
+
+  function closeLightbox() {
+    if (lightbox?.src) URL.revokeObjectURL(lightbox.src);
+    setLightbox(null);
   }
 
   async function act(label, action, id) {
@@ -456,7 +499,12 @@ function AdminPanel() {
               {pending.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <AdminThumb url={r.thumbnail_url} token={token} />
+                    <AdminThumb
+                      url={r.thumbnail_url}
+                      token={token}
+                      loading={lightboxLoadingId === r.id}
+                      onClick={() => openLightbox(r.id, r.description)}
+                    />
                   </td>
                   <td className="admin-desc">{r.description || "—"}</td>
                   <td>{formatConfidence(r.cat_confidence)}</td>
@@ -533,7 +581,12 @@ function AdminPanel() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <AdminThumb url={r.thumbnail_url} token={token} />
+                    <AdminThumb
+                      url={r.thumbnail_url}
+                      token={token}
+                      loading={lightboxLoadingId === r.id}
+                      onClick={() => openLightbox(r.id, r.description)}
+                    />
                   </td>
                   <td className="admin-desc">{r.description || "—"}</td>
                   <td>
@@ -626,6 +679,10 @@ function AdminPanel() {
           </div>
         )}
       </section>
+
+      {lightbox && (
+        <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={closeLightbox} />
+      )}
     </div>
   );
 }
