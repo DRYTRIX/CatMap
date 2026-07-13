@@ -43,8 +43,8 @@ function getPhotoRequirements({ photos, processing }) {
     if (photos.some((p) => p.catDetected === true)) {
       catStatus = "met";
     } else if (photos.every((p) => p.catCheckError)) {
-      catLabel = "Could not verify photo";
-      catStatus = "failed";
+      catLabel = "Photo will be reviewed after posting";
+      catStatus = "soft";
     } else if (photos.some((p) => p.possibleAnimal)) {
       catLabel = "Possible cat — will be reviewed after posting";
       catStatus = "soft";

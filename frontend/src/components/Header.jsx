@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import SearchBar from "./SearchBar";
 import { fetchStats } from "../api";
 import { track } from "../analytics";
 import { getTheme, setTheme } from "../lib/theme";
+import LanguageSwitcher from "./LanguageSwitcher";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faPiggyBank, faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
@@ -12,6 +14,7 @@ function formatCount(n) {
 
 /** Solid site header: brand + counts, search, and the Add action. */
 export default function Header({ count, map, onAdd, donateURL, refreshKey = 0 }) {
+  const { t } = useTranslation();
   const [globalTotal, setGlobalTotal] = useState(null);
   const [theme, setThemeState] = useState(getTheme);
 
@@ -40,25 +43,24 @@ export default function Header({ count, map, onAdd, donateURL, refreshKey = 0 })
         <span className="brand-badge" aria-hidden="true">
           🐱
         </span>
-        <h1 className="brand-name">CatMap</h1>
+        <h1 className="brand-name">{t("header.brand")}</h1>
         {globalTotal !== null && (
           <span className="brand-count brand-count-global">
-            {formatCount(globalTotal)} cat{globalTotal === 1 ? "" : "s"} worldwide
+            {t("header.worldwide", { count: formatCount(globalTotal) })}
           </span>
         )}
         {count !== null && (
-          <span className="brand-count">
-            {formatCount(count)} in view
-          </span>
+          <span className="brand-count">{t("header.inView", { count: formatCount(count) })}</span>
         )}
       </div>
 
       <SearchBar map={map} />
       <div className="header-actions">
+        <LanguageSwitcher />
         <button
           type="button"
           className="icon-btn theme-toggle"
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={t("header.toggleTheme")}
           onClick={toggleTheme}
         >
           <FontAwesomeIcon icon={theme === "dark" ? faSun : faMoon} />
@@ -75,14 +77,14 @@ export default function Header({ count, map, onAdd, donateURL, refreshKey = 0 })
             <span className="add-btn-plus" aria-hidden="true">
               <FontAwesomeIcon icon={faPiggyBank} />
             </span>
-            <span className="add-btn-label">Donate</span>
+            <span className="add-btn-label">{t("header.donate")}</span>
           </button>
         )}
         <button type="button" className="btn btn-primary add-btn" onClick={onAdd}>
           <span className="add-btn-plus" aria-hidden="true">
             <FontAwesomeIcon icon={faPlus} />
           </span>
-          <span className="add-btn-label">Add cat</span>
+          <span className="add-btn-label">{t("header.addCat")}</span>
         </button>
       </div>
     </header>

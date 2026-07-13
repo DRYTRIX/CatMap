@@ -1,9 +1,13 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
 import AddSightingModal from "./components/AddSightingModal";
 import SightingSheet from "./components/SightingSheet";
 import FilterPanel from "./components/FilterPanel";
 import FavoritesModal from "./components/FavoritesModal";
+import MySightingsModal from "./components/MySightingsModal";
+import RecentFeedModal from "./components/RecentFeedModal";
+import CatProfileSheet from "./components/CatProfileSheet";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import MapControls from "./components/MapControls";
@@ -16,15 +20,19 @@ import { track } from "./analytics";
 import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
 
 function AppShell() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [count, setCount] = useState(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedCatId, setSelectedCatId] = useState(null);
   const [filters, setFilters] = useState(loadFilters);
   const [filtering, setFiltering] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [showMySightings, setShowMySightings] = useState(false);
+  const [showRecent, setShowRecent] = useState(false);
   const [viewMode, setViewMode] = useState("map");
   const mapRef = useRef(null);
 
@@ -47,17 +55,22 @@ function AppShell() {
       track("deep_link_open");
       setSelectedId(id);
     }
+
+    const catId = new URLSearchParams(window.location.search).get("c");
+    if (catId) {
+      setSelectedCatId(catId);
+    }
   }, []);
 
   // Online/offline feedback.
   useEffect(() => {
     const onOffline = () => {
       track("connectivity_change", { status: "offline" });
-      toast.error("You're offline — changes may not save.");
+      toast.error(t("connectivity.offline"));
     };
     const onOnline = () => {
       track("connectivity_change", { status: "online" });
-      toast.success("Back online.");
+      toast.success(t("connectivity.online"));
     };
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
@@ -65,7 +78,7 @@ function AppShell() {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onOnline);
     };
-  }, [toast]);
+  }, [toast, t]);
 
   function handleCreated(sighting, meta = {}) {
     track("add_sighting_complete", meta);
@@ -91,7 +104,7 @@ function AppShell() {
       .then((pos) =>
         mapRef.current.setView([pos.coords.latitude, pos.coords.longitude], 15)
       )
-      .catch(() => toast.error("Couldn't get your location."));
+      .catch(() => toast.error(t("map.locateError")));
   }
 
   function applyFilters(next) {
@@ -130,6 +143,8 @@ function AppShell() {
           onLocate={locateMe}
           onFilter={() => setFiltering(true)}
           onFavorites={() => setShowFavorites(true)}
+          onMySightings={() => setShowMySightings(true)}
+          onRecent={() => setShowRecent(true)}
           activeFilterCount={countActiveFilters(filters)}
           viewMode={viewMode}
           onToggleView={toggleView}
@@ -147,6 +162,21 @@ function AppShell() {
           id={selectedId}
           onClose={() => setSelectedId(null)}
           onChanged={() => setRefreshKey((k) => k + 1)}
+          onCatSelect={(catId) => {
+            setSelectedId(null);
+            setSelectedCatId(catId);
+          }}
+        />
+      )}
+
+      {selectedCatId && (
+        <CatProfileSheet
+          id={selectedCatId}
+          onClose={() => setSelectedCatId(null)}
+          onSelectSighting={(sid) => {
+            setSelectedCatId(null);
+            setSelectedId(sid);
+          }}
         />
       )}
 
@@ -160,6 +190,14 @@ function AppShell() {
 
       {showFavorites && (
         <FavoritesModal onClose={() => setShowFavorites(false)} onSelect={setSelectedId} />
+      )}
+
+      {showMySightings && (
+        <MySightingsModal onClose={() => setShowMySightings(false)} onSelect={setSelectedId} />
+      )}
+
+      {showRecent && (
+        <RecentFeedModal onClose={() => setShowRecent(false)} onSelect={setSelectedId} />
       )}
 
       <OnboardingHint />

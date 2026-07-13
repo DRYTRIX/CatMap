@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   MapContainer,
   Marker,
@@ -17,6 +18,7 @@ import { getPosition } from "../lib/geolocate";
 import { catIcon, clusterIcon, serverClusterIcon } from "../lib/markers";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import SightingList from "./SightingList";
+import { useToast } from "./Toast";
 
 // Below this zoom the server aggregates into a grid (counts everything, never
 // drops dots); at or above it we fetch exact dots and cluster them client-side.
@@ -69,6 +71,9 @@ export default function MapView({
   const viewRef = useRef(null); // { bbox, zoom }
   const abortRef = useRef(null);
   const mapRef = useRef(null);
+  const loadErrorShownRef = useRef(false);
+  const toast = useToast();
+  const { t } = useTranslation();
 
   const load = useCallback(
     async (bbox, zoom) => {
@@ -91,14 +96,18 @@ export default function MapView({
           onCountChange?.(data.length);
         }
         setLoadedOnce(true);
+        loadErrorShownRef.current = false;
       } catch (err) {
         // Ignore aborts; keep existing markers on transient errors.
         if (err.name !== "AbortError") {
-          /* keep old markers */
+          if (!loadErrorShownRef.current) {
+            loadErrorShownRef.current = true;
+            toast.error(t("map.fetchError"));
+          }
         }
       }
     },
-    [filters, viewMode, onCountChange]
+    [filters, viewMode, onCountChange, toast, t]
   );
 
   const debouncedLoad = useDebouncedCallback(load, 350);
@@ -199,11 +208,7 @@ export default function MapView({
       {viewMode === "list" ? (
         <SightingList dots={dots} loadedOnce={loadedOnce} onSelect={onSelect} />
       ) : (
-        isEmpty && (
-          <div className="empty-hint">
-            No cats spotted in this area yet — be the first! 🐾
-          </div>
-        )
+        isEmpty && <div className="empty-hint">{t("map.emptyArea")}</div>
       )}
     </>
   );

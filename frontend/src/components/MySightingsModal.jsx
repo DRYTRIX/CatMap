@@ -2,52 +2,44 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { assetUrl, fetchSighting } from "../api";
-import { getFavorites, onFavoritesChanged, removeFavorite } from "../lib/favorites";
+import { assetUrl, fetchMine } from "../api";
 import { timeAgo } from "../lib/time";
 import Modal from "./Modal";
 
 /**
- * Bottom sheet listing the sightings saved to favorites (localStorage).
- * Fetches each sighting's current details; drops any that no longer exist.
- *
- * Props: onClose, onSelect(id) — opens that sighting's detail sheet.
+ * Bottom sheet listing active sightings created by this device.
  */
-export default function FavoritesModal({ onClose, onSelect }) {
+export default function MySightingsModal({ onClose, onSelect }) {
   const { t } = useTranslation();
   const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
-    async function load() {
-      const ids = [...getFavorites()];
-      const results = await Promise.all(
-        ids.map(async (id) => {
-          try {
-            return await fetchSighting(id);
-          } catch {
-            removeFavorite(id);
-            return null;
-          }
-        })
-      );
-      if (active) setItems(results.filter(Boolean));
-    }
+    fetchMine(controller.signal)
+      .then((data) => {
+        if (active) setItems(data);
+      })
+      .catch((err) => {
+        if (active && err.name !== "AbortError") {
+          setError(err.message || t("mySightings.loadError"));
+          setItems([]);
+        }
+      });
 
-    load();
-    const off = onFavoritesChanged(load);
     return () => {
       active = false;
-      off();
+      controller.abort();
     };
-  }, []);
+  }, [t]);
 
   return (
-    <Modal onClose={onClose} labelledBy="favorites-title" className="sheet">
+    <Modal onClose={onClose} labelledBy="my-sightings-title" className="sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="favorites-title">❤️ {t("favorites.title")}</h2>
+        <h2 id="my-sightings-title">🐱 {t("mySightings.title")}</h2>
         <button className="icon-btn" aria-label={t("common.close")} onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
@@ -60,8 +52,10 @@ export default function FavoritesModal({ onClose, onSelect }) {
         </>
       )}
 
-      {items?.length === 0 && (
-        <div className="sighting-list-empty">{t("favorites.empty")}</div>
+      {error && <p className="error">{error}</p>}
+
+      {items?.length === 0 && !error && (
+        <div className="sighting-list-empty">{t("mySightings.empty")}</div>
       )}
 
       {items && items.length > 0 && (

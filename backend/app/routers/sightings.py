@@ -12,9 +12,10 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from ..cat_detection import detect_cat, get_detection_status
 from ..config import get_settings
@@ -106,6 +107,7 @@ def _detail(s: Sighting) -> dict:
         "color": s.color,
         "is_ear_tipped": s.is_ear_tipped,
         "is_stray": s.is_stray,
+        "cat_id": s.cat_id,
     }
 
 
@@ -339,7 +341,8 @@ async def create_sighting(
     for raw in raw_list:
         try:
             processed.append(
-                process_upload(
+                await run_in_threadpool(
+                    process_upload,
                     raw,
                     settings.image_max_edge,
                     settings.thumbnail_max_edge,
@@ -359,7 +362,9 @@ async def create_sighting(
             detail="Cat detection is temporarily unavailable. Please try again later.",
         )
 
-    results = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+    results = await run_in_threadpool(
+        lambda: [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+    )
     valid_results = [r for r in results if r is not None]
     best_score = max((r.cat_score for r in valid_results), default=None)
     pending = False
@@ -426,6 +431,7 @@ def recent_sightings(
     stmt = (
         select(Sighting)
         .where(Sighting.status == "active")
+        .options(selectinload(Sighting.photos))
         .order_by(*order)
         .offset(offset)
         .limit(limit)
@@ -442,10 +448,67 @@ def my_sightings(
     stmt = (
         select(Sighting)
         .where(Sighting.creator_token == token, Sighting.status == "active")
+        .options(selectinload(Sighting.photos))
         .order_by(Sighting.created_at.desc())
         .limit(200)
     )
     return [_detail(s) for s in db.execute(stmt).scalars().all()]
+
+
+# ~300 m in degrees (approximate; sufficient for "same cat?" suggestions).
+SIMILAR_RADIUS_DEG = 0.003
+
+
+@router.get("/{sighting_id}/similar", response_model=list[SightingDot])
+def similar_sightings(
+    sighting_id: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> list[SightingDot]:
+    """Nearby active sightings that might be the same cat (creator linking aid)."""
+    sighting = db.get(Sighting, sighting_id)
+    if sighting is None or sighting.status != "active":
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+
+    conditions = [
+        Sighting.status == "active",
+        Sighting.id != sighting_id,
+        Sighting.lat >= sighting.lat - SIMILAR_RADIUS_DEG,
+        Sighting.lat <= sighting.lat + SIMILAR_RADIUS_DEG,
+        Sighting.lng >= sighting.lng - SIMILAR_RADIUS_DEG,
+        Sighting.lng <= sighting.lng + SIMILAR_RADIUS_DEG,
+    ]
+    if sighting.color:
+        conditions.append(Sighting.color == sighting.color)
+
+    stmt = (
+        select(
+            Sighting.id,
+            Sighting.lat,
+            Sighting.lng,
+            Sighting.confirmations_count,
+            Sighting.description,
+            Sighting.created_at,
+            Sighting.last_seen_at,
+        )
+        .where(*conditions)
+        .order_by(Sighting.created_at.desc())
+        .limit(20)
+    )
+    rows = db.execute(stmt).all()
+    return [
+        SightingDot(
+            id=r.id,
+            lat=r.lat,
+            lng=r.lng,
+            confirmations_count=r.confirmations_count,
+            description=r.description,
+            created_at=r.created_at,
+            thumbnail_url=_thumb_url(r.id),
+            stale=_is_stale(r.last_seen_at or r.created_at),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/{sighting_id}", response_model=SightingDetail)
@@ -570,7 +633,8 @@ async def add_photos(
     for raw in raw_list:
         try:
             processed.append(
-                process_upload(
+                await run_in_threadpool(
+                    process_upload,
                     raw,
                     settings.image_max_edge,
                     settings.thumbnail_max_edge,
@@ -586,7 +650,9 @@ async def add_photos(
                 status_code=503,
                 detail="Cat detection is temporarily unavailable. Please try again later.",
             )
-        results = [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+        results = await run_in_threadpool(
+            lambda: [detect_cat(main_bytes) for main_bytes, _, _ in processed]
+        )
         valid_results = [r for r in results if r is not None]
         if not valid_results:
             raise HTTPException(
@@ -699,7 +765,9 @@ def _get_own_sighting(db: Session, sighting_id: str, token: str) -> Sighting:
 
 
 @router.patch("/{sighting_id}", response_model=SightingDetail)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def update_sighting(
+    request: Request,
     sighting_id: str,
     description: str | None = Form(None),
     color: str | None = Form(None),
@@ -737,7 +805,9 @@ def update_sighting(
 
 
 @router.post("/{sighting_id}/gone", response_model=SightingDetail)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def mark_gone(
+    request: Request,
     sighting_id: str,
     token: str = Depends(device_token),
     db: Session = Depends(get_db),
@@ -751,7 +821,9 @@ def mark_gone(
 
 
 @router.delete("/{sighting_id}", status_code=204)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def delete_sighting(
+    request: Request,
     sighting_id: str,
     token: str = Depends(device_token),
     db: Session = Depends(get_db),

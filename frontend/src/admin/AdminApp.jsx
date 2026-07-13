@@ -32,6 +32,7 @@ import {
 } from "../api";
 import { timeAgo } from "../lib/time";
 import Lightbox from "../components/Lightbox";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { ToastProvider, useToast } from "../components/Toast";
 
 /**
@@ -184,6 +185,7 @@ function AdminPanel() {
   const [busyId, setBusyId] = useState(null);
   const [lightbox, setLightbox] = useState(null);
   const [lightboxLoadingId, setLightboxLoadingId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -520,11 +522,7 @@ function AdminPanel() {
                     <button
                       className="btn btn-danger"
                       disabled={busyId === r.id}
-                      onClick={() => {
-                        if (window.confirm("Permanently delete this sighting?")) {
-                          act("Sighting deleted.", adminDeleteSighting, r.id);
-                        }
-                      }}
+                      onClick={() => setDeleteConfirmId(r.id)}
                     >
                       Delete
                     </button>
@@ -617,11 +615,7 @@ function AdminPanel() {
                     <button
                       className="btn btn-danger"
                       disabled={busyId === r.id}
-                      onClick={() => {
-                        if (window.confirm("Permanently delete this sighting?")) {
-                          act("Sighting deleted.", adminDeleteSighting, r.id);
-                        }
-                      }}
+                      onClick={() => setDeleteConfirmId(r.id)}
                     >
                       Delete
                     </button>
@@ -683,6 +677,20 @@ function AdminPanel() {
       {lightbox && (
         <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={closeLightbox} />
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirmId)}
+        title="Delete sighting?"
+        message="Permanently delete this sighting? This can't be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          const id = deleteConfirmId;
+          setDeleteConfirmId(null);
+          if (id) act("Sighting deleted.", adminDeleteSighting, id);
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 }

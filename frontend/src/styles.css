@@ -138,6 +138,15 @@ body,
 .btn-block {
   width: 100%;
 }
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.recent-feed-sort {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
 .icon-btn {
   border: none;
   background: var(--surface-2);
@@ -1344,8 +1353,65 @@ input[type="range"] {
   font-size: 14px;
 }
 .site-footer-privacy {
-  color: var(--ink-400);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: inherit;
+}
+
+/* ---------- Language switcher (header) ---------- */
+.lang-switcher {
+  position: relative;
+}
+.lang-switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  padding: 0 10px;
+}
+.lang-switcher-code {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+}
+.lang-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1100;
+  min-width: 140px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
+}
+.lang-switcher-opt {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-700);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lang-switcher-opt:hover {
+  background: var(--surface-2);
+}
+.lang-switcher-opt.is-active {
+  background: #fff7ed;
+  color: var(--amber-600);
+}
+[data-theme="dark"] .lang-switcher-opt.is-active {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--amber-400);
 }
 
 /* ---------- Animations ---------- */
@@ -1845,4 +1911,55 @@ input[type="range"] {
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
+}
+
+/* ---------- Error boundary ---------- */
+.error-boundary {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+.error-boundary h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.error-boundary p {
+  margin: 0;
+  color: var(--ink-500);
+  max-width: 320px;
+}
+.cat-profile-link {
+  margin: 8px 0 12px;
+}
+.cat-profile-meta {
+  margin-bottom: 12px;
+}
+.cat-profile-meta p {
+  margin: 0 0 4px;
+}
+.cat-profile-map {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.confirm-sheet h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

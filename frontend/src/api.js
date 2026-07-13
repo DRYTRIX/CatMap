@@ -1,5 +1,6 @@
 import { getDeviceToken } from "./deviceToken";
 import { filtersToParams } from "./lib/filters";
+import { translateApiError } from "./lib/apiErrors";
 
 // In dev, VITE_API_BASE is unset and we use the Vite proxy / same origin.
 // In Docker/Render it points at the backend service URL.
@@ -23,7 +24,7 @@ async function handle(res) {
     } catch {
       /* ignore */
     }
-    throw new Error(detail);
+    throw new Error(translateApiError(detail));
   }
   return res.json();
 }
@@ -60,6 +61,50 @@ export async function fetchClusters(bbox, zoom, filters = {}, signal) {
 
 export async function fetchSighting(id) {
   const res = await fetch(`${API_BASE}/api/sightings/${id}`);
+  return handle(res);
+}
+
+export async function fetchSimilarSightings(id, signal) {
+  const res = await fetch(`${API_BASE}/api/sightings/${id}/similar`, { signal });
+  return handle(res);
+}
+
+export async function fetchCatProfile(id, signal) {
+  const res = await fetch(`${API_BASE}/api/cats/${id}`, { signal });
+  return handle(res);
+}
+
+export async function createCatProfile({ sightingIds, name = "" }) {
+  const form = new FormData();
+  form.append("sighting_ids", sightingIds.join(","));
+  if (name) form.append("name", name);
+  const res = await fetch(`${API_BASE}/api/cats`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function linkSightingToCat(catId, sightingId) {
+  const form = new FormData();
+  form.append("sighting_id", sightingId);
+  const res = await fetch(`${API_BASE}/api/cats/${catId}/link`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function unlinkSightingFromCat(catId, sightingId) {
+  const form = new FormData();
+  form.append("sighting_id", sightingId);
+  const res = await fetch(`${API_BASE}/api/cats/${catId}/unlink`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
   return handle(res);
 }
 
@@ -123,10 +168,10 @@ export function createSighting({
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(body);
       } else {
-        reject(new Error(body?.detail || `Upload failed (${xhr.status})`));
+        reject(new Error(translateApiError(body?.detail || `Upload failed (${xhr.status})`)));
       }
     };
-    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.onerror = () => reject(new Error(translateApiError("Network error during upload.")));
     xhr.send(form);
   });
 }
@@ -163,10 +208,10 @@ export function addSightingPhotos(id, files, onProgress) {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(body);
       } else {
-        reject(new Error(body?.detail || `Upload failed (${xhr.status})`));
+        reject(new Error(translateApiError(body?.detail || `Upload failed (${xhr.status})`)));
       }
     };
-    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.onerror = () => reject(new Error(translateApiError("Network error during upload.")));
     xhr.send(form);
   });
 }
@@ -228,7 +273,7 @@ export async function deleteSighting(id) {
     } catch {
       /* 204 has no body */
     }
-    throw new Error(detail);
+    throw new Error(translateApiError(detail));
   }
   return true;
 }
@@ -280,7 +325,7 @@ export async function adminDeleteSighting(id, token) {
     } catch {
       /* 204 has no body */
     }
-    throw new Error(detail);
+    throw new Error(translateApiError(detail));
   }
   return true;
 }

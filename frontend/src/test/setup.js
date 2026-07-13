@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import "../i18n";
 
 // jsdom doesn't implement matchMedia; lib/theme.js uses it to detect the
 // OS color scheme preference.

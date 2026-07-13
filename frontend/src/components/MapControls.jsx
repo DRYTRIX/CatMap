@@ -1,4 +1,5 @@
 /** Grouped, consistently-styled on-map controls: zoom + locate + filter + view toggle. */
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus,
@@ -8,6 +9,8 @@ import {
   faList,
   faMap,
   faHeart,
+  faCat,
+  faClockRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function MapControls({
@@ -15,17 +18,21 @@ export default function MapControls({
   onLocate,
   onFilter,
   onFavorites,
+  onMySightings,
+  onRecent,
   activeFilterCount = 0,
   viewMode = "map",
   onToggleView,
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="map-controls">
       {viewMode === "map" && (
         <>
           <button
             className="map-ctrl"
-            aria-label="Zoom in"
+            aria-label={t("map.zoomIn")}
             onClick={() => map?.zoomIn()}
             disabled={!map}
           >
@@ -33,7 +40,7 @@ export default function MapControls({
           </button>
           <button
             className="map-ctrl"
-            aria-label="Zoom out"
+            aria-label={t("map.zoomOut")}
             onClick={() => map?.zoomOut()}
             disabled={!map}
           >
@@ -43,7 +50,7 @@ export default function MapControls({
       )}
       <button
         className="map-ctrl map-ctrl-locate"
-        aria-label="Center on my location"
+        aria-label={t("map.locate")}
         onClick={onLocate}
         disabled={!map}
       >
@@ -51,7 +58,11 @@ export default function MapControls({
       </button>
       <button
         className="map-ctrl map-ctrl-filter"
-        aria-label={`Filter cats${activeFilterCount ? ` (${activeFilterCount} active)` : ""}`}
+        aria-label={
+          activeFilterCount
+            ? t("map.filterActive", { count: activeFilterCount })
+            : t("map.filter")
+        }
         onClick={onFilter}
       >
         <FontAwesomeIcon icon={faFilter} />
@@ -63,12 +74,18 @@ export default function MapControls({
       </button>
       <button
         className="map-ctrl"
-        aria-label={viewMode === "map" ? "Switch to list view" : "Switch to map view"}
+        aria-label={viewMode === "map" ? t("map.listView") : t("map.mapView")}
         onClick={onToggleView}
       >
         <FontAwesomeIcon icon={viewMode === "map" ? faList : faMap} />
       </button>
-      <button className="map-ctrl" aria-label="Favorites" onClick={onFavorites}>
+      <button className="map-ctrl" aria-label={t("map.myCats")} onClick={onMySightings}>
+        <FontAwesomeIcon icon={faCat} />
+      </button>
+      <button className="map-ctrl" aria-label={t("map.recent")} onClick={onRecent}>
+        <FontAwesomeIcon icon={faClockRotateLeft} />
+      </button>
+      <button className="map-ctrl" aria-label={t("map.favorites")} onClick={onFavorites}>
         <FontAwesomeIcon icon={faHeart} />
       </button>
     </div>

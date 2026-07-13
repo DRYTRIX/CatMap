@@ -34,3 +34,28 @@ def test_device_or_ip_prefers_device_token():
 def test_device_or_ip_falls_back_to_client_ip():
     req = _request({})
     assert device_or_ip(req) == "ip:203.0.113.5"
+
+
+def test_mutate_rate_limited(client):
+    """RATE_LIMIT_MUTATE is 5/minute in tests; the 6th gone gets a 429."""
+    token = "mutate-limited"
+    limiter.enabled = False
+    try:
+        ids = [create_sighting(client, token).json()["id"] for _ in range(6)]
+    finally:
+        limiter.enabled = True
+        limiter.reset()
+
+    limiter.enabled = True
+    try:
+        statuses = [
+            client.post(
+                f"/api/sightings/{sid}/gone", headers={"X-Device-Token": token}
+            ).status_code
+            for sid in ids
+        ]
+        assert statuses[:5] == [200] * 5
+        assert statuses[5] == 429
+    finally:
+        limiter.enabled = False
+        limiter.reset()

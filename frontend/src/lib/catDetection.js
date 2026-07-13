@@ -148,7 +148,7 @@ export async function checkForCat(file) {
       error: false,
     };
   } catch (err) {
-    console.warn("Cat check failed — blocking until a photo can be verified.", err);
+    console.warn("Cat check unavailable — server will review the photo.", err);
     return {
       score: null,
       animalScore: null,

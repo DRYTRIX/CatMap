@@ -63,6 +63,11 @@ class Sighting(Base):
     is_ear_tipped: Mapped[bool | None] = mapped_column(nullable=True)
     is_stray: Mapped[bool | None] = mapped_column(nullable=True)
 
+    # Optional link to a recurring-cat profile (same individual cat).
+    cat_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cats.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     confirmations: Mapped[list["Confirmation"]] = relationship(
         back_populates="sighting", cascade="all, delete-orphan"
     )
@@ -75,6 +80,7 @@ class Sighting(Base):
         cascade="all, delete-orphan",
         order_by="Photo.position",
     )
+    cat: Mapped["Cat | None"] = relationship(back_populates="sightings")
 
     __table_args__ = (
         Index("ix_sightings_lat", "lat"),
@@ -82,6 +88,21 @@ class Sighting(Base):
         Index("ix_sightings_status", "status"),
         Index("ix_sightings_created_at", "created_at"),
     )
+
+
+class Cat(Base):
+    """A profile grouping multiple sightings of the same individual cat."""
+
+    __tablename__ = "cats"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    creator_token: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    sightings: Mapped[list["Sighting"]] = relationship(back_populates="cat")
 
 
 class Confirmation(Base):

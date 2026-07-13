@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
-from ..models import AdminAction, Confirmation, Photo, Report, Sighting
+from ..models import AdminAction, Cat, Confirmation, Photo, Report, Sighting
 from ..schemas import (
     AdminActionRow,
     AdminMetrics,
@@ -311,6 +311,17 @@ def admin_delete(sighting_id: str, db: Session = Depends(get_db)):
     sighting = _get_or_404(db, sighting_id)
     _record_action(db, "delete", sighting.id)
     db.delete(sighting)
+    db.commit()
+
+
+@router.delete("/cats/{cat_id}", status_code=204)
+def admin_delete_cat(cat_id: str, db: Session = Depends(get_db)):
+    """Delete a cat profile; linked sightings keep their data (cat_id cleared)."""
+    cat = db.get(Cat, cat_id)
+    if cat is None:
+        raise HTTPException(status_code=404, detail="Cat profile not found.")
+    _record_action(db, "delete_cat", cat.id)
+    db.delete(cat)
     db.commit()
 
 

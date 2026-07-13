@@ -40,6 +40,7 @@ class SightingDetail(BaseModel):
     color: str | None = None
     is_ear_tipped: bool | None = None
     is_stray: bool | None = None
+    cat_id: str | None = None
 
 
 class SightingCluster(BaseModel):
@@ -122,6 +123,32 @@ class DatabaseUsage(BaseModel):
     tables: list[DatabaseTableUsage]  # sorted largest-first
 
 
+class CatProfileSighting(BaseModel):
+    """A sighting linked to a cat profile."""
+
+    id: str
+    lat: float
+    lng: float
+    description: str
+    created_at: datetime
+    last_seen_at: datetime | None = None
+    thumbnail_url: str
+    confirmations_count: int
+
+
+class CatProfile(BaseModel):
+    id: str
+    name: str | None = None
+    created_at: datetime
+    sightings: list[CatProfileSighting]
+    first_seen_at: datetime
+    last_seen_at: datetime
+    sighting_count: int
+    color: str | None = None
+    is_ear_tipped: bool | None = None
+    is_stray: bool | None = None
+
+
 class CreateSightingResult(BaseModel):
     id: str
     lat: float
@@ -138,6 +165,7 @@ class CreateSightingResult(BaseModel):
     is_ear_tipped: bool | None = None
     is_stray: bool | None = None
     pending: bool = False
+    cat_id: str | None = None
 
 
 class BBox(BaseModel):

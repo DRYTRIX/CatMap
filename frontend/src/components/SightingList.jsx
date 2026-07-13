@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { assetUrl } from "../api";
 import { timeAgo } from "../lib/time";
 
@@ -6,12 +7,10 @@ import { timeAgo } from "../lib/time";
  * the cluster map. Reuses the same dots already fetched by MapView.
  */
 export default function SightingList({ dots, loadedOnce, onSelect }) {
+  const { t } = useTranslation();
+
   if (loadedOnce && dots.length === 0) {
-    return (
-      <div className="sighting-list-empty">
-        No cats spotted in this area yet — be the first! 🐾
-      </div>
-    );
+    return <div className="sighting-list-empty">{t("map.emptyArea")}</div>;
   }
 
   return (
@@ -31,10 +30,9 @@ export default function SightingList({ dots, loadedOnce, onSelect }) {
             loading="lazy"
           />
           <div className="sighting-list-body">
-            <p className="sighting-list-desc">{d.description || "Cat sighting"}</p>
+            <p className="sighting-list-desc">{d.description || t("common.catSighting")}</p>
             <p className="sighting-list-meta">
-              🐱 {timeAgo(d.created_at)} · {d.confirmations_count} confirmation
-              {d.confirmations_count === 1 ? "" : "s"}
+              🐱 {timeAgo(d.created_at)} · {t("common.confirmations", { count: d.confirmations_count })}
             </p>
           </div>
         </button>
