@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -21,6 +22,7 @@ from ..database import get_db
 from ..deps import device_token, no_cache
 from ..images import InvalidImageError, extract_gps, process_upload
 from ..models import Confirmation, Photo, Report, Sighting
+from ..notifications import notify_sighting_created
 from ..ratelimit import limiter
 from ..schemas import (
     ConfirmResult,
@@ -279,6 +281,7 @@ def _normalize_color(color: str | None) -> str | None:
 @limiter.limit(settings.rate_limit_create)
 async def create_sighting(
     request: Request,
+    background_tasks: BackgroundTasks,
     image: UploadFile | None = File(None),
     images: list[UploadFile] = File(default=[]),
     description: str = Form(""),
@@ -389,6 +392,16 @@ async def create_sighting(
     db.add(sighting)
     db.commit()
     db.refresh(sighting)
+    background_tasks.add_task(
+        notify_sighting_created,
+        sighting_id=sighting.id,
+        lat=sighting.lat,
+        lng=sighting.lng,
+        description=sighting.description,
+        cat_confidence=sighting.cat_confidence,
+        photo_count=1 + len(sighting.photos),
+        pending=pending,
+    )
     result = _detail(sighting)
     result["pending"] = pending
     return result

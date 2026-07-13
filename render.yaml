@@ -49,6 +49,11 @@ services:
       # bar. Match the database plan's disk size. Unset/0 = bar hidden.
       - key: DB_CAPACITY_MB
         value: "1024"
+      # Optional: Telegram bot token + chat id for new-sighting / approval alerts.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
 
   - type: web
     name: catmap-frontend

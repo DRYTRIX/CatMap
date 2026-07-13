@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     # Log level for the JSON request/application logger.
     log_level: str = "INFO"
 
+    # Telegram admin notifications. Both must be set to enable outbound alerts.
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":
