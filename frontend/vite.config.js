@@ -2,56 +2,58 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   // Restore Rollup-style CJS default interop for legacy packages (e.g. react-leaflet-cluster).
   legacy: {
     inconsistentCjsInterop: true,
   },
   plugins: [
     react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      // External registration script so a strict script-src CSP doesn't block it.
-      injectRegister: "script",
-      includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
-      manifest: {
-        name: "CatMap — Cat Sightings",
-        short_name: "CatMap",
-        description: "Anonymously geotag and confirm cat sightings worldwide.",
-        theme_color: "#f59e0b",
-        background_color: "#0f172a",
-        display: "standalone",
-        start_url: "/",
-        icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          {
-            src: "icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
-      workbox: {
-        // ONNX runtime WASM + model are loaded on demand; don't precache multi-MB assets.
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
-        globIgnores: ["**/ort-*.wasm", "**/models/*.onnx"],
-        // Cache OpenStreetMap tiles for smoother panning / offline shell.
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "osm-tiles",
-              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 14 },
-              cacheableResponse: { statuses: [0, 200] },
+    // Service worker is for the browser PWA only — not needed inside Capacitor WebView.
+    mode !== "mobile" &&
+      VitePWA({
+        registerType: "autoUpdate",
+        // External registration script so a strict script-src CSP doesn't block it.
+        injectRegister: "script",
+        includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
+        manifest: {
+          name: "CatMap — Cat Sightings",
+          short_name: "CatMap",
+          description: "Anonymously geotag and confirm cat sightings worldwide.",
+          theme_color: "#f59e0b",
+          background_color: "#0f172a",
+          display: "standalone",
+          start_url: "/",
+          icons: [
+            { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+            {
+              src: "icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
             },
-          },
-        ],
-      },
-    }),
-  ],
+          ],
+        },
+        workbox: {
+          // ONNX runtime WASM + model are loaded on demand; don't precache multi-MB assets.
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+          globIgnores: ["**/ort-*.wasm", "**/models/*.onnx"],
+          // Cache OpenStreetMap tiles for smoother panning / offline shell.
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "osm-tiles",
+                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 14 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
+        },
+      }),
+  ].filter(Boolean),
   server: {
     host: true,
     port: 5173,
@@ -69,4 +71,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

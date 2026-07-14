@@ -42,6 +42,8 @@
     "myCats": "Mes chats",
     "recent": "Observations récentes",
     "reportIssue": "Signaler un problème",
+    "menu": "Menu carte",
+    "closeMenu": "Fermer le menu carte",
     "emptyArea": "Aucun chat dans cette zone — soyez le premier ! 🐾",
     "fetchError": "Impossible d'actualiser la carte — affichage des données en cache.",
     "locateError": "Impossible d'obtenir votre position."

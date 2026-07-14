@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { track } from "../analytics";
+import { isNativePlatform } from "../lib/platform";
 
 const DISMISS_KEY = "catmap_install_dismissed";
 
@@ -20,7 +21,7 @@ export default function InstallPrompt() {
   const [iosHint, setIosHint] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem(DISMISS_KEY) || isStandalone()) return undefined;
+    if (isNativePlatform() || localStorage.getItem(DISMISS_KEY) || isStandalone()) return undefined;
 
     function onBeforeInstall(e) {
       e.preventDefault();

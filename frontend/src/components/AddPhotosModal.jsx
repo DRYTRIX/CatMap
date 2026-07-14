@@ -5,7 +5,8 @@ import { track } from "../analytics";
 import { addSightingPhotos } from "../api";
 import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
-import { fileInputAccept, filterImageFiles } from "../lib/photoGps";
+import { filterImageFiles } from "../lib/photoGps";
+import PhotoPickButton from "./PhotoPickButton";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
 
@@ -143,24 +144,21 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
         )}
 
         {room > 0 && (
-          <label className="btn btn-ghost btn-block" style={{ marginTop: 8 }}>
-            {processing
-              ? "Processing…"
-              : photos.length === 0
-                ? "📷 Take or choose a photo"
-                : `📷 Add another photo (${photos.length}/${remaining})`}
-            <input
-              type="file"
-              accept={fileInputAccept()}
-              multiple
-              style={{ display: "none" }}
-              disabled={submitting}
-              onChange={(e) => {
-                addFiles(e.target.files);
-                e.target.value = "";
-              }}
-            />
-          </label>
+          <PhotoPickButton
+            label={
+              processing
+                ? "Processing…"
+                : photos.length === 0
+                  ? "📷 Take or choose a photo"
+                  : `📷 Add another photo (${photos.length}/${remaining})`
+            }
+            disabled={processing || submitting}
+            multiple
+            limit={room}
+            onFiles={addFiles}
+            onError={(e) => toast.error(e.message)}
+            style={{ marginTop: 8 }}
+          />
         )}
 
         {photos.length > 0 && (

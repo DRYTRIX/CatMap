@@ -1,10 +1,16 @@
 import { getDeviceToken } from "./deviceToken";
 import { filtersToParams } from "./lib/filters";
 import { translateApiError } from "./lib/apiErrors";
+import { isNativePlatform } from "./lib/platform";
+
+const RENDER_API = "https://catmap-backend.onrender.com";
 
 // In dev, VITE_API_BASE is unset and we use the Vite proxy / same origin.
-// In Docker/Render it points at the backend service URL.
-const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
+// Mobile/native builds always talk to the Render-hosted backend.
+const API_BASE = (
+  import.meta.env.VITE_API_BASE ||
+  (isNativePlatform() ? RENDER_API : "")
+).replace(/\/$/, "");
 
 export function assetUrl(path) {
   // Backend returns relative paths like /api/sightings/<id>/photo.

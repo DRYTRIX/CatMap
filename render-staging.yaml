@@ -25,7 +25,7 @@ services:
           name: catmap-db-staging
           property: connectionString
       - key: CORS_ORIGINS
-        value: https://catmap-frontend-staging.onrender.com
+        value: https://catmap-frontend-staging.onrender.com,https://localhost
       - key: PUBLIC_SITE_URL
         value: https://catmap-frontend-staging.onrender.com
       - key: MAX_UPLOAD_MB

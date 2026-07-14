@@ -4,11 +4,11 @@ import { createSighting } from "../api";
 import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
 import {
-  fileInputAccept,
   filterImageFiles,
   isMobile,
   readGpsFromFile,
 } from "../lib/photoGps";
+import PhotoPickButton from "./PhotoPickButton";
 import { CAT_COLORS } from "../lib/filters";
 import LocationPicker from "./LocationPicker";
 import Modal from "./Modal";
@@ -273,27 +273,21 @@ export default function AddSightingModal({ onClose, onCreated }) {
               )}
 
               {photos.length < MAX_PHOTOS && (
-                <label className="btn btn-ghost btn-block" style={{ marginTop: 8 }}>
-                  {processing
-                    ? "Processing…"
-                    : photos.length === 0
-                      ? "📷 Take or choose a photo"
-                      : `📷 Add another photo (${photos.length}/${MAX_PHOTOS})`}
-                  {/* No `capture` attribute: it forces the camera and hides the
-                      "Photo Library / Take Photo" chooser on iOS, and conflicts
-                      with `multiple`. Without it both platforms show the native
-                      picker so the user can take or choose a photo. */}
-                  <input
-                    type="file"
-                    accept={fileInputAccept()}
-                    multiple
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      addFiles(e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
+                <PhotoPickButton
+                  label={
+                    processing
+                      ? "Processing…"
+                      : photos.length === 0
+                        ? "📷 Take or choose a photo"
+                        : `📷 Add another photo (${photos.length}/${MAX_PHOTOS})`
+                  }
+                  disabled={processing}
+                  multiple
+                  limit={MAX_PHOTOS - photos.length}
+                  onFiles={addFiles}
+                  onError={(e) => toast.error(e.message)}
+                  style={{ marginTop: 8 }}
+                />
               )}
               {photos.length > 0 && (
                 <p className="hint">

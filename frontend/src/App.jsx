@@ -17,6 +17,7 @@ import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
 import { markCreated } from "./deviceToken";
 import { getPosition } from "./lib/geolocate";
+import { initNativeApp } from "./lib/nativeInit";
 import { track } from "./analytics";
 import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
 
@@ -36,7 +37,60 @@ function AppShell() {
   const [showRecent, setShowRecent] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [viewMode, setViewMode] = useState("map");
+  const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const mapRef = useRef(null);
+
+  function handleBackButton() {
+    if (adding) {
+      setAdding(false);
+      return true;
+    }
+    if (selectedId) {
+      setSelectedId(null);
+      return true;
+    }
+    if (selectedCatId) {
+      setSelectedCatId(null);
+      return true;
+    }
+    if (filtering) {
+      setFiltering(false);
+      return true;
+    }
+    if (showFavorites) {
+      setShowFavorites(false);
+      return true;
+    }
+    if (showMySightings) {
+      setShowMySightings(false);
+      return true;
+    }
+    if (showRecent) {
+      setShowRecent(false);
+      return true;
+    }
+    if (showReportIssue) {
+      setShowReportIssue(false);
+      return true;
+    }
+    if (mapMenuOpen) {
+      setMapMenuOpen(false);
+      return true;
+    }
+    return false;
+  }
+
+  useEffect(() => initNativeApp({ onBackButton: handleBackButton }), [
+    adding,
+    selectedId,
+    selectedCatId,
+    filtering,
+    showFavorites,
+    showMySightings,
+    showRecent,
+    showReportIssue,
+    mapMenuOpen,
+  ]);
 
   useEffect(() => {
     track("app_open");
@@ -151,6 +205,8 @@ function AppShell() {
           activeFilterCount={countActiveFilters(filters)}
           viewMode={viewMode}
           onToggleView={toggleView}
+          menuOpen={mapMenuOpen}
+          onMenuOpenChange={setMapMenuOpen}
         />
       </main>
 

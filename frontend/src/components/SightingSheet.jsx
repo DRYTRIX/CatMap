@@ -12,6 +12,8 @@ import {
   reportSighting,
 } from "../api";
 import { track } from "../analytics";
+import { shareSighting } from "../lib/share";
+import { sightingShareUrl } from "../lib/publicUrl";
 import { getConfirmedSet, isMine, markConfirmed } from "../deviceToken";
 import { timeAgo } from "../lib/time";
 import { isFavorite, toggleFavorite } from "../lib/favorites";
@@ -103,43 +105,34 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   }
 
   async function onShare() {
-    const url = `${window.location.origin}/s/${id}`;
+    const url = sightingShareUrl(id);
     const title = data?.description
       ? `Cat on CatMap: ${data.description.slice(0, 80)}`
       : "Cat sighting on CatMap";
-    const shareData = { title, url };
 
-    // Attach the primary photo too, when the platform's share sheet supports files.
+    let file;
     try {
       const photoUrl = assetUrl(data?.photos?.[0]?.photo_url ?? data?.photo_url);
       const res = await fetch(photoUrl);
       const blob = await res.blob();
-      const file = new File([blob], "cat-sighting.jpg", { type: blob.type || "image/jpeg" });
-      if (navigator.canShare?.({ files: [file] })) {
-        shareData.files = [file];
-      }
+      file = new File([blob], "cat-sighting.jpg", { type: blob.type || "image/jpeg" });
     } catch {
       /* share link/title only */
     }
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        track("sighting_share", { method: shareData.files ? "native_with_photo" : "native" });
-        return;
-      } catch (e) {
-        if (e?.name === "AbortError") return; // user cancelled
-        // fall through to clipboard fallback below
-      }
-    }
-
     try {
-      await navigator.clipboard.writeText(url);
-      track("sighting_share", { method: "clipboard" });
-      toast.success(t("sighting.linkCopied"));
-    } catch {
-      track("sighting_share", { method: "manual" });
-      toast.info(url);
+      const method = await shareSighting({ title, url, file });
+      track("sighting_share", { method });
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(url);
+        track("sighting_share", { method: "clipboard" });
+        toast.success(t("sighting.linkCopied"));
+      } catch {
+        track("sighting_share", { method: "manual" });
+        toast.info(url);
+      }
     }
   }
 

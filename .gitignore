@@ -21,6 +21,16 @@ dist/
 .env.local
 *.local
 
+# Android / Capacitor release artifacts
+frontend/android/keystore.properties
+frontend/android/app/*.keystore
+frontend/android/app/*.jks
+frontend/android/app/release/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/app/build/
+frontend/android/build/
+
 # OS / editor
 .DS_Store
 *.swp

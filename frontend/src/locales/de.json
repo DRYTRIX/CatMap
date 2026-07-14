@@ -42,6 +42,8 @@
     "myCats": "Meine Katzen",
     "recent": "Neueste Sichtungen",
     "reportIssue": "Problem melden",
+    "menu": "Kartenmenü",
+    "closeMenu": "Kartenmenü schließen",
     "emptyArea": "Noch keine Katzen in diesem Gebiet — sei der Erste! 🐾",
     "fetchError": "Karte konnte nicht aktualisiert werden — zwischengespeicherte Daten werden angezeigt.",
     "locateError": "Standort konnte nicht ermittelt werden."
