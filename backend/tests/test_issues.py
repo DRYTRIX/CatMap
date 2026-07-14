@@ -2,8 +2,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 from app.config import get_settings
 from app.models import IssueReport
 

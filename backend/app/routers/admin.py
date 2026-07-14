@@ -194,7 +194,14 @@ def get_metrics(db: Session = Depends(get_db)) -> AdminMetrics:
 # Tables surfaced in the database-usage overview, in a fixed allowlist so the
 # raw count query below never interpolates user input. The two image tables come
 # first because their bytea blobs dominate storage.
-_USAGE_TABLES = ("sightings", "photos", "confirmations", "reports", "admin_actions", "issue_reports")
+_USAGE_TABLES = (
+    "sightings",
+    "photos",
+    "confirmations",
+    "reports",
+    "admin_actions",
+    "issue_reports",
+)
 
 # Blob columns per table, used as a best-effort size estimate on engines (e.g.
 # SQLite in tests) that lack Postgres' pg_total_relation_size().
