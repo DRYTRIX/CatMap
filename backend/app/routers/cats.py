@@ -1,7 +1,5 @@
 """Cat profiles — group multiple sightings of the same individual cat."""
 
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, Form, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
