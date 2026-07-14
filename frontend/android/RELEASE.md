@@ -1,6 +1,75 @@
 # CatMap Android — Play Store Release Guide
 
-## Prerequisites
+## Automated release (recommended)
+
+Releases are triggered by pushing a **semver git tag**. This deploys backend and frontend to Render, builds a signed Android APK + AAB, and publishes a GitHub Release with both artifacts attached.
+
+### Release a new version
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+Tag format must be `vMAJOR.MINOR.PATCH` (e.g. `v1.0.1`, `v2.3.0`). Invalid tags are rejected by CI.
+
+The workflow ([`.github/workflows/release.yml`](../../.github/workflows/release.yml)) automatically:
+
+1. Validates the tag format
+2. Deploys `catmap-backend` and `catmap-frontend` on Render (at the tagged commit)
+3. Builds a signed release APK and AAB with `versionName` from the tag and a monotonically increasing `versionCode`
+4. Creates a GitHub Release with the APK and AAB attached
+
+Download the AAB from the GitHub Release and upload it to Google Play Console.
+
+### One-time setup
+
+#### Render
+
+1. In the Render dashboard, turn **Auto-Deploy off** for `catmap-backend` and `catmap-frontend` (otherwise every push to `main` still deploys).
+2. For each service: **Settings → Deploy Hook** → copy the hook URL.
+3. Add GitHub repository secrets:
+   - `RENDER_DEPLOY_HOOK_BACKEND` — backend deploy hook URL
+   - `RENDER_DEPLOY_HOOK_FRONTEND` — frontend deploy hook URL
+
+#### Android signing (GitHub secrets)
+
+Generate an upload keystore if you don't have one:
+
+```bash
+bash frontend/android/scripts/create-keystore.sh
+```
+
+Back up `frontend/android/catmap-upload.keystore` and `keystore.properties` securely — losing the upload key makes future Play Store updates difficult unless you use Play App Signing key reset.
+
+Add GitHub repository secrets:
+
+| Secret | Value |
+|--------|-------|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 frontend/android/catmap-upload.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password from `keystore.properties` |
+| `ANDROID_KEY_ALIAS` | Key alias (default: `catmap`) |
+| `ANDROID_KEY_PASSWORD` | Key password from `keystore.properties` |
+
+### Version numbering
+
+Version is derived from the git tag — do **not** edit `build.gradle` manually for releases.
+
+| Tag | versionName | versionCode |
+|-----|-------------|-------------|
+| `v1.0.0` | `1.0.0` | `1000000` |
+| `v1.0.1` | `1.0.1` | `1000001` |
+| `v1.2.3` | `1.2.3` | `1002003` |
+
+Formula: `versionCode = major × 1_000_000 + minor × 1_000 + patch`
+
+---
+
+## Manual local build (optional)
+
+Use this for local testing or if CI is unavailable.
+
+### Prerequisites
 
 1. **JDK 21** — Gradle does not support Java 25. Options:
    - `sudo apt install openjdk-21-jdk` and set `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`
@@ -96,12 +165,15 @@ No account system; no email/phone collection.
 3. Complete store listing, content rating, data safety, and target audience
 4. Submit for review (first review typically 1–7 days)
 
-### Version bumps
-Edit `android/app/build.gradle`:
-```gradle
-versionCode 2        // increment every upload
-versionName "1.0.1"  // user-visible version
+### Version bumps (local builds only)
+
+For CI releases, version comes from the git tag. For manual local builds you can override via Gradle properties:
+
+```bash
+./gradlew bundleRelease -PappVersionName=1.0.1 -PappVersionCode=1000001
 ```
+
+Or edit defaults in `android/app/build.gradle` (not recommended for production releases).
 
 ## Optional fast-follow
 - **App Links** for `https://catmap.drytrix.com/s/{id}` so shared links open in the app
