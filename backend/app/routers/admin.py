@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
-from ..models import AdminAction, Cat, Confirmation, Photo, Report, Sighting
+from ..models import AdminAction, Cat, Confirmation, IssueReport, Photo, Report, Sighting
 from ..schemas import (
     AdminActionRow,
+    AdminIssueRow,
     AdminMetrics,
     AdminReportRow,
     DatabaseTableUsage,
@@ -193,7 +194,7 @@ def get_metrics(db: Session = Depends(get_db)) -> AdminMetrics:
 # Tables surfaced in the database-usage overview, in a fixed allowlist so the
 # raw count query below never interpolates user input. The two image tables come
 # first because their bytea blobs dominate storage.
-_USAGE_TABLES = ("sightings", "photos", "confirmations", "reports", "admin_actions")
+_USAGE_TABLES = ("sightings", "photos", "confirmations", "reports", "admin_actions", "issue_reports")
 
 # Blob columns per table, used as a best-effort size estimate on engines (e.g.
 # SQLite in tests) that lack Postgres' pg_total_relation_size().
@@ -353,3 +354,58 @@ def list_actions(
         )
         for a in rows
     ]
+
+
+@router.get("/issues", response_model=list[AdminIssueRow])
+def list_issues(
+    db: Session = Depends(get_db),
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[AdminIssueRow]:
+    """User-submitted app issue reports, newest first."""
+    if status is not None and status not in ("open", "resolved"):
+        raise HTTPException(status_code=400, detail="status must be 'open' or 'resolved'.")
+    if limit < 1 or limit > MAX_PAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"limit must be 1-{MAX_PAGE_SIZE}.")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0.")
+
+    stmt = select(IssueReport).order_by(IssueReport.created_at.desc())
+    if status is not None:
+        stmt = stmt.where(IssueReport.status == status)
+    stmt = stmt.limit(limit).offset(offset)
+    rows = db.execute(stmt).scalars().all()
+    return [
+        AdminIssueRow(
+            id=r.id,
+            category=r.category,
+            message=r.message,
+            page_url=r.page_url,
+            status=r.status,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+def _get_issue_or_404(db: Session, issue_id: str) -> IssueReport:
+    issue = db.get(IssueReport, issue_id)
+    if issue is None:
+        raise HTTPException(status_code=404, detail="Issue report not found.")
+    return issue
+
+
+@router.post("/issues/{issue_id}/resolve")
+def resolve_issue(issue_id: str, db: Session = Depends(get_db)) -> dict:
+    issue = _get_issue_or_404(db, issue_id)
+    issue.status = "resolved"
+    db.commit()
+    return {"id": issue.id, "status": issue.status}
+
+
+@router.delete("/issues/{issue_id}", status_code=204)
+def delete_issue(issue_id: str, db: Session = Depends(get_db)):
+    issue = _get_issue_or_404(db, issue_id)
+    db.delete(issue)
+    db.commit()

@@ -41,6 +41,7 @@
     "favorites": "Favoris",
     "myCats": "Mes chats",
     "recent": "Observations récentes",
+    "reportIssue": "Signaler un problème",
     "emptyArea": "Aucun chat dans cette zone — soyez le premier ! 🐾",
     "fetchError": "Impossible d'actualiser la carte — affichage des données en cache.",
     "locateError": "Impossible d'obtenir votre position."
@@ -65,6 +66,24 @@
     "confirmed": "Plus confirmés",
     "empty": "Aucune observation — soyez le premier !",
     "loadError": "Impossible de charger les observations récentes."
+  },
+  "reportIssue": {
+    "title": "Signaler un problème",
+    "subtitle": "Dites-nous ce qui ne va pas ou ce qui pourrait être amélioré.",
+    "categoryLabel": "Catégorie",
+    "categoryRequired": "Veuillez choisir une catégorie.",
+    "messageLabel": "Message",
+    "messageRequired": "Veuillez décrire le problème.",
+    "messagePlaceholder": "Que s'est-il passé ? Qu'attendiez-vous ?",
+    "submit": "Envoyer le signalement",
+    "submitting": "Envoi…",
+    "success": "Merci — votre signalement a été envoyé.",
+    "categories": {
+      "bug": "Bug ou dysfonctionnement",
+      "wrong_data": "Données de carte incorrectes",
+      "abuse": "Abus ou spam",
+      "other": "Autre chose"
+    }
   },
   "addSighting": {
     "title": "Ajouter une observation",

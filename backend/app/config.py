@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     rate_limit_create: str = "20/hour"
     rate_limit_confirm: str = "120/hour"
     rate_limit_report: str = "40/hour"
+    rate_limit_issue: str = "5/hour"
     rate_limit_add_photo: str = "30/hour"
     rate_limit_mutate: str = "60/hour"
 

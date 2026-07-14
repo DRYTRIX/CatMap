@@ -179,3 +179,24 @@ class Report(Base):
     __table_args__ = (
         UniqueConstraint("sighting_id", "device_token", name="uq_report_once"),
     )
+
+
+class IssueReport(Base):
+    """User-submitted app issue / feedback (not sighting moderation)."""
+
+    __tablename__ = "issue_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    page_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_issue_reports_status", "status"),
+        Index("ix_issue_reports_created_at", "created_at"),
+    )

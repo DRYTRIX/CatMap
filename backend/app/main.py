@@ -17,7 +17,7 @@ from .database import engine, run_migrations
 from .logging_config import configure_logging
 from .notifications import notify_startup
 from .ratelimit import limiter
-from .routers import admin, cats, share, sightings, stats
+from .routers import admin, cats, issues, share, sightings, stats
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -103,6 +103,7 @@ for api_prefix, in_schema in (("/api", True), ("/api/v1", False)):
     app.include_router(sightings.router, prefix=api_prefix, include_in_schema=in_schema)
     app.include_router(cats.router, prefix=api_prefix, include_in_schema=in_schema)
     app.include_router(stats.router, prefix=api_prefix, include_in_schema=in_schema)
+    app.include_router(issues.router, prefix=api_prefix, include_in_schema=in_schema)
     app.include_router(admin.router, prefix=api_prefix, include_in_schema=in_schema)
 
 app.include_router(share.router)

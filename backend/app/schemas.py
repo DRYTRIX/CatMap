@@ -61,6 +61,20 @@ class ReportResult(BaseModel):
     hidden: bool  # True once auto-hidden by the report threshold
 
 
+class IssueReportResult(BaseModel):
+    id: str
+    submitted: bool = True
+
+
+class AdminIssueRow(BaseModel):
+    id: str
+    category: str
+    message: str
+    page_url: str | None
+    status: str
+    created_at: datetime
+
+
 class AdminReportRow(BaseModel):
     id: str
     lat: float

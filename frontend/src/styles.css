@@ -1912,6 +1912,19 @@ input[type="range"] {
   gap: 8px;
   margin-top: 8px;
 }
+.report-reasons .btn.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.report-issue-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.report-issue-fieldset legend {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
 
 /* ---------- Error boundary ---------- */
 .error-boundary {

@@ -124,3 +124,46 @@ def notify_sighting_created(
         public_site_url=settings.public_site_url,
     )
     notify_telegram(text)
+
+
+def build_issue_notification(
+    *,
+    category: str,
+    message: str,
+    page_url: str | None,
+    public_site_url: str,
+) -> str:
+    site = public_site_url.rstrip("/")
+    admin_url = f"{site}/admin"
+
+    msg = (message or "").strip()
+    if len(msg) > _MAX_DESC:
+        msg = msg[: _MAX_DESC - 1] + "…"
+    if not msg:
+        msg = "(no message)"
+
+    lines = [
+        "<b>Issue report</b>",
+        f"Category: {_escape(category)}",
+        f"Message: {_escape(msg)}",
+    ]
+    if page_url:
+        lines.append(f'Page: <a href="{_escape(page_url)}">{_escape(page_url)}</a>')
+    lines.append(f'<a href="{_escape(admin_url)}">Open admin panel</a>')
+    return "\n".join(lines)
+
+
+def notify_issue_reported(
+    *,
+    category: str,
+    message: str,
+    page_url: str | None,
+) -> None:
+    settings = get_settings()
+    text = build_issue_notification(
+        category=category,
+        message=message,
+        page_url=page_url,
+        public_site_url=settings.public_site_url,
+    )
+    notify_telegram(text)

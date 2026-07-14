@@ -41,6 +41,7 @@
     "favorites": "Favorieten",
     "myCats": "Mijn katten",
     "recent": "Recente waarnemingen",
+    "reportIssue": "Probleem melden",
     "emptyArea": "Nog geen katten in dit gebied — wees de eerste! 🐾",
     "fetchError": "Kaart kon niet vernieuwd worden — gecachte data wordt getoond.",
     "locateError": "Kon je locatie niet ophalen."
@@ -65,6 +66,24 @@
     "confirmed": "Meest bevestigd",
     "empty": "Nog geen waarnemingen — wees de eerste!",
     "loadError": "Kon recente waarnemingen niet laden."
+  },
+  "reportIssue": {
+    "title": "Probleem melden",
+    "subtitle": "Vertel ons wat er misging of wat beter kan. We kijken ernaar.",
+    "categoryLabel": "Categorie",
+    "categoryRequired": "Kies een categorie.",
+    "messageLabel": "Bericht",
+    "messageRequired": "Beschrijf het probleem.",
+    "messagePlaceholder": "Wat gebeurde er? Wat had je verwacht?",
+    "submit": "Melding versturen",
+    "submitting": "Versturen…",
+    "success": "Bedankt — je melding is verstuurd.",
+    "categories": {
+      "bug": "Bug of storing",
+      "wrong_data": "Verkeerde kaartgegevens",
+      "abuse": "Misbruik of spam",
+      "other": "Iets anders"
+    }
   },
   "addSighting": {
     "title": "Katwaarneming toevoegen",

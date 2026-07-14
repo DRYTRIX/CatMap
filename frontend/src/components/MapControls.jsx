@@ -11,6 +11,7 @@ import {
   faHeart,
   faCat,
   faClockRotateLeft,
+  faBug,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function MapControls({
@@ -20,6 +21,7 @@ export default function MapControls({
   onFavorites,
   onMySightings,
   onRecent,
+  onReportIssue,
   activeFilterCount = 0,
   viewMode = "map",
   onToggleView,
@@ -87,6 +89,9 @@ export default function MapControls({
       </button>
       <button className="map-ctrl" aria-label={t("map.favorites")} onClick={onFavorites}>
         <FontAwesomeIcon icon={faHeart} />
+      </button>
+      <button className="map-ctrl" aria-label={t("map.reportIssue")} onClick={onReportIssue}>
+        <FontAwesomeIcon icon={faBug} />
       </button>
     </div>
   );

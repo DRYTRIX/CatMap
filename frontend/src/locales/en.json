@@ -41,6 +41,7 @@
     "favorites": "Favorites",
     "myCats": "My cats",
     "recent": "Recent sightings",
+    "reportIssue": "Report an issue",
     "emptyArea": "No cats spotted in this area yet — be the first! 🐾",
     "fetchError": "Couldn't refresh the map — showing cached data.",
     "locateError": "Couldn't get your location."
@@ -65,6 +66,24 @@
     "confirmed": "Most confirmed",
     "empty": "No sightings yet — be the first!",
     "loadError": "Couldn't load recent sightings."
+  },
+  "reportIssue": {
+    "title": "Report an issue",
+    "subtitle": "Tell us what went wrong or what could be better. We'll look into it.",
+    "categoryLabel": "Category",
+    "categoryRequired": "Please choose a category.",
+    "messageLabel": "Message",
+    "messageRequired": "Please describe the issue.",
+    "messagePlaceholder": "What happened? What did you expect?",
+    "submit": "Send report",
+    "submitting": "Sending…",
+    "success": "Thanks — your report was sent.",
+    "categories": {
+      "bug": "Bug or glitch",
+      "wrong_data": "Wrong map data",
+      "abuse": "Abuse or spam",
+      "other": "Something else"
+    }
   },
   "addSighting": {
     "title": "Add a cat sighting",

@@ -41,6 +41,7 @@
     "favorites": "Favoriten",
     "myCats": "Meine Katzen",
     "recent": "Neueste Sichtungen",
+    "reportIssue": "Problem melden",
     "emptyArea": "Noch keine Katzen in diesem Gebiet — sei der Erste! 🐾",
     "fetchError": "Karte konnte nicht aktualisiert werden — zwischengespeicherte Daten werden angezeigt.",
     "locateError": "Standort konnte nicht ermittelt werden."
@@ -65,6 +66,24 @@
     "confirmed": "Meist bestätigt",
     "empty": "Noch keine Sichtungen — sei der Erste!",
     "loadError": "Neueste Sichtungen konnten nicht geladen werden."
+  },
+  "reportIssue": {
+    "title": "Problem melden",
+    "subtitle": "Sag uns, was schiefgelaufen ist oder besser sein könnte.",
+    "categoryLabel": "Kategorie",
+    "categoryRequired": "Bitte wähle eine Kategorie.",
+    "messageLabel": "Nachricht",
+    "messageRequired": "Bitte beschreibe das Problem.",
+    "messagePlaceholder": "Was ist passiert? Was hast du erwartet?",
+    "submit": "Meldung senden",
+    "submitting": "Wird gesendet…",
+    "success": "Danke — deine Meldung wurde gesendet.",
+    "categories": {
+      "bug": "Fehler oder Störung",
+      "wrong_data": "Falsche Kartendaten",
+      "abuse": "Missbrauch oder Spam",
+      "other": "Etwas anderes"
+    }
   },
   "addSighting": {
     "title": "Katzensichtung hinzufügen",

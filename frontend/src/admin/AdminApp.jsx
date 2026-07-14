@@ -17,15 +17,19 @@ import {
   faTable,
   faThumbsUp,
   faTriangleExclamation,
+  faBug,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   adminApproveSighting,
+  adminDeleteIssue,
   adminDeleteSighting,
   adminHideSighting,
   adminImageObjectUrl,
+  adminResolveIssue,
   adminUnhideSighting,
   fetchAdminActions,
   fetchAdminDatabaseUsage,
+  fetchAdminIssues,
   fetchAdminMetrics,
   fetchAdminPending,
   fetchAdminReports,
@@ -179,6 +183,8 @@ function AdminPanel() {
   const [actions, setActions] = useState(null);
   const [metrics, setMetrics] = useState(null);
   const [dbUsage, setDbUsage] = useState(null);
+  const [issues, setIssues] = useState(null);
+  const [issueStatus, setIssueStatus] = useState("open");
   const [sort, setSort] = useState("reports");
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState(null);
@@ -186,6 +192,7 @@ function AdminPanel() {
   const [lightbox, setLightbox] = useState(null);
   const [lightboxLoadingId, setLightboxLoadingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteIssueConfirmId, setDeleteIssueConfirmId] = useState(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -244,6 +251,16 @@ function AdminPanel() {
     }
   }, [token]);
 
+  const loadIssues = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await fetchAdminIssues({ token, status: issueStatus, limit: PAGE_SIZE });
+      setIssues(data);
+    } catch {
+      /* non-critical */
+    }
+  }, [token, issueStatus]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -263,6 +280,10 @@ function AdminPanel() {
   useEffect(() => {
     loadDbUsage();
   }, [loadDbUsage]);
+
+  useEffect(() => {
+    loadIssues();
+  }, [loadIssues]);
 
   function signIn(e) {
     e.preventDefault();
@@ -307,6 +328,7 @@ function AdminPanel() {
       loadPending();
       loadActions();
       loadMetrics();
+      loadIssues();
     } catch (e) {
       if (e.message === "UNAUTHORIZED") {
         sessionStorage.removeItem(TOKEN_KEY);
@@ -536,6 +558,85 @@ function AdminPanel() {
       </section>
 
       <section className="admin-panel">
+        <PanelHeader icon={faBug} title="Issue reports" count={issues?.length} />
+
+        <div className="admin-controls">
+          <label htmlFor="admin-issue-status">
+            Status{" "}
+            <select
+              id="admin-issue-status"
+              value={issueStatus}
+              onChange={(e) => setIssueStatus(e.target.value)}
+            >
+              <option value="open">Open</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </label>
+        </div>
+
+        {issues === null && <p>Loading…</p>}
+        {issues?.length === 0 && <p>No {issueStatus} issue reports.</p>}
+
+        {issues && issues.length > 0 && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Message</th>
+                  <th>Page</th>
+                  <th>Status</th>
+                  <th>When</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issues.map((issue) => (
+                  <tr key={issue.id}>
+                    <td>{issue.category}</td>
+                    <td className="admin-desc">{issue.message}</td>
+                    <td className="admin-desc">
+                      {issue.page_url ? (
+                        <a href={issue.page_url} target="_blank" rel="noopener noreferrer">
+                          Link
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      <span className={`admin-status admin-status--${issue.status}`}>
+                        {issue.status}
+                      </span>
+                    </td>
+                    <td>{timeAgo(issue.created_at)}</td>
+                    <td className="admin-actions">
+                      {issue.status === "open" && (
+                        <button
+                          className="btn btn-primary"
+                          disabled={busyId === issue.id}
+                          onClick={() => act("Issue resolved.", adminResolveIssue, issue.id)}
+                        >
+                          Resolve
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-danger"
+                        disabled={busyId === issue.id}
+                        onClick={() => setDeleteIssueConfirmId(issue.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-panel">
         <PanelHeader icon={faFlag} title="Reports" />
 
         <div className="admin-controls">
@@ -690,6 +791,20 @@ function AdminPanel() {
           if (id) act("Sighting deleted.", adminDeleteSighting, id);
         }}
         onCancel={() => setDeleteConfirmId(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteIssueConfirmId)}
+        title="Delete issue report?"
+        message="Permanently delete this issue report? This can't be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          const id = deleteIssueConfirmId;
+          setDeleteIssueConfirmId(null);
+          if (id) act("Issue report deleted.", adminDeleteIssue, id);
+        }}
+        onCancel={() => setDeleteIssueConfirmId(null)}
       />
     </div>
   );

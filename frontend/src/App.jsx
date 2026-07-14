@@ -7,6 +7,7 @@ import FilterPanel from "./components/FilterPanel";
 import FavoritesModal from "./components/FavoritesModal";
 import MySightingsModal from "./components/MySightingsModal";
 import RecentFeedModal from "./components/RecentFeedModal";
+import ReportIssueModal from "./components/ReportIssueModal";
 import CatProfileSheet from "./components/CatProfileSheet";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -33,6 +34,7 @@ function AppShell() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [showMySightings, setShowMySightings] = useState(false);
   const [showRecent, setShowRecent] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
   const [viewMode, setViewMode] = useState("map");
   const mapRef = useRef(null);
 
@@ -145,6 +147,7 @@ function AppShell() {
           onFavorites={() => setShowFavorites(true)}
           onMySightings={() => setShowMySightings(true)}
           onRecent={() => setShowRecent(true)}
+          onReportIssue={() => setShowReportIssue(true)}
           activeFilterCount={countActiveFilters(filters)}
           viewMode={viewMode}
           onToggleView={toggleView}
@@ -198,6 +201,10 @@ function AppShell() {
 
       {showRecent && (
         <RecentFeedModal onClose={() => setShowRecent(false)} onSelect={setSelectedId} />
+      )}
+
+      {showReportIssue && (
+        <ReportIssueModal onClose={() => setShowReportIssue(false)} />
       )}
 
       <OnboardingHint />

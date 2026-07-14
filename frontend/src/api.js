@@ -252,6 +252,19 @@ export async function reportSighting(id, reason = "") {
   return handle(res);
 }
 
+export async function submitIssueReport(category, message) {
+  const form = new FormData();
+  form.append("category", category);
+  form.append("message", message);
+  form.append("page_url", window.location.href);
+  const res = await fetch(`${API_BASE}/api/issues`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
 export async function markGone(id) {
   const res = await fetch(`${API_BASE}/api/sightings/${id}/gone`, {
     method: "POST",
@@ -371,6 +384,44 @@ export async function fetchAdminActions({ token, limit = 20, offset = 0 }) {
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   return handle(res);
+}
+
+export async function fetchAdminIssues({ token, status, limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (status) params.set("status", status);
+  const res = await fetch(`${API_BASE}/api/admin/issues?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminResolveIssue(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/issues/${id}/resolve`, {
+    method: "POST",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminDeleteIssue(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/issues/${id}`, {
+    method: "DELETE",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* 204 has no body */
+    }
+    throw new Error(translateApiError(detail));
+  }
+  return true;
 }
 
 /**
