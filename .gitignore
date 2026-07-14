@@ -23,6 +23,8 @@ dist/
 
 # Android / Capacitor release artifacts
 frontend/android/keystore.properties
+frontend/android/*.keystore
+frontend/android/*.jks
 frontend/android/app/*.keystore
 frontend/android/app/*.jks
 frontend/android/app/release/
