@@ -49,7 +49,8 @@ class Sighting(Base):
         DateTime(timezone=True), default=_now, nullable=True
     )
     creator_token: Mapped[str] = mapped_column(String(64), nullable=False)
-    # "active", "hidden" (moderation) or "gone" (creator marked the cat left).
+    # "active", "hidden" (moderation), "gone" (creator marked the cat left),
+    # or "found" (creator closed a missing-cat post).
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
 
     # Distinct device reports; auto-hidden once this reaches the threshold.
@@ -57,6 +58,9 @@ class Sighting(Base):
 
     # ML cat-detection score (0.0–1.0); NULL for rows created before this feature.
     cat_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Post type: "sighting" (spotted cat) or "missing" (lost cat seeking help).
+    kind: Mapped[str] = mapped_column(String(16), default="sighting", nullable=False)
 
     # Optional descriptive attributes; NULL means "unknown"/not specified.
     color: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -86,6 +90,7 @@ class Sighting(Base):
         Index("ix_sightings_lat", "lat"),
         Index("ix_sightings_lng", "lng"),
         Index("ix_sightings_status", "status"),
+        Index("ix_sightings_kind", "kind"),
         Index("ix_sightings_created_at", "created_at"),
     )
 

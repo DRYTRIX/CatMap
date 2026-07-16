@@ -45,6 +45,12 @@ MAX_PHOTOS_PER_SIGHTING = 6
 # Reasons accepted by the report endpoint (empty string = unspecified).
 ALLOWED_REPORT_REASONS = {"not_a_cat", "spam", "wrong_location", "duplicate", "other"}
 
+# Post types: spotted cat vs lost-cat seeking help.
+ALLOWED_KINDS = {"sighting", "missing"}
+
+# Statuses that are still fetchable by id / photo (map only shows "active").
+VIEWABLE_STATUSES = {"active", "found"}
+
 
 def _photo_url(sighting_id: str) -> str:
     return f"/api/sightings/{sighting_id}/photo"
@@ -108,6 +114,8 @@ def _detail(s: Sighting) -> dict:
         "is_ear_tipped": s.is_ear_tipped,
         "is_stray": s.is_stray,
         "cat_id": s.cat_id,
+        "kind": s.kind,
+        "status": s.status,
     }
 
 
@@ -122,6 +130,7 @@ def _bbox_filter_conditions(
     is_ear_tipped: bool | None,
     is_stray: bool | None,
     min_confidence: float | None,
+    kind: str | None = None,
 ) -> list:
     """Build the active-status + bounding-box + discovery-filter WHERE clauses.
 
@@ -148,7 +157,27 @@ def _bbox_filter_conditions(
         conditions.append(Sighting.is_stray == is_stray)
     if min_confidence is not None:
         conditions.append(Sighting.cat_confidence >= min_confidence)
+    if kind is not None:
+        conditions.append(Sighting.kind == kind)
     return conditions
+
+
+def _normalize_kind(kind: str | None) -> str:
+    value = (kind or "sighting").strip().lower()
+    if value not in ALLOWED_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid kind (expected one of: {', '.join(sorted(ALLOWED_KINDS))}).",
+        )
+    return value
+
+
+def _get_viewable_sighting(db: Session, sighting_id: str) -> Sighting:
+    """Fetch a sighting that is still viewable (active or found), or 404."""
+    sighting = db.get(Sighting, sighting_id)
+    if sighting is None or sighting.status not in VIEWABLE_STATUSES:
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+    return sighting
 
 
 @router.get("", response_model=list[SightingDot])
@@ -163,6 +192,7 @@ def list_sightings(
     is_ear_tipped: bool | None = None,
     is_stray: bool | None = None,
     min_confidence: float | None = None,
+    kind: str | None = None,
     limit: int | None = None,
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -173,6 +203,11 @@ def list_sightings(
         raise HTTPException(status_code=400, detail="Invalid bounding box.")
     if offset < 0:
         raise HTTPException(status_code=400, detail="offset must be >= 0.")
+    if kind is not None and kind not in ALLOWED_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid kind (expected one of: {', '.join(sorted(ALLOWED_KINDS))}).",
+        )
 
     effective_limit = settings.max_dots_per_query
     if limit is not None:
@@ -182,7 +217,7 @@ def list_sightings(
 
     conditions = _bbox_filter_conditions(
         min_lat, max_lat, min_lng, max_lng,
-        since, until, color, is_ear_tipped, is_stray, min_confidence,
+        since, until, color, is_ear_tipped, is_stray, min_confidence, kind,
     )
 
     stmt = (
@@ -194,6 +229,7 @@ def list_sightings(
             Sighting.description,
             Sighting.created_at,
             Sighting.last_seen_at,
+            Sighting.kind,
         )
         .where(*conditions)
         .order_by(Sighting.created_at.desc())
@@ -211,6 +247,7 @@ def list_sightings(
             created_at=r.created_at,
             thumbnail_url=_thumb_url(r.id),
             stale=_is_stale(r.last_seen_at or r.created_at),
+            kind=r.kind,
         )
         for r in rows
     ]
@@ -229,6 +266,7 @@ def cluster_sightings(
     is_ear_tipped: bool | None = None,
     is_stray: bool | None = None,
     min_confidence: float | None = None,
+    kind: str | None = None,
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> list[SightingCluster]:
@@ -242,6 +280,11 @@ def cluster_sightings(
     """
     if min_lat > max_lat or min_lng > max_lng:
         raise HTTPException(status_code=400, detail="Invalid bounding box.")
+    if kind is not None and kind not in ALLOWED_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid kind (expected one of: {', '.join(sorted(ALLOWED_KINDS))}).",
+        )
 
     cell = settings.cluster_base_degrees / (2**zoom)
     lat_key = func.round(Sighting.lat / cell)
@@ -249,7 +292,7 @@ def cluster_sightings(
 
     conditions = _bbox_filter_conditions(
         min_lat, max_lat, min_lng, max_lng,
-        since, until, color, is_ear_tipped, is_stray, min_confidence,
+        since, until, color, is_ear_tipped, is_stray, min_confidence, kind,
     )
 
     # Group into a zoom-dependent grid for binning, but return each cluster at the
@@ -292,11 +335,13 @@ async def create_sighting(
     color: str | None = Form(None),
     is_ear_tipped: bool | None = Form(None),
     is_stray: bool | None = Form(None),
+    kind: str = Form("sighting"),
     token: str = Depends(device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Create a sighting (one or more photos). Coordinates come from the form,
     or EXIF as a fallback (taken from the first photo that has GPS data)."""
+    post_kind = _normalize_kind(kind)
     files = [f for f in images if f is not None and f.filename] or (
         [image] if image is not None else []
     )
@@ -387,6 +432,7 @@ async def create_sighting(
         color=_normalize_color(color),
         is_ear_tipped=is_ear_tipped,
         is_stray=is_stray,
+        kind=post_kind,
         status="pending" if pending else "active",
     )
     for position, (main_bytes, thumb_bytes, mime) in enumerate(processed[1:], start=1):
@@ -444,10 +490,13 @@ def my_sightings(
     token: str = Depends(device_token),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """Active sightings created by the calling device, newest first."""
+    """Sightings created by the calling device (active + found), newest first."""
     stmt = (
         select(Sighting)
-        .where(Sighting.creator_token == token, Sighting.status == "active")
+        .where(
+            Sighting.creator_token == token,
+            Sighting.status.in_(("active", "found")),
+        )
         .options(selectinload(Sighting.photos))
         .order_by(Sighting.created_at.desc())
         .limit(200)
@@ -490,6 +539,7 @@ def similar_sightings(
             Sighting.description,
             Sighting.created_at,
             Sighting.last_seen_at,
+            Sighting.kind,
         )
         .where(*conditions)
         .order_by(Sighting.created_at.desc())
@@ -506,6 +556,7 @@ def similar_sightings(
             created_at=r.created_at,
             thumbnail_url=_thumb_url(r.id),
             stale=_is_stale(r.last_seen_at or r.created_at),
+            kind=r.kind,
         )
         for r in rows
     ]
@@ -517,17 +568,12 @@ def get_sighting(
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> dict:
-    sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status != "active":
-        raise HTTPException(status_code=404, detail="Sighting not found.")
-    return _detail(sighting)
+    return _detail(_get_viewable_sighting(db, sighting_id))
 
 
 @router.get("/{sighting_id}/photo")
 def get_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
-    sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status != "active":
-        raise HTTPException(status_code=404, detail="Sighting not found.")
+    sighting = _get_viewable_sighting(db, sighting_id)
     return Response(
         content=sighting.photo,
         media_type=sighting.photo_mime,
@@ -537,9 +583,7 @@ def get_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
 
 @router.get("/{sighting_id}/thumbnail")
 def get_thumbnail(sighting_id: str, db: Session = Depends(get_db)) -> Response:
-    sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status != "active":
-        raise HTTPException(status_code=404, detail="Sighting not found.")
+    sighting = _get_viewable_sighting(db, sighting_id)
     return Response(
         content=sighting.thumbnail,
         media_type=sighting.photo_mime,
@@ -548,9 +592,7 @@ def get_thumbnail(sighting_id: str, db: Session = Depends(get_db)) -> Response:
 
 
 def _get_extra_photo(db: Session, sighting_id: str, photo_id: str) -> Photo:
-    sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status != "active":
-        raise HTTPException(status_code=404, detail="Sighting not found.")
+    _get_viewable_sighting(db, sighting_id)
     photo = db.get(Photo, photo_id)
     if photo is None or photo.sighting_id != sighting_id:
         raise HTTPException(status_code=404, detail="Photo not found.")
@@ -815,6 +857,29 @@ def mark_gone(
     """Mark your own sighting as 'gone' — the cat has moved on (off the map)."""
     sighting = _get_own_sighting(db, sighting_id, token)
     sighting.status = "gone"
+    db.commit()
+    db.refresh(sighting)
+    return _detail(sighting)
+
+
+@router.post("/{sighting_id}/found", response_model=SightingDetail)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def mark_found(
+    request: Request,
+    sighting_id: str,
+    token: str = Depends(device_token),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Mark your own missing-cat post as found (off the map, still in /mine)."""
+    sighting = _get_own_sighting(db, sighting_id, token)
+    if sighting.kind != "missing":
+        raise HTTPException(
+            status_code=400,
+            detail="Only missing-cat posts can be marked as found.",
+        )
+    if sighting.status not in ("active", "pending"):
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+    sighting.status = "found"
     db.commit()
     db.refresh(sighting)
     return _detail(sighting)

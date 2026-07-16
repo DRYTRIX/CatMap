@@ -140,6 +140,7 @@ export function createSighting({
   color = "",
   isEarTipped = "",
   isStray = "",
+  kind = "sighting",
   onProgress,
 }) {
   return new Promise((resolve, reject) => {
@@ -150,6 +151,7 @@ export function createSighting({
     form.append("lat", lat);
     form.append("lng", lng);
     form.append("description", description || "");
+    form.append("kind", kind || "sighting");
     if (color) form.append("color", color);
     if (isEarTipped !== "") form.append("is_ear_tipped", isEarTipped);
     if (isStray !== "") form.append("is_stray", isStray);
@@ -273,6 +275,14 @@ export async function submitIssueReport(category, message) {
 
 export async function markGone(id) {
   const res = await fetch(`${API_BASE}/api/sightings/${id}/gone`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  return handle(res);
+}
+
+export async function markFound(id) {
+  const res = await fetch(`${API_BASE}/api/sightings/${id}/found`, {
     method: "POST",
     headers: authHeaders(),
   });

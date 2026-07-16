@@ -31,6 +31,7 @@ def test_alembic_upgrade_head(tmp_path):
     assert "is_ear_tipped" in columns
     assert "is_stray" in columns
     assert "last_seen_at" in columns
+    assert "kind" in columns
 
     photo_columns = {c["name"] for c in insp.get_columns("photos")}
     assert {"id", "sighting_id", "photo", "thumbnail", "photo_mime", "position"} <= photo_columns

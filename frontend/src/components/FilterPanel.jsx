@@ -12,9 +12,15 @@ const TRI_STATE_OPTIONS = [
   { value: "false", label: "No" },
 ];
 
+const KIND_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "sighting", label: "Sightings" },
+  { value: "missing", label: "Missing" },
+];
+
 /**
  * Bottom-sheet filter panel for the discovery query: date range, color,
- * ear-tipped/stray status, and minimum cat-detection confidence.
+ * ear-tipped/stray status, post kind, and minimum cat-detection confidence.
  *
  * Props: value (current filters), onApply(filters), onClose.
  */
@@ -31,6 +37,7 @@ export default function FilterPanel({ value, onApply, onClose }) {
       color: draft.color || null,
       is_ear_tipped: draft.isEarTipped || null,
       is_stray: draft.isStray || null,
+      kind: draft.kind || null,
       min_confidence: draft.minConfidence || 0,
     });
     onApply(draft);
@@ -72,6 +79,16 @@ export default function FilterPanel({ value, onApply, onClose }) {
             onChange={(e) => set("until", e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="field">
+        <label>Type</label>
+        <SegmentedControl
+          name="Type"
+          value={draft.kind || ""}
+          options={KIND_OPTIONS}
+          onChange={(v) => set("kind", v)}
+        />
       </div>
 
       <div className="field">

@@ -14,6 +14,7 @@ class SightingDot(BaseModel):
     created_at: datetime
     thumbnail_url: str
     stale: bool = False
+    kind: str = "sighting"
 
 
 class PhotoOut(BaseModel):
@@ -41,6 +42,8 @@ class SightingDetail(BaseModel):
     is_ear_tipped: bool | None = None
     is_stray: bool | None = None
     cat_id: str | None = None
+    kind: str = "sighting"
+    status: str = "active"
 
 
 class SightingCluster(BaseModel):
@@ -180,6 +183,8 @@ class CreateSightingResult(BaseModel):
     is_stray: bool | None = None
     pending: bool = False
     cat_id: str | None = None
+    kind: str = "sighting"
+    status: str = "active"
 
 
 class BBox(BaseModel):

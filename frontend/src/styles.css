@@ -4,6 +4,7 @@
   --amber-500: #f59e0b;
   --amber-600: #d97706;
   --amber-grad: linear-gradient(135deg, #fbbf24 0%, #f59e0b 55%, #ea7a0c 100%);
+  --coral-grad: linear-gradient(135deg, #fb7185 0%, #f43f5e 55%, #e11d48 100%);
   --ink-900: #0f172a;
   --ink-700: #1e293b;
   --ink-500: #475569;
@@ -1952,6 +1953,9 @@ input[type="range"] {
 }
 
 /* ---------- Stale (outdated) sightings & report reasons ---------- */
+.cat-pin--missing {
+  background: var(--coral-grad);
+}
 .cat-pin--stale {
   filter: grayscale(0.85);
   opacity: 0.6;
@@ -1965,6 +1969,23 @@ input[type="range"] {
   font-weight: 700;
   background: var(--surface-2);
   color: var(--ink-400);
+}
+.kind-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.kind-badge--missing {
+  background: #ffe4e6;
+  color: #be123c;
+}
+.kind-badge--found {
+  background: #dcfce7;
+  color: #15803d;
 }
 .report-reasons {
   display: flex;

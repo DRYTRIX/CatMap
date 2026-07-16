@@ -8,6 +8,7 @@ import {
   fetchSimilarSightings,
   fetchSighting,
   linkSightingToCat,
+  markFound,
   markGone,
   reportSighting,
 } from "../api";
@@ -224,6 +225,10 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     setConfirmAction("gone");
   }
 
+  async function onMarkFound() {
+    setConfirmAction("found");
+  }
+
   async function onDelete() {
     setConfirmAction("delete");
   }
@@ -241,6 +246,12 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
         toast.success(t("sighting.goneSuccess"));
         onChanged?.();
         onClose();
+      } else if (action === "found") {
+        await markFound(id);
+        track("sighting_found");
+        toast.success(t("sighting.foundSuccess"));
+        onChanged?.();
+        onClose();
       } else if (action === "delete") {
         await deleteSighting(id);
         track("sighting_delete");
@@ -254,11 +265,15 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     }
   }
 
+  const isMissing = data?.kind === "missing";
+  const isFound = data?.status === "found";
+  const titleKey = isMissing ? "sighting.titleMissing" : "sighting.title";
+
   return (
     <Modal onClose={onClose} labelledBy="sheet-title" className="sheet detail-sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="sheet-title">🐱 {t("sighting.title")}</h2>
+        <h2 id="sheet-title">🐱 {t(titleKey)}</h2>
         <button className="icon-btn" aria-label={t("common.close")} onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
@@ -329,20 +344,35 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
           )}
 
           <div className="card-meta">
-            🐱 {t("sighting.spotted", { time: timeAgo(data.created_at) })}
+            🐱{" "}
+            {isMissing
+              ? t("sighting.missingSince", { time: timeAgo(data.created_at) })
+              : t("sighting.spotted", { time: timeAgo(data.created_at) })}
+            {isMissing && !isFound && (
+              <span className="kind-badge kind-badge--missing">{t("sighting.missingBadge")}</span>
+            )}
+            {isFound && (
+              <span className="kind-badge kind-badge--found">{t("sighting.foundBadge")}</span>
+            )}
             {data.stale && <span className="stale-badge">{t("sighting.stale")}</span>}
           </div>
 
+              {!isFound && (
               <div className="confirm-row">
                 <button
                   className="btn btn-primary btn-confirm"
                   onClick={onConfirm}
                   disabled={busy || confirmed}
                 >
-                  {confirmed ? t("sighting.confirmed") : t("sighting.confirm")}
+                  {confirmed
+                    ? t("sighting.confirmed")
+                    : isMissing
+                      ? t("sighting.confirmMissing")
+                      : t("sighting.confirm")}
                 </button>
                 <span className="count">{data.confirmations_count}</span>
               </div>
+              )}
 
           <div className="sheet-actions">
             <button
@@ -356,6 +386,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             <button className="btn btn-ghost" onClick={onShare} disabled={busy}>
               <FontAwesomeIcon icon={faShare} /> {t("sighting.share")}
             </button>
+            {!isFound && (
             <button
               className="btn btn-ghost"
               onClick={() => setReportOpen(true)}
@@ -363,7 +394,8 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             >
               <FontAwesomeIcon icon={faFlag} /> {t("sighting.report")}
             </button>
-            {data.photos.length < MAX_PHOTOS && (
+            )}
+            {!isFound && data.photos.length < MAX_PHOTOS && (
               <button
                 className="btn btn-ghost"
                 onClick={() => setAddingPhotos(true)}
@@ -372,7 +404,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                 <FontAwesomeIcon icon={faImages} /> {t("sighting.addPhotos")}
               </button>
             )}
-            {mine && (
+            {mine && !isFound && (
               <>
                 <button
                   className="btn btn-ghost"
@@ -388,13 +420,24 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                 >
                   <FontAwesomeIcon icon={faPen} /> {t("sighting.edit")}
                 </button>
-                <button className="btn btn-ghost" onClick={onMarkGone} disabled={busy}>
-                  <FontAwesomeIcon icon={faCat} /> {t("sighting.gone")}
-                </button>
+                {isMissing ? (
+                  <button className="btn btn-ghost" onClick={onMarkFound} disabled={busy}>
+                    <FontAwesomeIcon icon={faCat} /> {t("sighting.found")}
+                  </button>
+                ) : (
+                  <button className="btn btn-ghost" onClick={onMarkGone} disabled={busy}>
+                    <FontAwesomeIcon icon={faCat} /> {t("sighting.gone")}
+                  </button>
+                )}
                 <button className="btn btn-danger" onClick={onDelete} disabled={busy}>
                   <FontAwesomeIcon icon={faTrash} /> {t("common.delete")}
                 </button>
               </>
+            )}
+            {mine && isFound && (
+              <button className="btn btn-danger" onClick={onDelete} disabled={busy}>
+                <FontAwesomeIcon icon={faTrash} /> {t("common.delete")}
+              </button>
             )}
           </div>
         </>
@@ -471,6 +514,14 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
         title={t("sighting.goneTitle")}
         message={t("sighting.goneMessage")}
         confirmLabel={t("sighting.goneConfirm")}
+        onConfirm={handleConfirmAction}
+        onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmDialog
+        open={confirmAction === "found"}
+        title={t("sighting.foundTitle")}
+        message={t("sighting.foundMessage")}
+        confirmLabel={t("sighting.foundConfirm")}
         onConfirm={handleConfirmAction}
         onCancel={() => setConfirmAction(null)}
       />

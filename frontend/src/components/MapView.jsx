@@ -197,7 +197,7 @@ export default function MapView({
               <Marker
                 key={d.id}
                 position={[d.lat, d.lng]}
-                icon={catIcon(d.confirmations_count, d.stale)}
+                icon={catIcon(d.confirmations_count, d.stale, d.kind)}
                 eventHandlers={{ click: () => onSelect?.(d.id) }}
               />
             ))}

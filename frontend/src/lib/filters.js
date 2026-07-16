@@ -22,6 +22,7 @@ export const DEFAULT_FILTERS = {
   color: "",
   isEarTipped: "", // "" | "true" | "false"
   isStray: "", // "" | "true" | "false"
+  kind: "", // "" | "sighting" | "missing"
   minConfidence: 0, // 0..1, 0 = no filter
 };
 
@@ -49,6 +50,7 @@ export function countActiveFilters(filters) {
   if (filters.color) n++;
   if (filters.isEarTipped) n++;
   if (filters.isStray) n++;
+  if (filters.kind) n++;
   if (filters.minConfidence > 0) n++;
   return n;
 }
@@ -66,6 +68,7 @@ export function filtersToParams(filters) {
   if (filters.color) params.color = filters.color;
   if (filters.isEarTipped) params.is_ear_tipped = filters.isEarTipped;
   if (filters.isStray) params.is_stray = filters.isStray;
+  if (filters.kind) params.kind = filters.kind;
   if (filters.minConfidence > 0) params.min_confidence = filters.minConfidence;
   return params;
 }

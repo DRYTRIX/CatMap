@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { track } from "../analytics";
 import { createSighting } from "../api";
 import { checkForCat } from "../lib/catDetection";
@@ -27,6 +28,11 @@ const TRI_STATE_OPTIONS = [
   { value: "", label: "Unknown" },
   { value: "true", label: "Yes" },
   { value: "false", label: "No" },
+];
+
+const KIND_OPTIONS = [
+  { value: "sighting", labelKey: "addSighting.kindSighting" },
+  { value: "missing", labelKey: "addSighting.kindMissing" },
 ];
 
 function getPhotoRequirements({ photos, processing }) {
@@ -77,10 +83,12 @@ function PhotoRequirementIcon({ status }) {
 }
 
 export default function AddSightingModal({ onClose, onCreated }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const submittedRef = useRef(false);
   const nextPhotoId = useRef(0);
   const [step, setStep] = useState(0);
+  const [kind, setKind] = useState("sighting");
 
   // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, possibleAnimal, catCheckError }
   const [photos, setPhotos] = useState([]);
@@ -96,6 +104,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const isMissing = kind === "missing";
   const photoRequirements = getPhotoRequirements({ photos, processing });
   const photoRequirementsMet = photos.length > 0 && !processing;
 
@@ -179,19 +188,21 @@ export default function AddSightingModal({ onClose, onCreated }) {
         color,
         isEarTipped,
         isStray,
+        kind,
         onProgress: setProgress,
       });
       submittedRef.current = true;
       if (created.pending) {
-        toast.success("Your sighting is under review. We'll check it shortly!");
+        toast.success(t("addSighting.pendingReview"));
         onClose();
       } else {
-        toast.success("Cat added to the map! 🐱");
+        toast.success(isMissing ? t("addSighting.missingSuccess") : t("addSighting.success"));
         onCreated(created, {
           location_source: fromExif ? "exif" : "manual",
           has_description: Boolean(description.trim()),
           photo_count: photos.length,
           has_attributes: Boolean(color || isEarTipped || isStray),
+          kind,
         });
       }
     } catch (e) {
@@ -205,14 +216,14 @@ export default function AddSightingModal({ onClose, onCreated }) {
 
   function closeModal() {
     if (!submittedRef.current) {
-      track("add_sighting_abandon", { step: STEP_KEYS[step] });
+      track("add_sighting_abandon", { step: STEP_KEYS[step], kind });
       for (const p of photos) URL.revokeObjectURL(p.previewUrl);
     }
     onClose();
   }
 
   function goNext() {
-    track("add_sighting_step", { step: STEP_KEYS[step] });
+    track("add_sighting_step", { step: STEP_KEYS[step], kind });
     setStep((s) => s + 1);
   }
 
@@ -223,10 +234,22 @@ export default function AddSightingModal({ onClose, onCreated }) {
     <Modal onClose={closeModal} labelledBy="add-title" className="sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="add-title">🐱 Add a cat sighting</h2>
+        <h2 id="add-title">
+          {isMissing ? t("addSighting.titleMissing") : t("addSighting.title")}
+        </h2>
         <button className="icon-btn" aria-label="Close" onClick={closeModal}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
+      </div>
+
+      <div className="field" style={{ marginBottom: 12 }}>
+        <label>{t("addSighting.kindLabel")}</label>
+        <SegmentedControl
+          name="Post type"
+          value={kind}
+          options={KIND_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+          onChange={setKind}
+        />
       </div>
 
       <ol className="steps">
@@ -320,14 +343,17 @@ export default function AddSightingModal({ onClose, onCreated }) {
       {step === 1 && (
         <div className="field">
           <label>
-            Location {fromExif && <span className="gps-badge">from photo GPS</span>}
+            {isMissing ? t("addSighting.locationMissing") : t("addSighting.location")}{" "}
+            {fromExif && <span className="gps-badge">from photo GPS</span>}
           </label>
           <p className="hint">
-            {fromExif
-              ? "Found GPS in the photo. Drag the pin to fine-tune."
-              : isMobile()
-                ? "Your phone may have removed location data from the photo — use My location or drop a pin."
-                : "No GPS in this photo — drop a pin or use your location."}
+            {isMissing
+              ? t("addSighting.locationMissingHint")
+              : fromExif
+                ? "Found GPS in the photo. Drag the pin to fine-tune."
+                : isMobile()
+                  ? "Your phone may have removed location data from the photo — use My location or drop a pin."
+                  : "No GPS in this photo — drop a pin or use your location."}
           </p>
           <LocationPicker value={location} onChange={setLocation} />
         </div>
@@ -336,10 +362,14 @@ export default function AddSightingModal({ onClose, onCreated }) {
       {/* Step 3: Details */}
       {step === 2 && (
         <div className="field">
-          <label htmlFor="desc">Description</label>
+          <label htmlFor="desc">{t("addSighting.description")}</label>
           <textarea
             id="desc"
-            placeholder="Orange tabby napping by the bakery…"
+            placeholder={
+              isMissing
+                ? t("addSighting.descriptionPlaceholderMissing")
+                : t("addSighting.descriptionPlaceholder")
+            }
             value={description}
             maxLength={1000}
             onChange={(e) => setDescription(e.target.value)}
@@ -364,13 +394,17 @@ export default function AddSightingModal({ onClose, onCreated }) {
             onChange={setIsEarTipped}
           />
 
-          <label>Stray</label>
-          <SegmentedControl
-            name="Stray"
-            value={isStray}
-            options={TRI_STATE_OPTIONS}
-            onChange={setIsStray}
-          />
+          {!isMissing && (
+            <>
+              <label>Stray</label>
+              <SegmentedControl
+                name="Stray"
+                value={isStray}
+                options={TRI_STATE_OPTIONS}
+                onChange={setIsStray}
+              />
+            </>
+          )}
 
           {submitting && (
             <div className="progress" aria-label="Upload progress">
@@ -410,7 +444,11 @@ export default function AddSightingModal({ onClose, onCreated }) {
             onClick={onSubmit}
             disabled={submitting}
           >
-            {submitting ? "Posting…" : "Post sighting"}
+            {submitting
+              ? t("addSighting.posting")
+              : isMissing
+                ? t("addSighting.postMissing")
+                : t("addSighting.post")}
           </button>
         )}
       </div>

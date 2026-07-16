@@ -81,6 +81,18 @@ export default function MySightingsModal({ onClose, onSelect }) {
                 <p className="sighting-list-desc">{d.description || t("common.catSighting")}</p>
                 <p className="sighting-list-meta">
                   🐱 {timeAgo(d.created_at)} · {t("common.confirmations", { count: d.confirmations_count })}
+                  {d.kind === "missing" && (
+                    <>
+                      {" · "}
+                      <span className="kind-badge kind-badge--missing">{t("sighting.missingBadge")}</span>
+                    </>
+                  )}
+                  {d.status === "found" && (
+                    <>
+                      {" · "}
+                      <span className="kind-badge kind-badge--found">{t("sighting.foundBadge")}</span>
+                    </>
+                  )}
                 </p>
               </div>
             </button>

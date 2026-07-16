@@ -99,6 +99,7 @@ def test_bbox_filtering(client):
         "created_at",
         "thumbnail_url",
         "stale",
+        "kind",
     }
 
     near = client.get(

@@ -3,14 +3,18 @@ import L from "leaflet";
 /**
  * Teardrop cat-pin marker with an optional confirmation-count badge.
  * Built as an L.divIcon so it can be styled entirely via CSS (styles.css).
+ * Missing-cat pins use a red/coral gradient via `.cat-pin--missing`.
  */
-export function catIcon(count = 0, stale = false) {
+export function catIcon(count = 0, stale = false, kind = "sighting") {
   const badge =
     count > 0 ? `<span class="cat-pin-badge">${count > 99 ? "99+" : count}</span>` : "";
+  const classes = ["cat-pin"];
+  if (kind === "missing") classes.push("cat-pin--missing");
+  if (stale) classes.push("cat-pin--stale");
   return L.divIcon({
     className: "cat-pin-wrap",
     html: `
-      <div class="cat-pin${stale ? " cat-pin--stale" : ""}">
+      <div class="${classes.join(" ")}">
         <span class="cat-pin-glyph">🐱</span>
         ${badge}
       </div>`,
