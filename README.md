@@ -78,7 +78,11 @@ clients should prefer `/api/v1`.
 | GET    | `/api/v1/sightings/clusters?min_lat&max_lat&min_lng&max_lng&zoom` | Grid-aggregated counts for zoomed-out views (no cap) |
 | GET    | `/api/v1/sightings/recent?limit&offset&sort=recent\|confirmed` | Browse feed of active sightings |
 | GET    | `/api/v1/sightings/mine`          | Your device's own sightings (needs token) |
-| POST   | `/api/v1/sightings`               | Create (multipart: `images` (1+ files, or legacy `image`), `lat`, `lng`, `description`, `color`, `is_ear_tipped`, `is_stray`) |
+| POST   | `/api/v1/sightings`               | Create (multipart: `images` (1+ files, or legacy `image`), `lat`, `lng`, `description`, `color`, `is_ear_tipped`, `is_stray`, `kind`, `cat_name`, `contact`) |
+| GET    | `/api/v1/sightings/{id}/comments` | List tips/comments on a sighting |
+| POST   | `/api/v1/sightings/{id}/comments` | Add a comment/tip (optional `lat`/`lng`) |
+| GET    | `/api/v1/notifications`           | In-app notification inbox (needs token) |
+| POST   | `/api/v1/push/subscribe`          | Register Web Push or FCM token (needs token) |
 | GET    | `/api/v1/sightings/{id}`          | Full detail, including a `photos` list    |
 | PATCH  | `/api/v1/sightings/{id}`          | Edit your own sighting's description/attributes/location |
 | GET    | `/api/v1/sightings/{id}/photo`    | Primary image bytes                       |

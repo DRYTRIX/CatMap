@@ -6,6 +6,16 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Missing-cat posts: optional `cat_name` and `contact` fields; mark-as-found flow.
+- Comment/tip threads on sightings (with optional location for missing cats).
+- User notification inbox plus Web Push (VAPID) and Android FCM delivery.
+- Nearby missing-cat alerts (opt-in radius around a location).
+- Individual extra-photo deletion (creator/contributor + admin).
+- Recent feed filters: kind tabs, text search, near-me, reunited (`found`) posts.
+- Device-token blocklist for moderation (`/api/admin/blocked-tokens`).
+- Device identity export/import (QR + JSON) in Settings.
+- Offline sighting queue (IndexedDB) with auto-flush on reconnect.
+- iOS platform prep (`frontend/ios/RELEASE.md`).
 - `PUBLIC_SITE_URL` setting wired into backend config (fixes a crash on the
   `/s/{id}` share page).
 - Dependabot configuration for pip, npm, Docker base images, and GitHub

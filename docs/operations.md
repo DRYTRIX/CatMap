@@ -50,3 +50,47 @@ DATABASE_URL=postgresql://user:pass@host:5432/catmap ./backend/scripts/backup_db
 ```
 
 Requires `pg_dump` (the `postgresql-client` package).
+
+## Push notifications
+
+CatMap supports three notification channels:
+
+1. **In-app inbox** — always available; polled via `/api/notifications`.
+2. **Web Push (VAPID)** — browser PWA; requires VAPID keys on the backend.
+3. **FCM (Android)** — native app via Capacitor; requires Firebase.
+
+### Web Push (VAPID)
+
+Generate a keypair:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Set on the backend (Render → `catmap-backend` → Environment):
+
+- `VAPID_PUBLIC_KEY` — the public key
+- `VAPID_PRIVATE_KEY` — the private key
+- `VAPID_SUBJECT` — e.g. `mailto:you@example.com`
+
+The frontend service worker registers push subscriptions against
+`/api/push/subscribe`.
+
+### FCM (Android)
+
+1. Create a Firebase project and add an Android app (`com.catmap.app` or your
+   application id).
+2. Download `google-services.json` into `frontend/android/app/`.
+3. Create a Firebase service account with **Firebase Cloud Messaging API
+   Admin** and paste the JSON into `FCM_SERVICE_ACCOUNT_JSON` on the backend
+   (single-line JSON string).
+
+Without Firebase configured, the app still works — inbox notifications remain;
+native push is skipped gracefully.
+
+### Nearby missing-cat alerts
+
+Users opt in via **Settings → Alert me about missing cats nearby**. The
+backend stores `alert_lat`, `alert_lng`, and `alert_radius_km` on each push
+subscription and notifies matching devices when a new `kind=missing` post is
+created.
