@@ -44,6 +44,8 @@ class SightingDetail(BaseModel):
     cat_id: str | None = None
     kind: str = "sighting"
     status: str = "active"
+    cat_name: str | None = None
+    contact: str | None = None
 
 
 class SightingCluster(BaseModel):
@@ -89,6 +91,8 @@ class AdminReportRow(BaseModel):
     cat_confidence: float | None
     created_at: datetime
     thumbnail_url: str
+    creator_token: str = ""
+    kind: str = "sighting"
 
 
 class AdminActionRow(BaseModel):
@@ -185,6 +189,8 @@ class CreateSightingResult(BaseModel):
     cat_id: str | None = None
     kind: str = "sighting"
     status: str = "active"
+    cat_name: str | None = None
+    contact: str | None = None
 
 
 class BBox(BaseModel):
@@ -192,3 +198,52 @@ class BBox(BaseModel):
     max_lat: float = Field(..., ge=-90, le=90)
     min_lng: float = Field(..., ge=-180, le=180)
     max_lng: float = Field(..., ge=-180, le=180)
+
+
+class CommentOut(BaseModel):
+    id: str
+    sighting_id: str
+    text: str
+    lat: float | None = None
+    lng: float | None = None
+    created_at: datetime
+    is_mine: bool = False
+
+
+class CommentReportResult(BaseModel):
+    reported: bool
+    hidden: bool
+
+
+class AdminCommentRow(BaseModel):
+    id: str
+    sighting_id: str
+    text: str
+    status: str
+    reports_count: int
+    created_at: datetime
+
+
+class NotificationOut(BaseModel):
+    id: str
+    type: str
+    sighting_id: str | None = None
+    comment_id: str | None = None
+    payload_json: str
+    created_at: datetime
+    read_at: datetime | None = None
+
+
+class UnreadCountResult(BaseModel):
+    count: int
+
+
+class PushSubscribeResult(BaseModel):
+    subscribed: bool
+    id: str
+
+
+class BlockedTokenRow(BaseModel):
+    token: str
+    reason: str
+    created_at: datetime

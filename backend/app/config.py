@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     rate_limit_report: str = "40/hour"
     rate_limit_issue: str = "5/hour"
     rate_limit_add_photo: str = "30/hour"
+    rate_limit_comment: str = "60/hour"
     rate_limit_mutate: str = "60/hour"
 
     # Moderation: hide a sighting once it reaches this many distinct reports.
@@ -75,6 +76,14 @@ class Settings(BaseSettings):
     # Telegram admin notifications. Both must be set to enable outbound alerts.
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+
+    # Web Push (VAPID). Empty keys disable browser push.
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:admin@catmap.local"
+
+    # FCM HTTP v1 — JSON service account for the Firebase project.
+    fcm_service_account_json: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

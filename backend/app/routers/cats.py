@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
-from ..deps import device_token
+from ..deps import writable_device_token
 from ..models import Cat, Sighting
 from ..schemas import CatProfile, CatProfileSighting
 
@@ -81,7 +81,7 @@ def _profile(cat: Cat, sightings: list[Sighting]) -> dict:
 def create_cat(
     sighting_ids: str = Form(...),
     name: str | None = Form(None),
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Create a cat profile from one or more of your own sightings (comma-separated IDs)."""
@@ -134,7 +134,7 @@ def get_cat(
 def link_sighting(
     cat_id: str,
     sighting_id: str = Form(...),
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Attach one of your sightings to an existing cat profile."""
@@ -159,7 +159,7 @@ def link_sighting(
 def unlink_sighting(
     cat_id: str,
     sighting_id: str = Form(...),
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Detach one of your sightings from a cat profile."""

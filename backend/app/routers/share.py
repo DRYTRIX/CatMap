@@ -27,17 +27,31 @@ def _site_base() -> str:
 
 def _share_description(sighting: Sighting) -> str:
     text = (sighting.description or "").strip()
+    if sighting.status == "found":
+        base = "This missing cat was reunited"
+    elif sighting.kind == "missing":
+        base = "Missing cat — can you help?"
+    else:
+        base = "A cat was spotted on CatMap"
     if not text:
-        return "A cat was spotted on CatMap"
+        return base
     if len(text) > _MAX_DESC:
-        return text[: _MAX_DESC - 1] + "…"
-    return text
+        text = text[: _MAX_DESC - 1] + "…"
+    return f"{base}: {text}"
+
+
+def _share_title(sighting: Sighting) -> str:
+    if sighting.status == "found":
+        return "Missing cat found on CatMap"
+    if sighting.kind == "missing":
+        return "Missing cat on CatMap — can you help?"
+    return "Cat sighting on CatMap"
 
 
 def _share_html(sighting: Sighting) -> str:
     site = _site_base()
     sighting_id = sighting.id
-    title = "Cat sighting on CatMap"
+    title = _share_title(sighting)
     description = _share_description(sighting)
     share_url = f"{site}/s/{sighting_id}"
     app_url = f"/?s={sighting_id}"
@@ -81,7 +95,7 @@ def share_page(sighting_id: str, db: Session = Depends(get_db)) -> HTMLResponse:
         raise HTTPException(status_code=404, detail="Sighting not found.")
 
     sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status != "active":
+    if sighting is None or sighting.status not in ("active", "found"):
         raise HTTPException(status_code=404, detail="Sighting not found.")
 
     return HTMLResponse(content=_share_html(sighting))

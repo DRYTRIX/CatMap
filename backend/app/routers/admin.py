@@ -1,21 +1,25 @@
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Response
 from sqlalchemy import func, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
-from ..models import AdminAction, Cat, Confirmation, IssueReport, Photo, Report, Sighting
+from ..models import AdminAction, BlockedToken, Cat, Comment, Confirmation, IssueReport, Photo, Report, Sighting
 from ..schemas import (
     AdminActionRow,
+    AdminCommentRow,
     AdminIssueRow,
     AdminMetrics,
     AdminReportRow,
+    BlockedTokenRow,
     DatabaseTableUsage,
     DatabaseUsage,
+    PhotoOut,
+    SightingDetail,
 )
 
 router = APIRouter(
@@ -75,6 +79,8 @@ def list_reported(
             # Public image routes 404 on hidden rows, so moderators use the
             # admin image routes below, which serve bytes regardless of status.
             thumbnail_url=f"/api/admin/sightings/{s.id}/thumbnail",
+            creator_token=s.creator_token,
+            kind=s.kind,
         )
         for s in rows
     ]
@@ -112,6 +118,8 @@ def list_pending(
             cat_confidence=s.cat_confidence,
             created_at=s.created_at,
             thumbnail_url=f"/api/admin/sightings/{s.id}/thumbnail",
+            creator_token=s.creator_token,
+            kind=s.kind,
         )
         for s in rows
     ]
@@ -288,11 +296,25 @@ def admin_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
 
 
 @router.post("/sightings/{sighting_id}/hide")
-def hide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+def hide(
+    sighting_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> dict:
     sighting = _get_or_404(db, sighting_id)
+    creator = sighting.creator_token
     sighting.status = "hidden"
     _record_action(db, "hide", sighting.id)
     db.commit()
+    if creator:
+        from ..user_notifications import notify_sighting_moderated
+
+        background_tasks.add_task(
+            notify_sighting_moderated,
+            sighting_id=sighting.id,
+            creator_token=creator,
+            approved=False,
+        )
     return {"id": sighting.id, "status": sighting.status}
 
 
@@ -306,11 +328,25 @@ def unhide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/sightings/{sighting_id}/approve")
-def approve(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+def approve(
+    sighting_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> dict:
     sighting = _get_or_404(db, sighting_id)
+    creator = sighting.creator_token
     sighting.status = "active"
     _record_action(db, "approve", sighting.id)
     db.commit()
+    if creator:
+        from ..user_notifications import notify_sighting_moderated
+
+        background_tasks.add_task(
+            notify_sighting_moderated,
+            sighting_id=sighting.id,
+            creator_token=creator,
+            approved=True,
+        )
     return {"id": sighting.id, "status": sighting.status}
 
 
@@ -416,3 +452,170 @@ def delete_issue(issue_id: str, db: Session = Depends(get_db)):
     issue = _get_issue_or_404(db, issue_id)
     db.delete(issue)
     db.commit()
+
+
+def _admin_photos(s: Sighting) -> list[PhotoOut]:
+    items = [
+        PhotoOut(
+            id="primary",
+            position=0,
+            photo_url=f"/api/admin/sightings/{s.id}/photo",
+            thumbnail_url=f"/api/admin/sightings/{s.id}/thumbnail",
+        )
+    ]
+    for p in s.photos:
+        items.append(
+            PhotoOut(
+                id=p.id,
+                position=p.position,
+                photo_url=f"/api/admin/sightings/{s.id}/photos/{p.id}",
+                thumbnail_url=f"/api/admin/sightings/{s.id}/photos/{p.id}/thumbnail",
+            )
+        )
+    return items
+
+
+@router.get("/sightings/{sighting_id}", response_model=SightingDetail)
+def admin_sighting_detail(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+    sighting = db.get(Sighting, sighting_id)
+    if sighting is None:
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+    db.refresh(sighting, attribute_names=["photos"])
+    last_seen = sighting.last_seen_at or sighting.created_at
+    return {
+        "id": sighting.id,
+        "lat": sighting.lat,
+        "lng": sighting.lng,
+        "description": sighting.description,
+        "confirmations_count": sighting.confirmations_count,
+        "created_at": sighting.created_at,
+        "last_seen_at": last_seen,
+        "stale": False,
+        "photo_url": f"/api/admin/sightings/{sighting.id}/photo",
+        "thumbnail_url": f"/api/admin/sightings/{sighting.id}/thumbnail",
+        "photos": _admin_photos(sighting),
+        "color": sighting.color,
+        "is_ear_tipped": sighting.is_ear_tipped,
+        "is_stray": sighting.is_stray,
+        "cat_id": sighting.cat_id,
+        "kind": sighting.kind,
+        "status": sighting.status,
+        "cat_name": sighting.cat_name,
+        "contact": sighting.contact,
+    }
+
+
+def _get_admin_extra_photo(db: Session, sighting_id: str, photo_id: str) -> Photo:
+    _get_or_404(db, sighting_id)
+    photo = db.get(Photo, photo_id)
+    if photo is None or photo.sighting_id != sighting_id:
+        raise HTTPException(status_code=404, detail="Photo not found.")
+    return photo
+
+
+@router.get("/sightings/{sighting_id}/photos/{photo_id}")
+def admin_extra_photo(sighting_id: str, photo_id: str, db: Session = Depends(get_db)) -> Response:
+    photo = _get_admin_extra_photo(db, sighting_id, photo_id)
+    return Response(content=photo.photo, media_type=photo.photo_mime)
+
+
+@router.get("/sightings/{sighting_id}/photos/{photo_id}/thumbnail")
+def admin_extra_thumbnail(
+    sighting_id: str, photo_id: str, db: Session = Depends(get_db)
+) -> Response:
+    photo = _get_admin_extra_photo(db, sighting_id, photo_id)
+    return Response(content=photo.thumbnail, media_type=photo.photo_mime)
+
+
+@router.delete("/sightings/{sighting_id}/photos/{photo_id}", status_code=204)
+def admin_delete_photo(sighting_id: str, photo_id: str, db: Session = Depends(get_db)):
+    photo = _get_admin_extra_photo(db, sighting_id, photo_id)
+    _record_action(db, "delete_photo", sighting_id)
+    db.delete(photo)
+    db.commit()
+
+
+@router.get("/comments", response_model=list[AdminCommentRow])
+def list_comments(
+    db: Session = Depends(get_db),
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[AdminCommentRow]:
+    if status is not None and status not in ("visible", "hidden"):
+        raise HTTPException(status_code=400, detail="status must be 'visible' or 'hidden'.")
+    stmt = select(Comment).order_by(Comment.created_at.desc())
+    if status:
+        stmt = stmt.where(Comment.status == status)
+    rows = db.execute(stmt.limit(limit).offset(offset)).scalars().all()
+    return [
+        AdminCommentRow(
+            id=c.id,
+            sighting_id=c.sighting_id,
+            text=c.text,
+            status=c.status,
+            reports_count=c.reports_count,
+            created_at=c.created_at,
+        )
+        for c in rows
+    ]
+
+
+@router.post("/comments/{comment_id}/hide")
+def hide_comment(comment_id: str, db: Session = Depends(get_db)) -> dict:
+    comment = db.get(Comment, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found.")
+    comment.status = "hidden"
+    db.commit()
+    return {"id": comment.id, "status": comment.status}
+
+
+@router.post("/comments/{comment_id}/unhide")
+def unhide_comment(comment_id: str, db: Session = Depends(get_db)) -> dict:
+    comment = db.get(Comment, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found.")
+    comment.status = "visible"
+    db.commit()
+    return {"id": comment.id, "status": comment.status}
+
+
+@router.delete("/comments/{comment_id}", status_code=204)
+def delete_comment(comment_id: str, db: Session = Depends(get_db)):
+    comment = db.get(Comment, comment_id)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found.")
+    db.delete(comment)
+    db.commit()
+
+
+@router.get("/blocked-tokens", response_model=list[BlockedTokenRow])
+def list_blocked(db: Session = Depends(get_db), limit: int = 50, offset: int = 0) -> list[BlockedTokenRow]:
+    rows = db.execute(
+        select(BlockedToken).order_by(BlockedToken.created_at.desc()).limit(limit).offset(offset)
+    ).scalars().all()
+    return [BlockedTokenRow(token=r.token, reason=r.reason, created_at=r.created_at) for r in rows]
+
+
+@router.post("/blocked-tokens")
+def block_token(
+    token: str = Form(...),
+    reason: str = Form(""),
+    db: Session = Depends(get_db),
+) -> dict:
+    value = token.strip()
+    if not value:
+        raise HTTPException(status_code=400, detail="Token required.")
+    row = BlockedToken(token=value, reason=(reason or "").strip()[:280])
+    db.merge(row)
+    db.commit()
+    return {"token": value, "blocked": True}
+
+
+@router.delete("/blocked-tokens/{token_value}", status_code=204)
+def unblock_token(token_value: str, db: Session = Depends(get_db)):
+    row = db.get(BlockedToken, token_value)
+    if row:
+        db.delete(row)
+        db.commit()

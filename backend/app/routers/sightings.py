@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..cat_detection import detect_cat, get_detection_status
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, no_cache
+from ..deps import device_token, no_cache, writable_device_token
 from ..images import InvalidImageError, extract_gps, process_upload
 from ..models import Confirmation, Photo, Report, Sighting
 from ..notifications import notify_sighting_created
@@ -40,6 +40,8 @@ settings = get_settings()
 
 MAX_DESCRIPTION = 1000
 MAX_COLOR = 30
+MAX_CAT_NAME = 50
+MAX_CONTACT = 200
 MAX_PHOTOS_PER_SIGHTING = 6
 
 # Reasons accepted by the report endpoint (empty string = unspecified).
@@ -116,6 +118,8 @@ def _detail(s: Sighting) -> dict:
         "cat_id": s.cat_id,
         "kind": s.kind,
         "status": s.status,
+        "cat_name": s.cat_name,
+        "contact": s.contact,
     }
 
 
@@ -322,6 +326,20 @@ def _normalize_color(color: str | None) -> str | None:
     return color or None
 
 
+def _normalize_cat_name(name: str | None) -> str | None:
+    if name is None:
+        return None
+    name = name.strip()[:MAX_CAT_NAME]
+    return name or None
+
+
+def _normalize_contact(contact: str | None) -> str | None:
+    if contact is None:
+        return None
+    contact = contact.strip()[:MAX_CONTACT]
+    return contact or None
+
+
 @router.post("", response_model=CreateSightingResult, status_code=201)
 @limiter.limit(settings.rate_limit_create)
 async def create_sighting(
@@ -336,7 +354,9 @@ async def create_sighting(
     is_ear_tipped: bool | None = Form(None),
     is_stray: bool | None = Form(None),
     kind: str = Form("sighting"),
-    token: str = Depends(device_token),
+    cat_name: str | None = Form(None),
+    contact: str | None = Form(None),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Create a sighting (one or more photos). Coordinates come from the form,
@@ -433,6 +453,8 @@ async def create_sighting(
         is_ear_tipped=is_ear_tipped,
         is_stray=is_stray,
         kind=post_kind,
+        cat_name=_normalize_cat_name(cat_name) if post_kind == "missing" else None,
+        contact=_normalize_contact(contact) if post_kind == "missing" else None,
         status="pending" if pending else "active",
     )
     for position, (main_bytes, thumb_bytes, mime) in enumerate(processed[1:], start=1):
@@ -453,6 +475,16 @@ async def create_sighting(
         photo_count=1 + len(sighting.photos),
         pending=pending,
     )
+    if post_kind == "missing" and not pending:
+        from ..user_notifications import notify_nearby_missing_cat
+
+        background_tasks.add_task(
+            notify_nearby_missing_cat,
+            sighting_id=sighting.id,
+            lat=sighting.lat,
+            lng=sighting.lng,
+            description=sighting.description,
+        )
     result = _detail(sighting)
     result["pending"] = pending
     return result
@@ -465,24 +497,65 @@ def recent_sightings(
     limit: int = Query(20, ge=1, le=50),
     offset: int = Query(0, ge=0),
     sort: str = Query("recent", pattern="^(recent|confirmed)$"),
+    kind: str | None = None,
+    q: str | None = None,
+    status: str = Query("active", pattern="^(active|found)$"),
+    near_lat: float | None = None,
+    near_lng: float | None = None,
+    radius_km: float | None = Query(None, ge=0.1, le=500),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> list[dict]:
-    """Browse active sightings as a feed — newest first, or most-confirmed."""
+    """Browse sightings as a feed — newest first, or most-confirmed."""
+    if kind is not None and kind not in ALLOWED_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid kind (expected one of: {', '.join(sorted(ALLOWED_KINDS))}).",
+        )
+    if (near_lat is None) ^ (near_lng is None):
+        raise HTTPException(status_code=400, detail="Provide both near_lat and near_lng.")
+    if radius_km is not None and (near_lat is None or near_lng is None):
+        raise HTTPException(status_code=400, detail="radius_km requires near_lat and near_lng.")
+
     order = (
         (Sighting.confirmations_count.desc(), Sighting.created_at.desc())
         if sort == "confirmed"
         else (Sighting.created_at.desc(),)
     )
+    conditions = [Sighting.status == status]
+    if kind is not None:
+        conditions.append(Sighting.kind == kind)
+    if q:
+        conditions.append(Sighting.description.ilike(f"%{q.strip()[:100]}%"))
+    if near_lat is not None and near_lng is not None and radius_km:
+        deg = radius_km / 111.0
+        conditions.extend([
+            Sighting.lat >= near_lat - deg,
+            Sighting.lat <= near_lat + deg,
+            Sighting.lng >= near_lng - deg,
+            Sighting.lng <= near_lng + deg,
+        ])
+
     stmt = (
         select(Sighting)
-        .where(Sighting.status == "active")
+        .where(*conditions)
         .options(selectinload(Sighting.photos))
         .order_by(*order)
         .offset(offset)
         .limit(limit)
     )
-    return [_detail(s) for s in db.execute(stmt).scalars().all()]
+    rows = list(db.execute(stmt).scalars().all())
+
+    if near_lat is not None and near_lng is not None and radius_km:
+        from ..user_notifications import _haversine_km
+
+        rows = [
+            s
+            for s in rows
+            if _haversine_km(near_lat, near_lng, s.lat, s.lng) <= radius_km
+        ]
+
+    return [_detail(s) for s in rows]
 
 
 @router.get("/mine", response_model=list[SightingDetail])
@@ -628,7 +701,7 @@ async def add_photos(
     sighting_id: str,
     images: list[UploadFile] = File(default=[]),
     image: UploadFile | None = File(None),
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Add one or more photos to an existing sighting.
@@ -725,12 +798,41 @@ async def add_photos(
     return _detail(sighting)
 
 
+@router.delete("/{sighting_id}/photos/{photo_id}", status_code=204)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def delete_extra_photo(
+    request: Request,
+    sighting_id: str,
+    photo_id: str,
+    token: str = Depends(writable_device_token),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Delete an extra photo — creator or the photo contributor only."""
+    sighting = db.get(Sighting, sighting_id)
+    if sighting is None:
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+
+    photo = db.get(Photo, photo_id)
+    if photo is None or photo.sighting_id != sighting_id:
+        raise HTTPException(status_code=404, detail="Photo not found.")
+
+    is_creator = sighting.creator_token == token
+    is_contributor = photo.contributor_token == token
+    if not is_creator and not is_contributor:
+        raise HTTPException(status_code=403, detail="Not allowed to delete this photo.")
+
+    db.delete(photo)
+    db.commit()
+    return Response(status_code=204)
+
+
 @router.post("/{sighting_id}/confirm", response_model=ConfirmResult)
 @limiter.limit(settings.rate_limit_confirm)
 def confirm_sighting(
     request: Request,
     sighting_id: str,
-    token: str = Depends(device_token),
+    background_tasks: BackgroundTasks,
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> ConfirmResult:
     """Confirm a sighting once per device (idempotent)."""
@@ -753,7 +855,16 @@ def confirm_sighting(
 
     sighting.confirmations_count += 1
     sighting.last_seen_at = datetime.now(UTC)  # a fresh confirmation = recently seen
+    creator = sighting.creator_token
     db.commit()
+    if creator and creator != token:
+        from ..user_notifications import notify_sighting_confirmed
+
+        background_tasks.add_task(
+            notify_sighting_confirmed,
+            sighting_id=sighting_id,
+            creator_token=creator,
+        )
     return ConfirmResult(
         confirmations=sighting.confirmations_count, already_confirmed=False
     )
@@ -765,7 +876,7 @@ def report_sighting(
     request: Request,
     sighting_id: str,
     reason: str = Form(""),
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> ReportResult:
     """Report a sighting once per device; auto-hide once enough reports accrue."""
@@ -817,7 +928,9 @@ def update_sighting(
     is_stray: bool | None = Form(None),
     lat: float | None = Form(None),
     lng: float | None = Form(None),
-    token: str = Depends(device_token),
+    cat_name: str | None = Form(None),
+    contact: str | None = Form(None),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Edit a sighting's description/attributes/location — creator-only."""
@@ -840,6 +953,11 @@ def update_sighting(
             raise HTTPException(status_code=400, detail="Coordinates out of range.")
         sighting.lat = lat
         sighting.lng = lng
+    if sighting.kind == "missing":
+        if cat_name is not None:
+            sighting.cat_name = _normalize_cat_name(cat_name)
+        if contact is not None:
+            sighting.contact = _normalize_contact(contact)
 
     db.commit()
     db.refresh(sighting)
@@ -851,7 +969,7 @@ def update_sighting(
 def mark_gone(
     request: Request,
     sighting_id: str,
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Mark your own sighting as 'gone' — the cat has moved on (off the map)."""
@@ -867,7 +985,7 @@ def mark_gone(
 def mark_found(
     request: Request,
     sighting_id: str,
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Mark your own missing-cat post as found (off the map, still in /mine)."""
@@ -890,7 +1008,7 @@ def mark_found(
 def delete_sighting(
     request: Request,
     sighting_id: str,
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> Response:
     """Delete a sighting — only the device that created it may do so."""

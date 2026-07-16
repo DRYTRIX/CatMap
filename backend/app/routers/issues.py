@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token
+from ..deps import writable_device_token
 from ..models import IssueReport
 from ..notifications import notify_issue_reported
 from ..ratelimit import limiter
@@ -28,7 +28,7 @@ def submit_issue(
     category: str = Form(...),
     message: str = Form(...),
     page_url: str = Form(""),
-    token: str = Depends(device_token),
+    token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> IssueReportResult:
     """Submit an app issue report; stored in DB and sent to Telegram."""

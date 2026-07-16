@@ -12,3 +12,5 @@ onnxruntime==1.27.0
 numpy==2.5.1
 sentry-sdk[fastapi]==2.64.0
 httpx==0.28.1
+pywebpush==2.0.3
+google-auth==2.48.0

@@ -62,6 +62,10 @@ class Sighting(Base):
     # Post type: "sighting" (spotted cat) or "missing" (lost cat seeking help).
     kind: Mapped[str] = mapped_column(String(16), default="sighting", nullable=False)
 
+    # Missing-cat posts: optional name and how to reach the owner.
+    cat_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    contact: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
     # Optional descriptive attributes; NULL means "unknown"/not specified.
     color: Mapped[str | None] = mapped_column(String(30), nullable=True)
     is_ear_tipped: Mapped[bool | None] = mapped_column(nullable=True)
@@ -85,6 +89,9 @@ class Sighting(Base):
         order_by="Photo.position",
     )
     cat: Mapped["Cat | None"] = relationship(back_populates="sightings")
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="sighting", cascade="all, delete-orphan", order_by="Comment.created_at"
+    )
 
     __table_args__ = (
         Index("ix_sightings_lat", "lat"),
@@ -183,6 +190,100 @@ class Report(Base):
 
     __table_args__ = (
         UniqueConstraint("sighting_id", "device_token", name="uq_report_once"),
+    )
+
+
+class Comment(Base):
+    """User tip or note on a sighting (especially missing-cat posts)."""
+
+    __tablename__ = "comments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    sighting_id: Mapped[str] = mapped_column(
+        ForeignKey("sightings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="visible", nullable=False)
+    reports_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    sighting: Mapped["Sighting"] = relationship(back_populates="comments")
+    reports: Mapped[list["CommentReport"]] = relationship(
+        back_populates="comment", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (Index("ix_comments_status", "status"),)
+
+
+class CommentReport(Base):
+    __tablename__ = "comment_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    comment_id: Mapped[str] = mapped_column(
+        ForeignKey("comments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    comment: Mapped["Comment"] = relationship(back_populates="reports")
+
+    __table_args__ = (
+        UniqueConstraint("comment_id", "device_token", name="uq_comment_report_once"),
+    )
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    recipient_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    sighting_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    comment_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False, index=True
+    )
+    read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(16), nullable=False)
+    subscription: Mapped[str] = mapped_column(Text, nullable=False)
+    alert_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    alert_lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    alert_radius_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "device_token", "subscription", name="uq_push_sub_device_subscription"
+        ),
+    )
+
+
+class BlockedToken(Base):
+    __tablename__ = "blocked_tokens"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    reason: Mapped[str] = mapped_column(String(280), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
     )
 
 
