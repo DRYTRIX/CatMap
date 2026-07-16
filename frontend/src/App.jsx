@@ -15,7 +15,11 @@ import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
 import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
+import NotificationsModal from "./components/NotificationsModal";
+import SettingsModal from "./components/SettingsModal";
+import { fetchUnreadCount } from "./api";
 import { markCreated } from "./deviceToken";
+import { flushQueue, pendingCount } from "./lib/offlineQueue";
 import { getPosition } from "./lib/geolocate";
 import { initNativeApp } from "./lib/nativeInit";
 import { track } from "./analytics";
@@ -36,6 +40,10 @@ function AppShell() {
   const [showMySightings, setShowMySightings] = useState(false);
   const [showRecent, setShowRecent] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [queueCount, setQueueCount] = useState(0);
   const [viewMode, setViewMode] = useState("map");
   const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const mapRef = useRef(null);
@@ -73,6 +81,14 @@ function AppShell() {
       setShowReportIssue(false);
       return true;
     }
+    if (showNotifications) {
+      setShowNotifications(false);
+      return true;
+    }
+    if (showSettings) {
+      setShowSettings(false);
+      return true;
+    }
     if (mapMenuOpen) {
       setMapMenuOpen(false);
       return true;
@@ -89,6 +105,8 @@ function AppShell() {
     showMySightings,
     showRecent,
     showReportIssue,
+    showNotifications,
+    showSettings,
     mapMenuOpen,
   ]);
 
@@ -136,6 +154,34 @@ function AppShell() {
     };
   }, [toast, t]);
 
+  useEffect(() => {
+    function refreshCounts() {
+      fetchUnreadCount()
+        .then((r) => setUnreadCount(r.count))
+        .catch(() => {});
+      pendingCount()
+        .then(setQueueCount)
+        .catch(() => {});
+    }
+    refreshCounts();
+    const id = setInterval(refreshCounts, 60_000);
+    return () => clearInterval(id);
+  }, [refreshKey]);
+
+  useEffect(() => {
+    function tryFlush() {
+      flushQueue({
+        onItemDone: () => {
+          setRefreshKey((k) => k + 1);
+          toast.success(t("offline.sent"));
+        },
+      }).then(() => pendingCount().then(setQueueCount));
+    }
+    tryFlush();
+    window.addEventListener("online", tryFlush);
+    return () => window.removeEventListener("online", tryFlush);
+  }, [toast, t]);
+
   function handleCreated(sighting, meta = {}) {
     track("add_sighting_complete", meta);
     setAdding(false);
@@ -180,7 +226,17 @@ function AppShell() {
 
   return (
     <div className="app">
-      <Header count={count} map={map} onAdd={openAdd} refreshKey={refreshKey} donateURL="https://buymeacoffee.com/drytrix" />
+      <Header
+        count={count}
+        map={map}
+        onAdd={openAdd}
+        refreshKey={refreshKey}
+        donateURL="https://buymeacoffee.com/drytrix"
+        unreadCount={unreadCount}
+        queueCount={queueCount}
+        onNotifications={() => setShowNotifications(true)}
+        onSettings={() => setShowSettings(true)}
+      />
 
       <main className="map-wrap">
         <MapView
@@ -262,6 +318,18 @@ function AppShell() {
       {showReportIssue && (
         <ReportIssueModal onClose={() => setShowReportIssue(false)} />
       )}
+
+      {showNotifications && (
+        <NotificationsModal
+          onClose={() => {
+            setShowNotifications(false);
+            fetchUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
+          }}
+          onSelectSighting={(sid) => setSelectedId(sid)}
+        />
+      )}
+
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       <OnboardingHint />
       <InstallPrompt />

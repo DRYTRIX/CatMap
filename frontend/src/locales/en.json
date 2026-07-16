@@ -67,7 +67,15 @@
     "recent": "Recent",
     "confirmed": "Most confirmed",
     "empty": "No sightings yet — be the first!",
-    "loadError": "Couldn't load recent sightings."
+    "loadError": "Couldn't load recent sightings.",
+    "searchPlaceholder": "Search descriptions…",
+    "nearMe": "Near me",
+    "tabs": {
+      "all": "All",
+      "sightings": "Sightings",
+      "missing": "Missing",
+      "reunited": "Reunited"
+    }
   },
   "reportIssue": {
     "title": "Report an issue",
@@ -127,7 +135,12 @@
     "postMissing": "Post missing cat",
     "pendingReview": "Your sighting is under review. We'll check it shortly!",
     "success": "Cat added to the map! 🐱",
-    "missingSuccess": "Missing cat posted — neighbors can help look! 🐱"
+    "missingSuccess": "Missing cat posted — neighbors can help look! 🐱",
+    "catName": "Cat's name",
+    "catNamePlaceholder": "Whiskers, Luna…",
+    "contact": "How to reach you",
+    "contactPlaceholder": "Phone, email, or social handle",
+    "contactHint": "Shown on your missing-cat post so finders can contact you."
   },
   "sighting": {
     "title": "Cat sighting",
@@ -136,6 +149,9 @@
     "missingSince": "Missing since {{time}}",
     "missingBadge": "Missing",
     "foundBadge": "Found",
+    "catNameLabel": "Name",
+    "contactLabel": "Contact",
+    "editSuccess": "Sighting updated.",
     "stale": "may be outdated",
     "confirm": "Still here? Confirm",
     "confirmMissing": "I've seen this cat",
@@ -176,6 +192,8 @@
     "linkSameCat": "Link as same cat",
     "linkSuccess": "Linked as the same cat!",
     "profileCreated": "Cat profile created!",
+    "deletePhoto": "Remove photo",
+    "photoDeleted": "Photo removed.",
     "reasons": {
       "not_a_cat": "Not a cat",
       "spam": "Spam",
@@ -192,6 +210,55 @@
     "lastSeen": "Last seen {{time}}",
     "earTipped": "Ear-tipped: {{value}}",
     "stray": "Stray: {{value}}"
+  },
+  "comments": {
+    "title": "Comments",
+    "tipsTitle": "Tips & sightings",
+    "empty": "No tips yet — be the first to help!",
+    "placeholder": "Add a note…",
+    "placeholderMissing": "I saw this cat at…",
+    "includeLocation": "Include where I saw them",
+    "seenAt": "Seen near {{lat}}, {{lng}}",
+    "post": "Post",
+    "posting": "Posting…",
+    "posted": "Posted!",
+    "deleted": "Removed.",
+    "reported": "Thanks — reported."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet."
+  },
+  "settings": {
+    "title": "Settings",
+    "notifications": "Notifications",
+    "enablePush": "Enable push notifications",
+    "disablePush": "Disable push notifications",
+    "pushEnabled": "Push notifications enabled.",
+    "pushDisabled": "Push notifications disabled.",
+    "pushUnsupported": "Push notifications aren't supported in this browser.",
+    "pushDenied": "Notification permission denied.",
+    "pushFailed": "Couldn't enable push notifications.",
+    "nearbyMissing": "Alert me about missing cats nearby",
+    "radiusKm": "Alert radius (km)",
+    "saveNearby": "Save alert preferences",
+    "nearbySaved": "Alert preferences saved.",
+    "myData": "My data",
+    "myDataHint": "Save this code to transfer your sightings to another device.",
+    "qrAlt": "QR code with your device data",
+    "copyData": "Copy backup data",
+    "copied": "Copied!",
+    "copyFailed": "Couldn't copy.",
+    "importLabel": "Import from another device",
+    "importPlaceholder": "Paste backup JSON here…",
+    "importButton": "Import data",
+    "importConfirmTitle": "Replace this device's identity?",
+    "importConfirmMessage": "This replaces your local device token. Your sightings on this device will no longer match unless you imported the correct backup.",
+    "importSuccess": "Identity imported — reloading…"
+  },
+  "offline": {
+    "queued": "Saved offline — will upload when you're back online.",
+    "sent": "Offline sighting uploaded!"
   },
   "errorBoundary": {
     "title": "Something went wrong",

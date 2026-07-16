@@ -21,6 +21,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {
   adminApproveSighting,
+  adminBlockToken,
   adminDeleteIssue,
   adminDeleteSighting,
   adminHideSighting,
@@ -720,6 +721,25 @@ function AdminPanel() {
                     >
                       Delete
                     </button>
+                    {r.creator_token && (
+                      <button
+                        className="btn btn-ghost"
+                        disabled={busyId === r.id}
+                        onClick={async () => {
+                          setBusyId(r.id);
+                          try {
+                            await adminBlockToken(r.creator_token, token, "admin");
+                            toast.success("Creator blocked.");
+                          } catch (e) {
+                            toast.error(e.message);
+                          } finally {
+                            setBusyId(null);
+                          }
+                        }}
+                      >
+                        Block creator
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

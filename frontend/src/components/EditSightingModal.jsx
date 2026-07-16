@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
@@ -26,8 +27,12 @@ function boolToTri(value) {
  * Props: data (current SightingDetail), onClose, onSaved(updatedDetail).
  */
 export default function EditSightingModal({ data, onClose, onSaved }) {
+  const { t } = useTranslation();
   const toast = useToast();
+  const isMissing = data.kind === "missing";
   const [description, setDescription] = useState(data.description || "");
+  const [catName, setCatName] = useState(data.cat_name || "");
+  const [contact, setContact] = useState(data.contact || "");
   const [color, setColor] = useState(data.color || "");
   const [isEarTipped, setIsEarTipped] = useState(boolToTri(data.is_ear_tipped));
   const [isStray, setIsStray] = useState(boolToTri(data.is_stray));
@@ -37,12 +42,16 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
     setSaving(true);
     try {
       const fields = { description, color };
+      if (isMissing) {
+        fields.cat_name = catName;
+        fields.contact = contact;
+      }
       if (isEarTipped !== "") fields.is_ear_tipped = isEarTipped;
       if (isStray !== "") fields.is_stray = isStray;
 
       const updated = await updateSighting(data.id, fields);
       track("sighting_edit");
-      toast.success("Sighting updated.");
+      toast.success(t("sighting.editSuccess"));
       onSaved(updated);
     } catch (e) {
       toast.error(e.message);
@@ -71,6 +80,31 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
         />
         <p className="hint char-count">{description.length}/1000</p>
       </div>
+
+      {isMissing && (
+        <>
+          <div className="field">
+            <label htmlFor="edit-cat-name">{t("addSighting.catName")}</label>
+            <input
+              id="edit-cat-name"
+              type="text"
+              value={catName}
+              maxLength={50}
+              onChange={(e) => setCatName(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-contact">{t("addSighting.contact")}</label>
+            <input
+              id="edit-contact"
+              type="text"
+              value={contact}
+              maxLength={200}
+              onChange={(e) => setContact(e.target.value)}
+            />
+          </div>
+        </>
+      )}
 
       <div className="field">
         <label htmlFor="edit-color">Color / pattern</label>

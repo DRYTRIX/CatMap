@@ -114,8 +114,17 @@ export async function unlinkSightingFromCat(catId, sightingId) {
   return handle(res);
 }
 
-export async function fetchRecent({ limit = 20, offset = 0, sort = "recent" } = {}, signal) {
+export async function fetchRecent(
+  { limit = 20, offset = 0, sort = "recent", kind, q, status, near_lat, near_lng, radius_km } = {},
+  signal
+) {
   const params = new URLSearchParams({ limit, offset, sort });
+  if (kind) params.set("kind", kind);
+  if (q) params.set("q", q);
+  if (status) params.set("status", status);
+  if (near_lat != null) params.set("near_lat", near_lat);
+  if (near_lng != null) params.set("near_lng", near_lng);
+  if (radius_km != null) params.set("radius_km", radius_km);
   const res = await fetch(`${API_BASE}/api/sightings/recent?${params}`, { signal });
   return handle(res);
 }
@@ -141,6 +150,8 @@ export function createSighting({
   isEarTipped = "",
   isStray = "",
   kind = "sighting",
+  catName = "",
+  contact = "",
   onProgress,
 }) {
   return new Promise((resolve, reject) => {
@@ -152,6 +163,8 @@ export function createSighting({
     form.append("lng", lng);
     form.append("description", description || "");
     form.append("kind", kind || "sighting");
+    if (catName) form.append("cat_name", catName);
+    if (contact) form.append("contact", contact);
     if (color) form.append("color", color);
     if (isEarTipped !== "") form.append("is_ear_tipped", isEarTipped);
     if (isStray !== "") form.append("is_stray", isStray);
@@ -307,7 +320,140 @@ export async function deleteSighting(id) {
   return true;
 }
 
-// ---------- Admin (gated by ADMIN_TOKEN, sent as X-Admin-Token) ----------
+export async function deleteSightingPhoto(sightingId, photoId) {
+  const res = await fetch(`${API_BASE}/api/sightings/${sightingId}/photos/${photoId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(translateApiError(detail));
+  }
+  return true;
+}
+
+// ---------- Comments ----------
+
+export async function fetchComments(sightingId, signal) {
+  const res = await fetch(`${API_BASE}/api/sightings/${sightingId}/comments`, {
+    headers: authHeaders(),
+    signal,
+  });
+  return handle(res);
+}
+
+export async function createComment(sightingId, { text, lat, lng }) {
+  const form = new FormData();
+  form.append("text", text);
+  if (lat != null && lng != null) {
+    form.append("lat", lat);
+    form.append("lng", lng);
+  }
+  const res = await fetch(`${API_BASE}/api/sightings/${sightingId}/comments`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function deleteComment(sightingId, commentId) {
+  const res = await fetch(`${API_BASE}/api/sightings/${sightingId}/comments/${commentId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(translateApiError(detail));
+  }
+  return true;
+}
+
+export async function reportComment(sightingId, commentId) {
+  const res = await fetch(
+    `${API_BASE}/api/sightings/${sightingId}/comments/${commentId}/report`,
+    { method: "POST", headers: authHeaders() }
+  );
+  return handle(res);
+}
+
+// ---------- Notifications & push ----------
+
+export async function fetchNotifications(signal) {
+  const res = await fetch(`${API_BASE}/api/notifications`, {
+    headers: authHeaders(),
+    signal,
+  });
+  return handle(res);
+}
+
+export async function fetchUnreadCount(signal) {
+  const res = await fetch(`${API_BASE}/api/notifications/unread-count`, {
+    headers: authHeaders(),
+    signal,
+  });
+  return handle(res);
+}
+
+export async function markNotificationsRead(ids = []) {
+  const form = new FormData();
+  if (ids.length) form.append("ids", ids.join(","));
+  const res = await fetch(`${API_BASE}/api/notifications/read`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function fetchVapidPublicKey() {
+  const res = await fetch(`${API_BASE}/api/push/vapid-public-key`);
+  return handle(res);
+}
+
+export async function subscribePush({
+  platform,
+  subscription,
+  alertLat,
+  alertLng,
+  alertRadiusKm,
+}) {
+  const form = new FormData();
+  form.append("platform", platform);
+  form.append("subscription", subscription);
+  if (alertLat != null) form.append("alert_lat", alertLat);
+  if (alertLng != null) form.append("alert_lng", alertLng);
+  if (alertRadiusKm != null) form.append("alert_radius_km", alertRadiusKm);
+  const res = await fetch(`${API_BASE}/api/push/subscribe`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function unsubscribePush(subscription) {
+  const form = new FormData();
+  form.append("subscription", subscription);
+  const res = await fetch(`${API_BASE}/api/push/subscribe`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
 
 function adminHeaders(token) {
   return { "X-Admin-Token": token };
@@ -416,6 +562,19 @@ export async function adminResolveIssue(id, token) {
   const res = await fetch(`${API_BASE}/api/admin/issues/${id}/resolve`, {
     method: "POST",
     headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminBlockToken(deviceTokenValue, adminToken, reason = "") {
+  const form = new FormData();
+  form.append("token", deviceTokenValue);
+  form.append("reason", reason);
+  const res = await fetch(`${API_BASE}/api/admin/blocked-tokens`, {
+    method: "POST",
+    headers: adminHeaders(adminToken),
+    body: form,
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   return handle(res);

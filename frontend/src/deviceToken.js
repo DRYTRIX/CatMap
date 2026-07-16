@@ -58,3 +58,34 @@ export function markCreated(id) {
 export function isMine(id) {
   return getCreatedSet().has(id);
 }
+
+/** Export device identity for transfer to another browser/device. */
+export function exportIdentity() {
+  let favorites = [];
+  try {
+    favorites = JSON.parse(localStorage.getItem("catmap_favorites") || "[]");
+  } catch {
+    /* ignore */
+  }
+  return JSON.stringify({
+    v: 1,
+    token: getDeviceToken(),
+    favorites,
+  });
+}
+
+/** Replace local identity from exported JSON (merges favorites). */
+export function importIdentity(jsonText) {
+  const data = JSON.parse(jsonText);
+  if (!data?.token || typeof data.token !== "string") {
+    throw new Error("Invalid identity data.");
+  }
+  localStorage.setItem(KEY, data.token);
+  if (Array.isArray(data.favorites)) {
+    const existing = new Set(
+      JSON.parse(localStorage.getItem("catmap_favorites") || "[]")
+    );
+    for (const id of data.favorites) existing.add(id);
+    localStorage.setItem("catmap_favorites", JSON.stringify([...existing]));
+  }
+}

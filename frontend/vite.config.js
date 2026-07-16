@@ -12,8 +12,10 @@ export default defineConfig(({ mode }) => ({
     // Service worker is for the browser PWA only — not needed inside Capacitor WebView.
     mode !== "mobile" &&
       VitePWA({
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.js",
         registerType: "autoUpdate",
-        // External registration script so a strict script-src CSP doesn't block it.
         injectRegister: "script",
         includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
         manifest: {
@@ -35,22 +37,9 @@ export default defineConfig(({ mode }) => ({
             },
           ],
         },
-        workbox: {
-          // ONNX runtime WASM + model are loaded on demand; don't precache multi-MB assets.
+        injectManifest: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
           globIgnores: ["**/ort-*.wasm", "**/models/*.onnx"],
-          // Cache OpenStreetMap tiles for smoother panning / offline shell.
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i,
-              handler: "CacheFirst",
-              options: {
-                cacheName: "osm-tiles",
-                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 14 },
-                cacheableResponse: { statuses: [0, 200] },
-              },
-            },
-          ],
         },
       }),
   ].filter(Boolean),

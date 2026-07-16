@@ -67,7 +67,15 @@
     "recent": "Recent",
     "confirmed": "Meest bevestigd",
     "empty": "Nog geen waarnemingen — wees de eerste!",
-    "loadError": "Kon recente waarnemingen niet laden."
+    "loadError": "Kon recente waarnemingen niet laden.",
+    "searchPlaceholder": "Zoek in beschrijvingen…",
+    "nearMe": "In mijn buurt",
+    "tabs": {
+      "all": "Alles",
+      "sightings": "Meldingen",
+      "missing": "Vermist",
+      "reunited": "Teruggevonden"
+    }
   },
   "reportIssue": {
     "title": "Probleem melden",
@@ -127,7 +135,12 @@
     "postMissing": "Vermiste kat plaatsen",
     "pendingReview": "Je waarneming wordt beoordeeld. We kijken er zo naar!",
     "success": "Kat toegevoegd aan de kaart! 🐱",
-    "missingSuccess": "Vermiste kat geplaatst — buren kunnen helpen zoeken! 🐱"
+    "missingSuccess": "Vermiste kat geplaatst — buren kunnen helpen zoeken! 🐱",
+    "catName": "Naam van de kat",
+    "catNamePlaceholder": "Whiskers, Luna…",
+    "contact": "Hoe je bereikbaar bent",
+    "contactPlaceholder": "Telefoon, e-mail of social media",
+    "contactHint": "Getoond op je vermiste-kat melding."
   },
   "sighting": {
     "title": "Katwaarneming",
@@ -136,6 +149,11 @@
     "missingSince": "Vermist sinds {{time}}",
     "missingBadge": "Vermist",
     "foundBadge": "Gevonden",
+    "catNameLabel": "Naam",
+    "contactLabel": "Contact",
+    "editSuccess": "Melding bijgewerkt.",
+    "deletePhoto": "Foto verwijderen",
+    "photoDeleted": "Foto verwijderd.",
     "stale": "mogelijk verouderd",
     "confirm": "Nog steeds hier? Bevestigen",
     "confirmMissing": "Ik heb deze kat gezien",
@@ -192,6 +210,55 @@
     "lastSeen": "Laatst gezien {{time}}",
     "earTipped": "Geknipt oor: {{value}}",
     "stray": "Zwerfkat: {{value}}"
+  },
+  "comments": {
+    "title": "Reacties",
+    "tipsTitle": "Tips & meldingen",
+    "empty": "Nog geen tips — wees de eerste!",
+    "placeholder": "Notitie toevoegen…",
+    "placeholderMissing": "Ik zag deze kat bij…",
+    "includeLocation": "Locatie meesturen",
+    "seenAt": "Gezien bij {{lat}}, {{lng}}",
+    "post": "Plaatsen",
+    "posting": "Plaatsen…",
+    "posted": "Geplaatst!",
+    "deleted": "Verwijderd.",
+    "reported": "Bedankt — gemeld."
+  },
+  "notifications": {
+    "title": "Meldingen",
+    "empty": "Nog geen meldingen."
+  },
+  "settings": {
+    "title": "Instellingen",
+    "notifications": "Meldingen",
+    "enablePush": "Pushmeldingen inschakelen",
+    "disablePush": "Pushmeldingen uitschakelen",
+    "pushEnabled": "Pushmeldingen ingeschakeld.",
+    "pushDisabled": "Pushmeldingen uitgeschakeld.",
+    "pushUnsupported": "Push wordt niet ondersteund in deze browser.",
+    "pushDenied": "Meldingstoestemming geweigerd.",
+    "pushFailed": "Push kon niet worden ingeschakeld.",
+    "nearbyMissing": "Waarschuw bij vermiste katten in de buurt",
+    "radiusKm": "Alarmradius (km)",
+    "saveNearby": "Voorkeuren opslaan",
+    "nearbySaved": "Voorkeuren opgeslagen.",
+    "myData": "Mijn gegevens",
+    "myDataHint": "Bewaar deze code om je meldingen over te zetten.",
+    "qrAlt": "QR-code met apparaatgegevens",
+    "copyData": "Back-up kopiëren",
+    "copied": "Gekopieerd!",
+    "copyFailed": "Kopiëren mislukt.",
+    "importLabel": "Importeren van ander apparaat",
+    "importPlaceholder": "Plak JSON hier…",
+    "importButton": "Gegevens importeren",
+    "importConfirmTitle": "Apparaatidentiteit vervangen?",
+    "importConfirmMessage": "Dit vervangt je lokale apparaattoken.",
+    "importSuccess": "Identiteit geïmporteerd — herladen…"
+  },
+  "offline": {
+    "queued": "Offline opgeslagen — upload bij verbinding.",
+    "sent": "Offline melding geüpload!"
   },
   "errorBoundary": {
     "title": "Er ging iets mis",

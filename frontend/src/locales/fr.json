@@ -67,7 +67,15 @@
     "recent": "Récent",
     "confirmed": "Plus confirmés",
     "empty": "Aucune observation — soyez le premier !",
-    "loadError": "Impossible de charger les observations récentes."
+    "loadError": "Impossible de charger les observations récentes.",
+    "searchPlaceholder": "Rechercher dans les descriptions…",
+    "nearMe": "Près de moi",
+    "tabs": {
+      "all": "Tous",
+      "sightings": "Observations",
+      "missing": "Disparus",
+      "reunited": "Retrouvés"
+    }
   },
   "reportIssue": {
     "title": "Signaler un problème",
@@ -127,7 +135,12 @@
     "postMissing": "Publier chat disparu",
     "pendingReview": "Votre observation est en cours de vérification.",
     "success": "Chat ajouté à la carte ! 🐱",
-    "missingSuccess": "Chat disparu publié — les voisins peuvent aider ! 🐱"
+    "missingSuccess": "Chat disparu publié — les voisins peuvent aider ! 🐱",
+    "catName": "Nom du chat",
+    "catNamePlaceholder": "Whiskers, Luna…",
+    "contact": "Comment vous joindre",
+    "contactPlaceholder": "Téléphone, e-mail ou réseau social",
+    "contactHint": "Affiché sur votre signalement de chat disparu."
   },
   "sighting": {
     "title": "Observation de chat",
@@ -136,6 +149,11 @@
     "missingSince": "Disparu depuis {{time}}",
     "missingBadge": "Disparu",
     "foundBadge": "Retrouvé",
+    "catNameLabel": "Nom",
+    "contactLabel": "Contact",
+    "editSuccess": "Signalement mis à jour.",
+    "deletePhoto": "Supprimer la photo",
+    "photoDeleted": "Photo supprimée.",
     "stale": "peut être obsolète",
     "confirm": "Toujours là ? Confirmer",
     "confirmMissing": "J'ai vu ce chat",
@@ -192,6 +210,55 @@
     "lastSeen": "Vu pour la dernière fois {{time}}",
     "earTipped": "Oreille coupée : {{value}}",
     "stray": "Errant : {{value}}"
+  },
+  "comments": {
+    "title": "Commentaires",
+    "tipsTitle": "Indices et signalements",
+    "empty": "Pas encore d'indices — soyez le premier !",
+    "placeholder": "Ajouter une note…",
+    "placeholderMissing": "J'ai vu ce chat à…",
+    "includeLocation": "Inclure l'endroit où je l'ai vu",
+    "seenAt": "Vu près de {{lat}}, {{lng}}",
+    "post": "Publier",
+    "posting": "Publication…",
+    "posted": "Publié !",
+    "deleted": "Supprimé.",
+    "reported": "Merci — signalé."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification pour l'instant."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "notifications": "Notifications",
+    "enablePush": "Activer les notifications push",
+    "disablePush": "Désactiver les notifications push",
+    "pushEnabled": "Notifications push activées.",
+    "pushDisabled": "Notifications push désactivées.",
+    "pushUnsupported": "Les notifications push ne sont pas prises en charge.",
+    "pushDenied": "Permission de notification refusée.",
+    "pushFailed": "Impossible d'activer les notifications push.",
+    "nearbyMissing": "M'alerter des chats disparus à proximité",
+    "radiusKm": "Rayon d'alerte (km)",
+    "saveNearby": "Enregistrer les préférences",
+    "nearbySaved": "Préférences enregistrées.",
+    "myData": "Mes données",
+    "myDataHint": "Sauvegardez ce code pour transférer vos signalements.",
+    "qrAlt": "QR code avec vos données",
+    "copyData": "Copier la sauvegarde",
+    "copied": "Copié !",
+    "copyFailed": "Échec de la copie.",
+    "importLabel": "Importer depuis un autre appareil",
+    "importPlaceholder": "Collez le JSON ici…",
+    "importButton": "Importer les données",
+    "importConfirmTitle": "Remplacer l'identité de cet appareil ?",
+    "importConfirmMessage": "Cela remplace votre jeton local.",
+    "importSuccess": "Identité importée — rechargement…"
+  },
+  "offline": {
+    "queued": "Enregistré hors ligne — envoi à la reconnexion.",
+    "sent": "Signalement hors ligne envoyé !"
   },
   "errorBoundary": {
     "title": "Une erreur s'est produite",

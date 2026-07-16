@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { track } from "../analytics";
 import { createSighting } from "../api";
 import { checkForCat } from "../lib/catDetection";
+import { isNetworkError, queueSighting, serializeFiles } from "../lib/offlineQueue";
 import { compressImage, formatBytes } from "../lib/image";
 import {
   filterImageFiles,
@@ -98,6 +99,8 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [fromExif, setFromExif] = useState(false);
 
   const [description, setDescription] = useState("");
+  const [catName, setCatName] = useState("");
+  const [contact, setContact] = useState("");
   const [color, setColor] = useState("");
   const [isEarTipped, setIsEarTipped] = useState("");
   const [isStray, setIsStray] = useState("");
@@ -189,6 +192,8 @@ export default function AddSightingModal({ onClose, onCreated }) {
         isEarTipped,
         isStray,
         kind,
+        catName: isMissing ? catName : "",
+        contact: isMissing ? contact : "",
         onProgress: setProgress,
       });
       submittedRef.current = true;
@@ -206,6 +211,29 @@ export default function AddSightingModal({ onClose, onCreated }) {
         });
       }
     } catch (e) {
+      if (isNetworkError(e)) {
+        try {
+          const files = await serializeFiles(photos.map((p) => p.file));
+          await queueSighting({
+            files,
+            lat: location.lat,
+            lng: location.lng,
+            description,
+            color,
+            isEarTipped,
+            isStray,
+            kind,
+            catName: isMissing ? catName : "",
+            contact: isMissing ? contact : "",
+          });
+          submittedRef.current = true;
+          toast.success(t("offline.queued"));
+          onClose();
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
       toast.error(e.message);
       setSubmitting(false);
     }
@@ -375,6 +403,31 @@ export default function AddSightingModal({ onClose, onCreated }) {
             onChange={(e) => setDescription(e.target.value)}
           />
           <p className="hint char-count">{description.length}/1000</p>
+
+          {isMissing && (
+            <>
+              <label htmlFor="cat-name">{t("addSighting.catName")}</label>
+              <input
+                id="cat-name"
+                type="text"
+                placeholder={t("addSighting.catNamePlaceholder")}
+                value={catName}
+                maxLength={50}
+                onChange={(e) => setCatName(e.target.value)}
+              />
+
+              <label htmlFor="contact">{t("addSighting.contact")}</label>
+              <input
+                id="contact"
+                type="text"
+                placeholder={t("addSighting.contactPlaceholder")}
+                value={contact}
+                maxLength={200}
+                onChange={(e) => setContact(e.target.value)}
+              />
+              <p className="hint">{t("addSighting.contactHint")}</p>
+            </>
+          )}
 
           <label htmlFor="add-color">Color / pattern</label>
           <select id="add-color" value={color} onChange={(e) => setColor(e.target.value)}>

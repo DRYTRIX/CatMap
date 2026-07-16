@@ -67,7 +67,15 @@
     "recent": "Neueste",
     "confirmed": "Meist bestätigt",
     "empty": "Noch keine Sichtungen — sei der Erste!",
-    "loadError": "Neueste Sichtungen konnten nicht geladen werden."
+    "loadError": "Neueste Sichtungen konnten nicht geladen werden.",
+    "searchPlaceholder": "Beschreibungen durchsuchen…",
+    "nearMe": "In meiner Nähe",
+    "tabs": {
+      "all": "Alle",
+      "sightings": "Sichtungen",
+      "missing": "Vermisst",
+      "reunited": "Wieder vereint"
+    }
   },
   "reportIssue": {
     "title": "Problem melden",
@@ -127,7 +135,12 @@
     "postMissing": "Vermisste Katze posten",
     "pendingReview": "Deine Sichtung wird geprüft. Wir schauen bald rein!",
     "success": "Katze zur Karte hinzugefügt! 🐱",
-    "missingSuccess": "Vermisste Katze gepostet — Nachbarn können mithelfen! 🐱"
+    "missingSuccess": "Vermisste Katze gepostet — Nachbarn können mithelfen! 🐱",
+    "catName": "Name der Katze",
+    "catNamePlaceholder": "Whiskers, Luna…",
+    "contact": "So erreichst du uns",
+    "contactPlaceholder": "Telefon, E-Mail oder Social Handle",
+    "contactHint": "Wird auf deinem Vermissten-Post angezeigt."
   },
   "sighting": {
     "title": "Katzensichtung",
@@ -136,6 +149,11 @@
     "missingSince": "Vermisst seit {{time}}",
     "missingBadge": "Vermisst",
     "foundBadge": "Gefunden",
+    "catNameLabel": "Name",
+    "contactLabel": "Kontakt",
+    "editSuccess": "Sichtung aktualisiert.",
+    "deletePhoto": "Foto entfernen",
+    "photoDeleted": "Foto entfernt.",
     "stale": "möglicherweise veraltet",
     "confirm": "Noch da? Bestätigen",
     "confirmMissing": "Ich habe diese Katze gesehen",
@@ -192,6 +210,55 @@
     "lastSeen": "Zuletzt gesehen {{time}}",
     "earTipped": "Gestutztes Ohr: {{value}}",
     "stray": "Streuner: {{value}}"
+  },
+  "comments": {
+    "title": "Kommentare",
+    "tipsTitle": "Tipps & Sichtungen",
+    "empty": "Noch keine Tipps — hilf als Erster!",
+    "placeholder": "Notiz hinzufügen…",
+    "placeholderMissing": "Ich habe diese Katze gesehen bei…",
+    "includeLocation": "Standort mit angeben",
+    "seenAt": "Gesehen bei {{lat}}, {{lng}}",
+    "post": "Posten",
+    "posting": "Wird gepostet…",
+    "posted": "Gepostet!",
+    "deleted": "Entfernt.",
+    "reported": "Danke — gemeldet."
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "empty": "Noch keine Benachrichtigungen."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "notifications": "Benachrichtigungen",
+    "enablePush": "Push-Benachrichtigungen aktivieren",
+    "disablePush": "Push-Benachrichtigungen deaktivieren",
+    "pushEnabled": "Push-Benachrichtigungen aktiviert.",
+    "pushDisabled": "Push-Benachrichtigungen deaktiviert.",
+    "pushUnsupported": "Push wird in diesem Browser nicht unterstützt.",
+    "pushDenied": "Benachrichtigungsberechtigung verweigert.",
+    "pushFailed": "Push konnte nicht aktiviert werden.",
+    "nearbyMissing": "Bei vermissten Katzen in der Nähe benachrichtigen",
+    "radiusKm": "Alarmradius (km)",
+    "saveNearby": "Alarmeinstellungen speichern",
+    "nearbySaved": "Alarmeinstellungen gespeichert.",
+    "myData": "Meine Daten",
+    "myDataHint": "Speichere diesen Code, um deine Sichtungen auf ein anderes Gerät zu übertragen.",
+    "qrAlt": "QR-Code mit Gerätedaten",
+    "copyData": "Backup kopieren",
+    "copied": "Kopiert!",
+    "copyFailed": "Kopieren fehlgeschlagen.",
+    "importLabel": "Von anderem Gerät importieren",
+    "importPlaceholder": "Backup-JSON hier einfügen…",
+    "importButton": "Daten importieren",
+    "importConfirmTitle": "Geräte-Identität ersetzen?",
+    "importConfirmMessage": "Dies ersetzt dein lokales Geräte-Token.",
+    "importSuccess": "Identität importiert — wird neu geladen…"
+  },
+  "offline": {
+    "queued": "Offline gespeichert — wird hochgeladen, sobald du online bist.",
+    "sent": "Offline-Sichtung hochgeladen!"
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",

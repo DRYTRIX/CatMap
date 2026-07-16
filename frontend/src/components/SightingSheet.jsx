@@ -5,6 +5,7 @@ import {
   confirmSighting,
   createCatProfile,
   deleteSighting,
+  deleteSightingPhoto,
   fetchSimilarSightings,
   fetchSighting,
   linkSightingToCat,
@@ -12,6 +13,7 @@ import {
   markGone,
   reportSighting,
 } from "../api";
+import CommentThread from "./CommentThread";
 import { track } from "../analytics";
 import { shareSighting } from "../lib/share";
 import { sightingShareUrl } from "../lib/publicUrl";
@@ -86,6 +88,23 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
       active = false;
     };
   }, [id]);
+
+  async function onDeletePhoto(photoId) {
+    if (photoId === "primary") return;
+    setBusy(true);
+    try {
+      await deleteSightingPhoto(id, photoId);
+      const updated = await fetchSighting(id);
+      setData(updated);
+      setActivePhoto(0);
+      toast.success(t("sighting.photoDeleted"));
+      onChanged?.();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onConfirm() {
     setBusy(true);
@@ -311,25 +330,52 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
           {data.photos.length > 1 && (
             <div className="photo-thumbs" role="list">
               {data.photos.map((p, i) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="listitem"
-                  className={`photo-thumb ${i === activePhoto ? "is-active" : ""}`}
-                  aria-label={`Photo ${i + 1} of ${data.photos.length}`}
-                  aria-current={i === activePhoto}
-                  onClick={() => {
-                    setActivePhoto(i);
-                    setImgLoaded(false);
-                  }}
-                >
-                  <img src={assetUrl(p.thumbnail_url)} alt="" loading="lazy" />
-                </button>
+                <div key={p.id} className={`photo-thumb-wrap ${i === activePhoto ? "is-active" : ""}`}>
+                  <button
+                    type="button"
+                    role="listitem"
+                    className={`photo-thumb ${i === activePhoto ? "is-active" : ""}`}
+                    aria-label={`Photo ${i + 1} of ${data.photos.length}`}
+                    aria-current={i === activePhoto}
+                    onClick={() => {
+                      setActivePhoto(i);
+                      setImgLoaded(false);
+                    }}
+                  >
+                    <img src={assetUrl(p.thumbnail_url)} alt="" loading="lazy" />
+                  </button>
+                  {mine && p.id !== "primary" && (
+                    <button
+                      type="button"
+                      className="photo-thumb-delete"
+                      aria-label={t("sighting.deletePhoto")}
+                      onClick={() => onDeletePhoto(p.id)}
+                      disabled={busy}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
 
           {data.description && <p className="card-desc">{data.description}</p>}
+
+          {isMissing && (data.cat_name || data.contact) && (
+            <div className="missing-info">
+              {data.cat_name && (
+                <p className="missing-info-row">
+                  <strong>{t("sighting.catNameLabel")}:</strong> {data.cat_name}
+                </p>
+              )}
+              {data.contact && (
+                <p className="missing-info-row">
+                  <strong>{t("sighting.contactLabel")}:</strong> {data.contact}
+                </p>
+              )}
+            </div>
+          )}
 
           {data.cat_id && (
             <div className="cat-profile-link">
@@ -357,7 +403,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             {data.stale && <span className="stale-badge">{t("sighting.stale")}</span>}
           </div>
 
-              {!isFound && (
+          {!isFound && (
               <div className="confirm-row">
                 <button
                   className="btn btn-primary btn-confirm"
@@ -373,6 +419,13 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                 <span className="count">{data.confirmations_count}</span>
               </div>
               )}
+
+          <CommentThread
+            sightingId={id}
+            isMissing={isMissing}
+            canDeleteOwn={mine}
+            onChanged={onChanged}
+          />
 
           <div className="sheet-actions">
             <button
