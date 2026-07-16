@@ -7,13 +7,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pipeline } from "node:stream/promises";
 
-const MODEL_URLS = [
-  "https://huggingface.co/onnx-community/yolov10n/resolve/main/onnx/model.onnx",
-  "https://hf-mirror.com/onnx-community/yolov10n/resolve/main/onnx/model.onnx",
-  "https://github.com/THU-MIG/yolov10/releases/download/v1.1/yolov10n.onnx",
+const MODEL_SOURCES = [
+  ["https://github.com/THU-MIG/yolov10/releases/download/v1.1/yolov10n.onnx", 2],
+  ["https://huggingface.co/onnx-community/yolov10n/resolve/main/onnx/model.onnx", 2],
+  ["https://hf-mirror.com/onnx-community/yolov10n/resolve/main/onnx/model.onnx", 1],
 ];
 const MIN_BYTES = 5_000_000;
-const MAX_ATTEMPTS = 5;
 const TIMEOUT_MS = 300_000;
 const OUTPUT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -57,13 +56,13 @@ async function downloadOnce(url, output) {
   await pipeline(res.body, createWriteStream(output));
 }
 
-async function downloadModel(urls, output) {
+async function downloadModel(sources, output) {
   let lastError = "Unknown error";
 
-  for (const url of urls) {
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  for (const [url, maxAttempts] of sources) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        console.log(`Downloading from ${url} (attempt ${attempt}/${MAX_ATTEMPTS}) …`);
+        console.log(`Downloading from ${url} (attempt ${attempt}/${maxAttempts}) …`);
         await downloadOnce(url, output);
         if (await isValidModel(output)) {
           return null;
@@ -80,7 +79,7 @@ async function downloadModel(urls, output) {
         console.error(`Attempt ${attempt} failed: ${lastError}`);
       }
 
-      if (attempt < MAX_ATTEMPTS) {
+      if (attempt < maxAttempts) {
         const delay = 2 ** attempt;
         console.error(`Retrying in ${delay}s …`);
         await sleep(delay);
@@ -106,7 +105,7 @@ async function main() {
   }
 
   console.log(`Downloading model to ${OUTPUT} …`);
-  const error = await downloadModel(MODEL_URLS, OUTPUT);
+  const error = await downloadModel(MODEL_SOURCES, OUTPUT);
   if (error !== null) {
     throw new Error(`Failed to download model: ${error}`);
   }

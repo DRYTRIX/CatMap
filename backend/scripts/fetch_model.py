@@ -9,15 +9,15 @@ from pathlib import Path
 
 import httpx
 
-# Hugging Face mirror — YOLOv10s COCO detector (cat class id 15).
-MODEL_URLS = [
-    "https://huggingface.co/onnx-community/yolov10s/resolve/main/onnx/model.onnx",
-    "https://hf-mirror.com/onnx-community/yolov10s/resolve/main/onnx/model.onnx",
-    "https://github.com/THU-MIG/yolov10/releases/download/v1.1/yolov10s.onnx",
+# Prefer the GitHub release asset first because recent Docker/CI failures have
+# come from Hugging Face's CAS bridge timing out for several minutes in a row.
+MODEL_SOURCES = [
+    ("https://github.com/THU-MIG/yolov10/releases/download/v1.1/yolov10s.onnx", 2),
+    ("https://huggingface.co/onnx-community/yolov10s/resolve/main/onnx/model.onnx", 2),
+    ("https://hf-mirror.com/onnx-community/yolov10s/resolve/main/onnx/model.onnx", 1),
 ]
 OUTPUT = Path(__file__).resolve().parent.parent / "models" / "yolov10s.onnx"
 MIN_BYTES = 10_000_000  # Real model is ~29 MB; LFS pointers are tiny.
-MAX_ATTEMPTS = 5
 TIMEOUT = httpx.Timeout(30.0, read=300.0)
 
 
@@ -42,14 +42,14 @@ def _download_once(url: str, output: Path) -> None:
                 fh.write(chunk)
 
 
-def download_model(urls: list[str], output: Path) -> str | None:
-    """Try each URL with retries. Returns error message on failure, else None."""
+def download_model(sources: list[tuple[str, int]], output: Path) -> str | None:
+    """Try each source with its own retry budget. Returns error message on failure."""
     last_error: str | None = None
 
-    for url in urls:
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+    for url, max_attempts in sources:
+        for attempt in range(1, max_attempts + 1):
             try:
-                print(f"Downloading from {url} (attempt {attempt}/{MAX_ATTEMPTS}) …")
+                print(f"Downloading from {url} (attempt {attempt}/{max_attempts}) …")
                 _download_once(url, output)
                 if is_valid_model(output):
                     return None
@@ -60,7 +60,7 @@ def download_model(urls: list[str], output: Path) -> str | None:
                 last_error = str(exc)
                 print(f"Attempt {attempt} failed: {exc}", file=sys.stderr)
 
-            if attempt < MAX_ATTEMPTS:
+            if attempt < max_attempts:
                 delay = 2 ** attempt
                 print(f"Retrying in {delay}s …", file=sys.stderr)
                 time.sleep(delay)
@@ -81,7 +81,7 @@ def main() -> int:
         output.unlink()
 
     print(f"Downloading model to {output} …")
-    error = download_model(MODEL_URLS, output)
+    error = download_model(MODEL_SOURCES, output)
     if error is not None:
         print(f"Failed to download model: {error}", file=sys.stderr)
         return 1
