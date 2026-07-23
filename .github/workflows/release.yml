@@ -159,7 +159,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Download Android artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: android-release-${{ needs.validate-tag.outputs.tag }}
           path: release-artifacts
