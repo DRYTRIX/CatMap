@@ -1,4 +1,4 @@
-fastapi==0.139.0
+fastapi==0.139.2
 uvicorn[standard]==0.51.0
 sqlalchemy==2.0.51
 psycopg[binary]==3.3.4
@@ -10,7 +10,7 @@ slowapi==0.1.10
 alembic==1.18.5
 onnxruntime==1.27.0
 numpy==2.5.1
-sentry-sdk[fastapi]==2.64.0
+sentry-sdk[fastapi]==2.66.0
 httpx==0.28.1
-pywebpush==2.0.3
-google-auth==2.48.0
+pywebpush==2.3.0
+google-auth==2.56.0
