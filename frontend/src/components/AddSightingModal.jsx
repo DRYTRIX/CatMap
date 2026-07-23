@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { track } from "../analytics";
 import { createSighting } from "../api";
-import { checkForCat } from "../lib/catDetection";
 import { isNetworkError, queueSighting, serializeFiles } from "../lib/offlineQueue";
 import { compressImage, formatBytes } from "../lib/image";
 import {
@@ -19,16 +18,15 @@ import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faCheck, faCircle, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 
-const STEPS = ["Photos", "Location", "Details"];
 const STEP_KEYS = ["photo", "location", "details"];
 
 // Mirrors MAX_PHOTOS_PER_SIGHTING in backend/app/routers/sightings.py.
 const MAX_PHOTOS = 6;
 
-const TRI_STATE_OPTIONS = [
-  { value: "", label: "Unknown" },
-  { value: "true", label: "Yes" },
-  { value: "false", label: "No" },
+const TRI_STATE_KEYS = [
+  { value: "", labelKey: "common.unknown" },
+  { value: "true", labelKey: "common.yes" },
+  { value: "false", labelKey: "common.no" },
 ];
 
 const KIND_OPTIONS = [
@@ -36,6 +34,8 @@ const KIND_OPTIONS = [
   { value: "missing", labelKey: "addSighting.kindMissing" },
 ];
 
+// Returns requirement rows with i18n keys (resolved by the component via `t`)
+// rather than baked-in English.
 function getPhotoRequirements({ photos, processing }) {
   const photoStatus = photos.length > 0 ? "met" : "pending";
 
@@ -44,27 +44,27 @@ function getPhotoRequirements({ photos, processing }) {
     analyzedStatus = "met";
   }
 
-  let catLabel = "Cat detected";
+  let catKey = "reqCatDetected";
   let catStatus = "pending";
   if (photos.length > 0 && !processing) {
     if (photos.some((p) => p.catDetected === true)) {
       catStatus = "met";
     } else if (photos.every((p) => p.catCheckError)) {
-      catLabel = "Photo will be reviewed after posting";
+      catKey = "reqCatPending";
       catStatus = "soft";
     } else if (photos.some((p) => p.possibleAnimal)) {
-      catLabel = "Possible cat — will be reviewed after posting";
+      catKey = "reqCatReview";
       catStatus = "soft";
     } else {
-      catLabel = "No cat detected";
+      catKey = "reqNoCat";
       catStatus = "failed";
     }
   }
 
   return [
-    { id: "photo", label: "Photo added", status: photoStatus },
-    { id: "analyzed", label: "Photos analyzed", status: analyzedStatus },
-    { id: "cat", label: catLabel, status: catStatus },
+    { id: "photo", labelKey: "reqPhoto", status: photoStatus },
+    { id: "analyzed", labelKey: "reqAnalyzed", status: analyzedStatus },
+    { id: "cat", labelKey: catKey, status: catStatus },
   ];
 }
 
@@ -111,6 +111,16 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const photoRequirements = getPhotoRequirements({ photos, processing });
   const photoRequirementsMet = photos.length > 0 && !processing;
 
+  const STEPS = [
+    t("addSighting.steps.photos"),
+    t("addSighting.steps.location"),
+    t("addSighting.steps.details"),
+  ];
+  const TRI_STATE_OPTIONS = TRI_STATE_KEYS.map((o) => ({
+    value: o.value,
+    label: t(o.labelKey),
+  }));
+
   async function addFiles(fileList) {
     const room = MAX_PHOTOS - photos.length;
     if (room <= 0) return;
@@ -138,6 +148,8 @@ export default function AddSightingModal({ onClose, onCreated }) {
         }
 
         const compressed = await compressImage(f);
+        // Lazy-load the ONNX detector so onnxruntime-web isn't in the main bundle.
+        const { checkForCat } = await import("../lib/catDetection");
         const catCheck = await checkForCat(compressed);
         track("add_sighting_client_cat_check", {
           detected: catCheck.detected,
@@ -265,7 +277,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
         <h2 id="add-title">
           {isMissing ? t("addSighting.titleMissing") : t("addSighting.title")}
         </h2>
-        <button className="icon-btn" aria-label="Close" onClick={closeModal}>
+        <button className="icon-btn" aria-label={t("common.close")} onClick={closeModal}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
@@ -273,7 +285,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
       <div className="field" style={{ marginBottom: 12 }}>
         <label>{t("addSighting.kindLabel")}</label>
         <SegmentedControl
-          name="Post type"
+          name={t("addSighting.kindLabel")}
           value={kind}
           options={KIND_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           onChange={setKind}
@@ -308,7 +320,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
                       <button
                         type="button"
                         className="photo-grid-remove"
-                        aria-label="Remove photo"
+                        aria-label={t("common.remove")}
                         onClick={() => removePhoto(p.id)}
                         disabled={processing}
                       >
@@ -327,10 +339,10 @@ export default function AddSightingModal({ onClose, onCreated }) {
                 <PhotoPickButton
                   label={
                     processing
-                      ? "Processing…"
+                      ? t("addSighting.processing")
                       : photos.length === 0
-                        ? "📷 Take or choose a photo"
-                        : `📷 Add another photo (${photos.length}/${MAX_PHOTOS})`
+                        ? `📷 ${t("addSighting.takePhoto")}`
+                        : `📷 ${t("addSighting.addAnother", { current: photos.length, max: MAX_PHOTOS })}`
                   }
                   disabled={processing}
                   multiple
@@ -342,25 +354,30 @@ export default function AddSightingModal({ onClose, onCreated }) {
               )}
               {photos.length > 0 && (
                 <p className="hint">
-                  Optimized {formatBytes(totalBefore)} → {formatBytes(totalAfter)} for a
-                  faster upload.
+                  {t("addSighting.optimized", {
+                    before: formatBytes(totalBefore),
+                    after: formatBytes(totalAfter),
+                  })}
                 </p>
               )}
             </div>
 
             <div className="photo-requirements-col">
-              <p className="photo-reqs-title">Photo requirements</p>
+              <p className="photo-reqs-title">{t("addSighting.photoRequirements")}</p>
               <ul className="photo-reqs" aria-live="polite">
-                {photoRequirements.map((req) => (
-                  <li
-                    key={req.id}
-                    className={`photo-req photo-req--${req.status}`}
-                    aria-label={`${req.label}: ${req.status}`}
-                  >
-                    <PhotoRequirementIcon status={req.status} />
-                    <span>{req.label}</span>
-                  </li>
-                ))}
+                {photoRequirements.map((req) => {
+                  const label = t(`addSighting.${req.labelKey}`);
+                  return (
+                    <li
+                      key={req.id}
+                      className={`photo-req photo-req--${req.status}`}
+                      aria-label={`${label}: ${req.status}`}
+                    >
+                      <PhotoRequirementIcon status={req.status} />
+                      <span>{label}</span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -372,16 +389,16 @@ export default function AddSightingModal({ onClose, onCreated }) {
         <div className="field">
           <label>
             {isMissing ? t("addSighting.locationMissing") : t("addSighting.location")}{" "}
-            {fromExif && <span className="gps-badge">from photo GPS</span>}
+            {fromExif && <span className="gps-badge">{t("addSighting.fromGps")}</span>}
           </label>
           <p className="hint">
             {isMissing
               ? t("addSighting.locationMissingHint")
               : fromExif
-                ? "Found GPS in the photo. Drag the pin to fine-tune."
+                ? t("addSighting.gpsFound")
                 : isMobile()
-                  ? "Your phone may have removed location data from the photo — use My location or drop a pin."
-                  : "No GPS in this photo — drop a pin or use your location."}
+                  ? t("addSighting.gpsMobile")
+                  : t("addSighting.gpsManual")}
           </p>
           <LocationPicker value={location} onChange={setLocation} />
         </div>
@@ -429,19 +446,19 @@ export default function AddSightingModal({ onClose, onCreated }) {
             </>
           )}
 
-          <label htmlFor="add-color">Color / pattern</label>
+          <label htmlFor="add-color">{t("addSighting.color")}</label>
           <select id="add-color" value={color} onChange={(e) => setColor(e.target.value)}>
-            <option value="">Unknown</option>
+            <option value="">{t("addSighting.colorUnknown")}</option>
             {CAT_COLORS.map((c) => (
               <option key={c} value={c}>
-                {c.charAt(0).toUpperCase() + c.slice(1)}
+                {t(`addSighting.colors.${c}`)}
               </option>
             ))}
           </select>
 
-          <label>Ear-tipped (TNR)</label>
+          <label>{t("addSighting.earTipped")}</label>
           <SegmentedControl
-            name="Ear-tipped"
+            name={t("addSighting.earTipped")}
             value={isEarTipped}
             options={TRI_STATE_OPTIONS}
             onChange={setIsEarTipped}
@@ -449,9 +466,9 @@ export default function AddSightingModal({ onClose, onCreated }) {
 
           {!isMissing && (
             <>
-              <label>Stray</label>
+              <label>{t("addSighting.stray")}</label>
               <SegmentedControl
-                name="Stray"
+                name={t("addSighting.stray")}
                 value={isStray}
                 options={TRI_STATE_OPTIONS}
                 onChange={setIsStray}
@@ -460,7 +477,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
           )}
 
           {submitting && (
-            <div className="progress" aria-label="Upload progress">
+            <div className="progress" aria-label={t("addSighting.uploadProgress")}>
               <div className="progress-bar" style={{ width: `${progress}%` }} />
               <span className="progress-label">{progress}%</span>
             </div>
@@ -475,11 +492,11 @@ export default function AddSightingModal({ onClose, onCreated }) {
             onClick={() => setStep((s) => s - 1)}
             disabled={submitting}
           >
-            Back
+            {t("common.back")}
           </button>
         ) : (
           <button className="btn btn-ghost btn-block" onClick={closeModal}>
-            Cancel
+            {t("common.cancel")}
           </button>
         )}
 
@@ -489,7 +506,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
             onClick={goNext}
             disabled={!canNext}
           >
-            Next
+            {t("common.next")}
           </button>
         ) : (
           <button

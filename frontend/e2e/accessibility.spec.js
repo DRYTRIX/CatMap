@@ -17,3 +17,13 @@ test("the add-sighting modal has no detectable accessibility violations", async 
   const results = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
   expect(results.violations).toEqual([]);
 });
+
+test("the filter panel has no detectable accessibility violations", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Map menu" }).click();
+  await page.getByRole("button", { name: "Filter cats" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+
+  const results = await new AxeBuilder({ page }).include('[role="dialog"]').analyze();
+  expect(results.violations).toEqual([]);
+});

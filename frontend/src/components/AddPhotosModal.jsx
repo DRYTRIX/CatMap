@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
 import { addSightingPhotos } from "../api";
-import { checkForCat } from "../lib/catDetection";
 import { compressImage, formatBytes } from "../lib/image";
 import { filterImageFiles } from "../lib/photoGps";
 import PhotoPickButton from "./PhotoPickButton";
@@ -20,6 +20,7 @@ import { useToast } from "./Toast";
  *   onAdded(updatedDetail) – called with the refreshed sighting on success
  */
 export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const nextPhotoId = useRef(0);
   // Each photo: { id, file, previewUrl, sizeBefore, sizeAfter, catDetected, possibleAnimal, catCheckError }
@@ -39,6 +40,8 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
     try {
       for (const f of incoming) {
         const compressed = await compressImage(f);
+        // Lazy-load the ONNX detector so onnxruntime-web isn't in the main bundle.
+        const { checkForCat } = await import("../lib/catDetection");
         const catCheck = await checkForCat(compressed);
         const id = nextPhotoId.current++;
         setPhotos((prev) => [
@@ -78,7 +81,7 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
         setProgress,
       );
       track("sighting_photos_added", { photo_count: photos.length });
-      toast.success(photos.length === 1 ? "Photo added!" : "Photos added!");
+      toast.success(t("addPhotos.added", { count: photos.length }));
       for (const p of photos) URL.revokeObjectURL(p.previewUrl);
       onAdded(updated);
     } catch (e) {
@@ -108,8 +111,8 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
     <Modal onClose={closeModal} labelledBy="add-photos-title" className="sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="add-photos-title">📷 Add photos</h2>
-        <button className="icon-btn" aria-label="Close" onClick={closeModal}>
+        <h2 id="add-photos-title">📷 {t("addPhotos.title")}</h2>
+        <button className="icon-btn" aria-label={t("common.close")} onClick={closeModal}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
@@ -128,7 +131,7 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
                 <button
                   type="button"
                   className="photo-grid-remove"
-                  aria-label="Remove photo"
+                  aria-label={t("common.remove")}
                   onClick={() => removePhoto(p.id)}
                   disabled={processing || submitting}
                 >
@@ -147,10 +150,10 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
           <PhotoPickButton
             label={
               processing
-                ? "Processing…"
+                ? t("addSighting.processing")
                 : photos.length === 0
-                  ? "📷 Take or choose a photo"
-                  : `📷 Add another photo (${photos.length}/${remaining})`
+                  ? `📷 ${t("addSighting.takePhoto")}`
+                  : `📷 ${t("addSighting.addAnother", { current: photos.length, max: remaining })}`
             }
             disabled={processing || submitting}
             multiple
@@ -163,27 +166,27 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
 
         {photos.length > 0 && (
           <p className="hint">
-            Optimized {formatBytes(totalBefore)} → {formatBytes(totalAfter)} for a faster
-            upload.
+            {t("addSighting.optimized", {
+              before: formatBytes(totalBefore),
+              after: formatBytes(totalAfter),
+            })}
           </p>
         )}
 
         {somePossibleCat && (
           <p className="hint photo-req--soft" role="status">
-            <FontAwesomeIcon icon={faTriangleExclamation} /> Possible cat in one of these
-            photos — it will be reviewed after upload.
+            <FontAwesomeIcon icon={faTriangleExclamation} /> {t("addPhotos.possibleCat")}
           </p>
         )}
 
         {someNotCat && (
           <p className="hint" role="alert">
-            <FontAwesomeIcon icon={faTriangleExclamation} /> We couldn't spot a cat in one of
-            these — photos without a cat may be rejected.
+            <FontAwesomeIcon icon={faTriangleExclamation} /> {t("addPhotos.notCat")}
           </p>
         )}
 
         {submitting && (
-          <div className="progress" aria-label="Upload progress">
+          <div className="progress" aria-label={t("addSighting.uploadProgress")}>
             <div className="progress-bar" style={{ width: `${progress}%` }} />
             <span className="progress-label">{progress}%</span>
           </div>
@@ -192,14 +195,14 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
 
       <div className="row wizard-nav">
         <button className="btn btn-ghost btn-block" onClick={closeModal} disabled={submitting}>
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           className="btn btn-primary btn-block"
           onClick={onSubmit}
           disabled={submitting || processing || photos.length === 0}
         >
-          {submitting ? "Uploading…" : "Add photos"}
+          {submitting ? t("addPhotos.uploading") : t("addPhotos.submit")}
         </button>
       </div>
     </Modal>

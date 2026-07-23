@@ -166,7 +166,15 @@ export default function RecentFeedModal({ onClose, onSelect }) {
                 loading="lazy"
               />
               <div className="sighting-list-body">
-                <p className="sighting-list-desc">{d.description || t("common.catSighting")}</p>
+                <p className="sighting-list-desc">
+                  {d.kind === "missing" && d.status !== "found" && (
+                    <span className="kind-badge kind-badge--missing kind-badge--sm">
+                      {t("sighting.missingBadge")}
+                    </span>
+                  )}
+                  {d.description ||
+                    (d.kind === "missing" ? t("sighting.titleMissing") : t("common.catSighting"))}
+                </p>
                 <p className="sighting-list-meta">
                   🐱 {timeAgo(d.created_at)} ·{" "}
                   {t("common.confirmations", { count: d.confirmations_count })}

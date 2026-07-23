@@ -12,7 +12,10 @@
     "catSighting": "Cat sighting",
     "confirmations_one": "{{count}} confirmation",
     "confirmations_other": "{{count}} confirmations",
-    "reload": "Reload"
+    "reload": "Reload",
+    "remove": "Remove",
+    "save": "Save changes",
+    "saving": "Saving…"
   },
   "header": {
     "brand": "CatMap",
@@ -140,7 +143,21 @@
     "catNamePlaceholder": "Whiskers, Luna…",
     "contact": "How to reach you",
     "contactPlaceholder": "Phone, email, or social handle",
-    "contactHint": "Shown on your missing-cat post so finders can contact you."
+    "contactHint": "Shown on your missing-cat post so finders can contact you.",
+    "colorUnknown": "Unknown",
+    "uploadProgress": "Upload progress",
+    "colors": {
+      "black": "Black",
+      "white": "White",
+      "gray": "Gray",
+      "orange": "Orange",
+      "brown": "Brown",
+      "tabby": "Tabby",
+      "calico": "Calico",
+      "tuxedo": "Tuxedo",
+      "tortoiseshell": "Tortoiseshell",
+      "siamese": "Siamese"
+    }
   },
   "sighting": {
     "title": "Cat sighting",
@@ -200,7 +217,12 @@
       "wrong_location": "Wrong location",
       "duplicate": "Duplicate",
       "other": "Something else"
-    }
+    },
+    "poster": "Poster",
+    "lastSeenNear": "Last seen near {{place}}",
+    "near": "Near {{place}}",
+    "editTitle": "Edit sighting",
+    "missingHelp": "Have you seen this cat? Please reach out."
   },
   "catProfile": {
     "title": "Cat profile",
@@ -278,5 +300,51 @@
     "notACat": "That photo doesn't look like a cat.",
     "networkUpload": "Network error during upload.",
     "searchFailed": "Search failed"
+  },
+  "poster": {
+    "title": "Missing cat poster",
+    "banner": "MISSING CAT",
+    "hint": "Add optional details, then download or share a printable PDF poster.",
+    "lastSeen": "Last seen",
+    "color": "Color",
+    "answersTo": "Answers to",
+    "area": "Area",
+    "coords": "Coordinates",
+    "reward": "Reward",
+    "rewardPlaceholder": "e.g. €100",
+    "phone": "Extra phone",
+    "phonePlaceholder": "e.g. +32 …",
+    "answersToPlaceholder": "Name the cat responds to",
+    "contactHeading": "Please contact:",
+    "scanCaption": "Scan for live updates & to report a sighting",
+    "download": "Download PDF",
+    "share": "Share",
+    "downloaded": "Poster downloaded",
+    "error": "Could not generate the poster. Please try again.",
+    "shareTitle": "Missing cat: {{name}}"
+  },
+  "addPhotos": {
+    "title": "Add photos",
+    "added_one": "Photo added!",
+    "added_other": "Photos added!",
+    "possibleCat": "Possible cat in one of these photos — it will be reviewed after upload.",
+    "notCat": "We couldn't spot a cat in one of these — photos without a cat may be rejected.",
+    "uploading": "Uploading…",
+    "submit": "Add photos"
+  },
+  "filters": {
+    "title": "Filter cats",
+    "postedBetween": "Posted between",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "type": "Type",
+    "typeAll": "All",
+    "typeSightings": "Sightings",
+    "typeMissing": "Missing",
+    "any": "Any",
+    "confidence": "Min. cat-detection confidence: {{pct}}%",
+    "confidenceHint": "Higher values hide sightings the detector was less confident about.",
+    "reset": "Reset",
+    "apply": "Apply"
   }
 }

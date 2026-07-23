@@ -619,6 +619,33 @@ export async function geocode(query, signal) {
 }
 
 /**
+ * Reverse-geocode coordinates to a human-readable place via Nominatim.
+ * Best-effort: returns a display string or null (never throws for the caller
+ * to have to handle). Respect the usage policy — call on demand only, never in
+ * a loop over map dots.
+ */
+export async function reverseGeocode(lat, lng, signal) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lng),
+    format: "jsonv2",
+    zoom: "16",
+    addressdetails: "0",
+  });
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?${params}`,
+      { signal, headers: { Accept: "application/json" } },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.display_name || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch an admin image (served even for hidden/gone rows) as an object URL.
  * Uses fetch + blob so the admin token travels in a header, not the URL —
  * lets the moderation UI show thumbnails of hidden sightings. Caller must

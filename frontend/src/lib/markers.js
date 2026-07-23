@@ -8,14 +8,19 @@ import L from "leaflet";
 export function catIcon(count = 0, stale = false, kind = "sighting") {
   const badge =
     count > 0 ? `<span class="cat-pin-badge">${count > 99 ? "99+" : count}</span>` : "";
+  const isMissing = kind === "missing";
+  // Missing pins get an alert flag + red glyph so they stand out from sightings.
+  const alert = isMissing ? `<span class="cat-pin-alert" aria-hidden="true">!</span>` : "";
+  const glyph = isMissing ? "🙀" : "🐱";
   const classes = ["cat-pin"];
-  if (kind === "missing") classes.push("cat-pin--missing");
+  if (isMissing) classes.push("cat-pin--missing");
   if (stale) classes.push("cat-pin--stale");
   return L.divIcon({
     className: "cat-pin-wrap",
     html: `
       <div class="${classes.join(" ")}">
-        <span class="cat-pin-glyph">🐱</span>
+        <span class="cat-pin-glyph">${glyph}</span>
+        ${alert}
         ${badge}
       </div>`,
     iconSize: [40, 48],

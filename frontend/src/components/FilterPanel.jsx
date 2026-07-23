@@ -1,22 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
 import { CAT_COLORS, DEFAULT_FILTERS } from "../lib/filters";
 import Modal from "./Modal";
 import SegmentedControl from "./SegmentedControl";
-
-const TRI_STATE_OPTIONS = [
-  { value: "", label: "Any" },
-  { value: "true", label: "Yes" },
-  { value: "false", label: "No" },
-];
-
-const KIND_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "sighting", label: "Sightings" },
-  { value: "missing", label: "Missing" },
-];
 
 /**
  * Bottom-sheet filter panel for the discovery query: date range, color,
@@ -25,7 +14,19 @@ const KIND_OPTIONS = [
  * Props: value (current filters), onApply(filters), onClose.
  */
 export default function FilterPanel({ value, onApply, onClose }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(value);
+
+  const triStateOptions = [
+    { value: "", label: t("filters.any") },
+    { value: "true", label: t("common.yes") },
+    { value: "false", label: t("common.no") },
+  ];
+  const kindOptions = [
+    { value: "", label: t("filters.typeAll") },
+    { value: "sighting", label: t("filters.typeSightings") },
+    { value: "missing", label: t("filters.typeMissing") },
+  ];
 
   function set(key, val) {
     setDraft((d) => ({ ...d, [key]: val }));
@@ -54,18 +55,18 @@ export default function FilterPanel({ value, onApply, onClose }) {
     <Modal onClose={onClose} labelledBy="filter-title" className="sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="filter-title">🔎 Filter cats</h2>
-        <button className="icon-btn" aria-label="Close" onClick={onClose}>
+        <h2 id="filter-title">🔎 {t("filters.title")}</h2>
+        <button className="icon-btn" aria-label={t("common.close")} onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
 
       <div className="field">
-        <label>Posted between</label>
+        <label>{t("filters.postedBetween")}</label>
         <div className="row">
           <input
             type="date"
-            aria-label="From date"
+            aria-label={t("filters.fromDate")}
             value={draft.since}
             max={draft.until || undefined}
             onChange={(e) => set("since", e.target.value)}
@@ -73,7 +74,7 @@ export default function FilterPanel({ value, onApply, onClose }) {
           <span aria-hidden="true">–</span>
           <input
             type="date"
-            aria-label="To date"
+            aria-label={t("filters.toDate")}
             value={draft.until}
             min={draft.since || undefined}
             onChange={(e) => set("until", e.target.value)}
@@ -82,54 +83,54 @@ export default function FilterPanel({ value, onApply, onClose }) {
       </div>
 
       <div className="field">
-        <label>Type</label>
+        <label>{t("filters.type")}</label>
         <SegmentedControl
-          name="Type"
+          name={t("filters.type")}
           value={draft.kind || ""}
-          options={KIND_OPTIONS}
+          options={kindOptions}
           onChange={(v) => set("kind", v)}
         />
       </div>
 
       <div className="field">
-        <label htmlFor="filter-color">Color / pattern</label>
+        <label htmlFor="filter-color">{t("addSighting.color")}</label>
         <select
           id="filter-color"
           value={draft.color}
           onChange={(e) => set("color", e.target.value)}
         >
-          <option value="">Any</option>
+          <option value="">{t("filters.any")}</option>
           {CAT_COLORS.map((c) => (
             <option key={c} value={c}>
-              {c.charAt(0).toUpperCase() + c.slice(1)}
+              {t(`addSighting.colors.${c}`)}
             </option>
           ))}
         </select>
       </div>
 
       <div className="field">
-        <label>Ear-tipped (TNR)</label>
+        <label>{t("addSighting.earTipped")}</label>
         <SegmentedControl
-          name="Ear-tipped"
+          name={t("addSighting.earTipped")}
           value={draft.isEarTipped}
-          options={TRI_STATE_OPTIONS}
+          options={triStateOptions}
           onChange={(v) => set("isEarTipped", v)}
         />
       </div>
 
       <div className="field">
-        <label>Stray</label>
+        <label>{t("addSighting.stray")}</label>
         <SegmentedControl
-          name="Stray"
+          name={t("addSighting.stray")}
           value={draft.isStray}
-          options={TRI_STATE_OPTIONS}
+          options={triStateOptions}
           onChange={(v) => set("isStray", v)}
         />
       </div>
 
       <div className="field">
         <label htmlFor="filter-confidence">
-          Min. cat-detection confidence: {Math.round(draft.minConfidence * 100)}%
+          {t("filters.confidence", { pct: Math.round(draft.minConfidence * 100) })}
         </label>
         <input
           id="filter-confidence"
@@ -140,17 +141,15 @@ export default function FilterPanel({ value, onApply, onClose }) {
           value={draft.minConfidence}
           onChange={(e) => set("minConfidence", Number(e.target.value))}
         />
-        <p className="hint">
-          Higher values hide sightings the detector was less confident about.
-        </p>
+        <p className="hint">{t("filters.confidenceHint")}</p>
       </div>
 
       <div className="row wizard-nav">
         <button className="btn btn-ghost btn-block" onClick={reset}>
-          Reset
+          {t("filters.reset")}
         </button>
         <button className="btn btn-primary btn-block" onClick={apply}>
-          Apply
+          {t("filters.apply")}
         </button>
       </div>
     </Modal>

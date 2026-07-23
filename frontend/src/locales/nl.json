@@ -12,7 +12,10 @@
     "catSighting": "Katwaarneming",
     "confirmations_one": "{{count}} bevestiging",
     "confirmations_other": "{{count}} bevestigingen",
-    "reload": "Herladen"
+    "reload": "Herladen",
+    "remove": "Verwijderen",
+    "save": "Wijzigingen opslaan",
+    "saving": "Opslaan…"
   },
   "header": {
     "brand": "CatMap",
@@ -140,7 +143,21 @@
     "catNamePlaceholder": "Whiskers, Luna…",
     "contact": "Hoe je bereikbaar bent",
     "contactPlaceholder": "Telefoon, e-mail of social media",
-    "contactHint": "Getoond op je vermiste-kat melding."
+    "contactHint": "Getoond op je vermiste-kat melding.",
+    "colorUnknown": "Onbekend",
+    "uploadProgress": "Uploadvoortgang",
+    "colors": {
+      "black": "Zwart",
+      "white": "Wit",
+      "gray": "Grijs",
+      "orange": "Oranje",
+      "brown": "Bruin",
+      "tabby": "Cyperse",
+      "calico": "Lapjeskat",
+      "tuxedo": "Tuxedo",
+      "tortoiseshell": "Schildpad",
+      "siamese": "Siamees"
+    }
   },
   "sighting": {
     "title": "Katwaarneming",
@@ -200,7 +217,12 @@
       "wrong_location": "Verkeerde locatie",
       "duplicate": "Duplicaat",
       "other": "Iets anders"
-    }
+    },
+    "poster": "Poster",
+    "lastSeenNear": "Laatst gezien bij {{place}}",
+    "near": "Bij {{place}}",
+    "editTitle": "Waarneming bewerken",
+    "missingHelp": "Heb je deze kat gezien? Neem alsjeblieft contact op."
   },
   "catProfile": {
     "title": "Katprofiel",
@@ -278,5 +300,51 @@
     "notACat": "Die foto lijkt geen kat te zijn.",
     "networkUpload": "Netwerkfout tijdens upload.",
     "searchFailed": "Zoeken mislukt"
+  },
+  "poster": {
+    "title": "Poster vermiste kat",
+    "banner": "VERMISTE KAT",
+    "hint": "Voeg optionele details toe en download of deel een afdrukbare PDF-poster.",
+    "lastSeen": "Laatst gezien",
+    "color": "Kleur",
+    "answersTo": "Luistert naar",
+    "area": "Omgeving",
+    "coords": "Coördinaten",
+    "reward": "Beloning",
+    "rewardPlaceholder": "bijv. €100",
+    "phone": "Extra telefoon",
+    "phonePlaceholder": "bijv. +32 …",
+    "answersToPlaceholder": "Naam waar de kat op reageert",
+    "contactHeading": "Neem contact op:",
+    "scanCaption": "Scan voor updates en om een waarneming te melden",
+    "download": "Download PDF",
+    "share": "Delen",
+    "downloaded": "Poster gedownload",
+    "error": "Kan de poster niet genereren. Probeer het opnieuw.",
+    "shareTitle": "Vermiste kat: {{name}}"
+  },
+  "addPhotos": {
+    "title": "Foto's toevoegen",
+    "added_one": "Foto toegevoegd!",
+    "added_other": "Foto's toegevoegd!",
+    "possibleCat": "Mogelijk een kat op een van deze foto's — dit wordt na het uploaden gecontroleerd.",
+    "notCat": "We konden op een van deze foto's geen kat herkennen — foto's zonder kat kunnen worden geweigerd.",
+    "uploading": "Uploaden…",
+    "submit": "Foto's toevoegen"
+  },
+  "filters": {
+    "title": "Katten filteren",
+    "postedBetween": "Geplaatst tussen",
+    "fromDate": "Vanaf datum",
+    "toDate": "Tot datum",
+    "type": "Type",
+    "typeAll": "Alle",
+    "typeSightings": "Waarnemingen",
+    "typeMissing": "Vermist",
+    "any": "Alle",
+    "confidence": "Min. kat-detectiezekerheid: {{pct}}%",
+    "confidenceHint": "Hogere waarden verbergen waarnemingen waar de detector minder zeker van was.",
+    "reset": "Herstellen",
+    "apply": "Toepassen"
   }
 }

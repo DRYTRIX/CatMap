@@ -12,7 +12,10 @@
     "catSighting": "Observation de chat",
     "confirmations_one": "{{count}} confirmation",
     "confirmations_other": "{{count}} confirmations",
-    "reload": "Recharger"
+    "reload": "Recharger",
+    "remove": "Retirer",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…"
   },
   "header": {
     "brand": "CatMap",
@@ -140,7 +143,21 @@
     "catNamePlaceholder": "Whiskers, Luna…",
     "contact": "Comment vous joindre",
     "contactPlaceholder": "Téléphone, e-mail ou réseau social",
-    "contactHint": "Affiché sur votre signalement de chat disparu."
+    "contactHint": "Affiché sur votre signalement de chat disparu.",
+    "colorUnknown": "Inconnu",
+    "uploadProgress": "Progression du téléversement",
+    "colors": {
+      "black": "Noir",
+      "white": "Blanc",
+      "gray": "Gris",
+      "orange": "Roux",
+      "brown": "Brun",
+      "tabby": "Tigré",
+      "calico": "Calico",
+      "tuxedo": "Smoking",
+      "tortoiseshell": "Écaille de tortue",
+      "siamese": "Siamois"
+    }
   },
   "sighting": {
     "title": "Observation de chat",
@@ -200,7 +217,12 @@
       "wrong_location": "Mauvais emplacement",
       "duplicate": "Doublon",
       "other": "Autre chose"
-    }
+    },
+    "poster": "Affiche",
+    "lastSeenNear": "Vu(e) pour la dernière fois près de {{place}}",
+    "near": "Près de {{place}}",
+    "editTitle": "Modifier l'observation",
+    "missingHelp": "Avez-vous vu ce chat ? Merci de nous contacter."
   },
   "catProfile": {
     "title": "Profil du chat",
@@ -278,5 +300,51 @@
     "notACat": "Cette photo ne ressemble pas à un chat.",
     "networkUpload": "Erreur réseau lors de l'envoi.",
     "searchFailed": "Recherche échouée"
+  },
+  "poster": {
+    "title": "Affiche chat perdu",
+    "banner": "CHAT PERDU",
+    "hint": "Ajoutez des détails facultatifs, puis téléchargez ou partagez une affiche PDF imprimable.",
+    "lastSeen": "Vu pour la dernière fois",
+    "color": "Couleur",
+    "answersTo": "Répond au nom de",
+    "area": "Secteur",
+    "coords": "Coordonnées",
+    "reward": "Récompense",
+    "rewardPlaceholder": "ex. 100 €",
+    "phone": "Téléphone supplémentaire",
+    "phonePlaceholder": "ex. +32 …",
+    "answersToPlaceholder": "Nom auquel le chat répond",
+    "contactHeading": "Veuillez contacter :",
+    "scanCaption": "Scannez pour les mises à jour et pour signaler une observation",
+    "download": "Télécharger le PDF",
+    "share": "Partager",
+    "downloaded": "Affiche téléchargée",
+    "error": "Impossible de générer l'affiche. Veuillez réessayer.",
+    "shareTitle": "Chat perdu : {{name}}"
+  },
+  "addPhotos": {
+    "title": "Ajouter des photos",
+    "added_one": "Photo ajoutée !",
+    "added_other": "Photos ajoutées !",
+    "possibleCat": "Chat possible sur l'une de ces photos — elle sera vérifiée après l'envoi.",
+    "notCat": "Nous n'avons pas détecté de chat sur l'une de ces photos — les photos sans chat peuvent être refusées.",
+    "uploading": "Envoi…",
+    "submit": "Ajouter des photos"
+  },
+  "filters": {
+    "title": "Filtrer les chats",
+    "postedBetween": "Publié entre",
+    "fromDate": "Date de début",
+    "toDate": "Date de fin",
+    "type": "Type",
+    "typeAll": "Tous",
+    "typeSightings": "Observations",
+    "typeMissing": "Perdus",
+    "any": "Tous",
+    "confidence": "Confiance min. de détection : {{pct}} %",
+    "confidenceHint": "Des valeurs plus élevées masquent les observations dont le détecteur était moins sûr.",
+    "reset": "Réinitialiser",
+    "apply": "Appliquer"
   }
 }

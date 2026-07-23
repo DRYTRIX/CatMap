@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   assetUrl,
@@ -12,8 +12,12 @@ import {
   markFound,
   markGone,
   reportSighting,
+  reverseGeocode,
 } from "../api";
 import CommentThread from "./CommentThread";
+// Lazy-loaded: pulls jspdf / html-to-image / qrcode / map compositor out of the
+// main bundle — they only load when the user opens the poster.
+const PosterModal = lazy(() => import("./PosterModal"));
 import { track } from "../analytics";
 import { shareSighting } from "../lib/share";
 import { sightingShareUrl } from "../lib/publicUrl";
@@ -35,12 +39,25 @@ import {
   faCat,
   faXmark,
   faImages,
+  faFilePdf,
+  faLocationDot,
+  faPhone,
   faHeart as faHeartSolid,
 } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
 
 // Mirrors MAX_PHOTOS_PER_SIGHTING in backend/app/routers/sightings.py.
 const MAX_PHOTOS = 6;
+
+// Turn a free-text contact into a tappable tel:/mailto: link when it clearly
+// looks like a phone number or email; otherwise return null (render as text).
+function contactHref(contact) {
+  const s = (contact || "").trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return `mailto:${s}`;
+  const phone = s.replace(/[^\d+]/g, "");
+  if (/^\+?\d{6,}$/.test(phone)) return `tel:${phone}`;
+  return null;
+}
 
 const REPORT_REASON_IDS = ["not_a_cat", "spam", "wrong_location", "duplicate", "other"];
 
@@ -69,6 +86,8 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   const [similarOpen, setSimilarOpen] = useState(false);
   const [similar, setSimilar] = useState(null);
   const [linking, setLinking] = useState(false);
+  const [address, setAddress] = useState(null);
+  const [posterOpen, setPosterOpen] = useState(false);
   const mine = isMine(id);
 
   useEffect(() => {
@@ -88,6 +107,22 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
       active = false;
     };
   }, [id]);
+
+  // Reverse-geocode the pin to a readable place. Best-effort; the resolved
+  // address is also handed to the poster so it isn't looked up twice.
+  useEffect(() => {
+    if (data?.lat == null || data?.lng == null) return;
+    let active = true;
+    setAddress(null);
+    const ctrl = new AbortController();
+    reverseGeocode(data.lat, data.lng, ctrl.signal)
+      .then((place) => active && setAddress(place))
+      .catch(() => {});
+    return () => {
+      active = false;
+      ctrl.abort();
+    };
+  }, [data?.lat, data?.lng]);
 
   async function onDeletePhoto(photoId) {
     if (photoId === "primary") return;
@@ -362,19 +397,40 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
 
           {data.description && <p className="card-desc">{data.description}</p>}
 
-          {isMissing && (data.cat_name || data.contact) && (
-            <div className="missing-info">
-              {data.cat_name && (
-                <p className="missing-info-row">
-                  <strong>{t("sighting.catNameLabel")}:</strong> {data.cat_name}
-                </p>
-              )}
-              {data.contact && (
-                <p className="missing-info-row">
-                  <strong>{t("sighting.contactLabel")}:</strong> {data.contact}
-                </p>
-              )}
+          {isMissing && (
+            <div className={`missing-card ${isFound ? "is-found" : ""}`}>
+              <div className="missing-card-head">
+                <span
+                  className={`kind-badge ${isFound ? "kind-badge--found" : "kind-badge--missing"}`}
+                >
+                  {isFound ? t("sighting.foundBadge") : t("sighting.missingBadge")}
+                </span>
+                {data.cat_name && <span className="missing-card-name">{data.cat_name}</span>}
+              </div>
+              {!isFound && <p className="missing-card-sub">{t("sighting.missingHelp")}</p>}
+              {data.contact &&
+                (contactHref(data.contact) ? (
+                  <a
+                    className="btn btn-primary btn-block missing-contact"
+                    href={contactHref(data.contact)}
+                  >
+                    <FontAwesomeIcon icon={faPhone} /> {data.contact}
+                  </a>
+                ) : (
+                  <p className="missing-info-row">
+                    <strong>{t("sighting.contactLabel")}:</strong> {data.contact}
+                  </p>
+                ))}
             </div>
+          )}
+
+          {address && (
+            <p className="sighting-address">
+              <FontAwesomeIcon icon={faLocationDot} aria-hidden="true" />{" "}
+              {isMissing
+                ? t("sighting.lastSeenNear", { place: address })
+                : t("sighting.near", { place: address })}
+            </p>
           )}
 
           {data.cat_id && (
@@ -394,12 +450,6 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             {isMissing
               ? t("sighting.missingSince", { time: timeAgo(data.created_at) })
               : t("sighting.spotted", { time: timeAgo(data.created_at) })}
-            {isMissing && !isFound && (
-              <span className="kind-badge kind-badge--missing">{t("sighting.missingBadge")}</span>
-            )}
-            {isFound && (
-              <span className="kind-badge kind-badge--found">{t("sighting.foundBadge")}</span>
-            )}
             {data.stale && <span className="stale-badge">{t("sighting.stale")}</span>}
           </div>
 
@@ -439,6 +489,15 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             <button className="btn btn-ghost" onClick={onShare} disabled={busy}>
               <FontAwesomeIcon icon={faShare} /> {t("sighting.share")}
             </button>
+            {isMissing && (
+              <button
+                className="btn btn-ghost"
+                onClick={() => setPosterOpen(true)}
+                disabled={busy}
+              >
+                <FontAwesomeIcon icon={faFilePdf} /> {t("sighting.poster")}
+              </button>
+            )}
             {!isFound && (
             <button
               className="btn btn-ghost"
@@ -515,6 +574,12 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             onChanged?.();
           }}
         />
+      )}
+
+      {posterOpen && data && (
+        <Suspense fallback={null}>
+          <PosterModal data={data} address={address} onClose={() => setPosterOpen(false)} />
+        </Suspense>
       )}
 
       {addingPhotos && data && (

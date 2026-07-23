@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { assetUrl, confirmSighting, fetchSighting, fetchStats } from "./api";
+import {
+  assetUrl,
+  confirmSighting,
+  fetchSighting,
+  fetchStats,
+  reverseGeocode,
+} from "./api";
 
 describe("api", () => {
   beforeEach(() => {
@@ -42,5 +48,23 @@ describe("api", () => {
     const [url, init] = fetch.mock.calls[0];
     expect(url).toContain("/api/sightings/abc/confirm");
     expect(init.headers["X-Device-Token"]).toBeTruthy();
+  });
+
+  it("reverseGeocode queries Nominatim and returns display_name", async () => {
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ display_name: "Antwerp, Belgium" }) });
+
+    await expect(reverseGeocode(51.2, 4.4)).resolves.toBe("Antwerp, Belgium");
+    const [url] = fetch.mock.calls[0];
+    expect(url).toContain("nominatim.openstreetmap.org/reverse");
+    expect(url).toContain("lat=51.2");
+    expect(url).toContain("lon=4.4");
+  });
+
+  it("reverseGeocode returns null on failure instead of throwing", async () => {
+    fetch.mockRejectedValue(new Error("network"));
+    await expect(reverseGeocode(0, 0)).resolves.toBeNull();
+
+    fetch.mockResolvedValue({ ok: false, status: 429, json: async () => ({}) });
+    await expect(reverseGeocode(0, 0)).resolves.toBeNull();
   });
 });

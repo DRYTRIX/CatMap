@@ -1161,6 +1161,65 @@ input[type="range"] {
 .missing-info-row:last-child {
   margin-bottom: 0;
 }
+
+/* Prominent missing-cat card on the detail sheet. */
+.missing-card {
+  margin: 10px 0 6px;
+  padding: 14px;
+  border-radius: var(--r-md, 14px);
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.28);
+}
+.missing-card.is-found {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.3);
+}
+.missing-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.missing-card-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+.missing-card-sub {
+  margin: 8px 0 10px;
+  font-size: 14px;
+  color: var(--ink-700);
+}
+.missing-contact {
+  margin-top: 4px;
+  text-decoration: none;
+}
+.sighting-address {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin: 8px 0 4px;
+  font-size: 14px;
+  color: var(--ink-700);
+}
+
+/* Missing-cat poster preview: the poster renders at a fixed A4 pixel size
+   (794x1123) and is scaled down for display; html-to-image still captures the
+   inner node at natural size. */
+.poster-preview {
+  overflow: hidden;
+  width: 366px;
+  max-width: 100%;
+  height: 518px;
+  margin: 12px auto;
+  border-radius: 12px;
+  border: 1px solid var(--line, #e2e8f0);
+  background: #f1f5f9;
+}
+.poster-preview-scale {
+  transform: scale(0.4609);
+  transform-origin: top left;
+}
 .sheet-actions {
   display: flex;
   gap: 8px;
@@ -1970,6 +2029,42 @@ input[type="range"] {
 /* ---------- Stale (outdated) sightings & report reasons ---------- */
 .cat-pin--missing {
   background: var(--coral-grad);
+  border-color: #fee2e2;
+  animation:
+    pin-drop 0.4s var(--ease) both,
+    missing-pulse 1.8s ease-out infinite;
+}
+@keyframes missing-pulse {
+  0% {
+    box-shadow: var(--sh-2), 0 0 0 0 rgba(220, 38, 38, 0.5);
+  }
+  70% {
+    box-shadow: var(--sh-2), 0 0 0 12px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: var(--sh-2), 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+.cat-pin-alert {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  transform: rotate(45deg);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 18px;
+  text-align: center;
+  border: 1.5px solid #fff;
+}
+/* Missing pins shouldn't dim into invisibility when also stale. */
+.cat-pin--missing.cat-pin--stale {
+  filter: grayscale(0.4);
+  opacity: 0.8;
 }
 .cat-pin--stale {
   filter: grayscale(0.85);
@@ -1997,6 +2092,12 @@ input[type="range"] {
 .kind-badge--missing {
   background: #ffe4e6;
   color: #be123c;
+}
+.kind-badge--sm {
+  margin-left: 0;
+  margin-right: 6px;
+  font-size: 0.66rem;
+  padding: 0 6px;
 }
 .kind-badge--found {
   background: #dcfce7;

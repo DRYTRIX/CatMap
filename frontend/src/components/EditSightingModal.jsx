@@ -9,10 +9,10 @@ import Modal from "./Modal";
 import SegmentedControl from "./SegmentedControl";
 import { useToast } from "./Toast";
 
-const TRI_STATE_OPTIONS = [
-  { value: "", label: "Unknown" },
-  { value: "true", label: "Yes" },
-  { value: "false", label: "No" },
+const TRI_STATE_KEYS = [
+  { value: "", labelKey: "common.unknown" },
+  { value: "true", labelKey: "common.yes" },
+  { value: "false", labelKey: "common.no" },
 ];
 
 function boolToTri(value) {
@@ -37,6 +37,11 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
   const [isEarTipped, setIsEarTipped] = useState(boolToTri(data.is_ear_tipped));
   const [isStray, setIsStray] = useState(boolToTri(data.is_stray));
   const [saving, setSaving] = useState(false);
+
+  const triStateOptions = TRI_STATE_KEYS.map((o) => ({
+    value: o.value,
+    label: t(o.labelKey),
+  }));
 
   async function onSubmit() {
     setSaving(true);
@@ -63,17 +68,17 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
     <Modal onClose={onClose} labelledBy="edit-title" className="sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="edit-title">✏️ Edit sighting</h2>
-        <button className="icon-btn" aria-label="Close" onClick={onClose}>
+        <h2 id="edit-title">✏️ {t("sighting.editTitle")}</h2>
+        <button className="icon-btn" aria-label={t("common.close")} onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
 
       <div className="field">
-        <label htmlFor="edit-desc">Description</label>
+        <label htmlFor="edit-desc">{t("addSighting.description")}</label>
         <textarea
           id="edit-desc"
-          placeholder="Orange tabby napping by the bakery…"
+          placeholder={t("addSighting.descriptionPlaceholder")}
           value={description}
           maxLength={1000}
           onChange={(e) => setDescription(e.target.value)}
@@ -107,43 +112,43 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
       )}
 
       <div className="field">
-        <label htmlFor="edit-color">Color / pattern</label>
+        <label htmlFor="edit-color">{t("addSighting.color")}</label>
         <select id="edit-color" value={color} onChange={(e) => setColor(e.target.value)}>
-          <option value="">Unknown</option>
+          <option value="">{t("addSighting.colorUnknown")}</option>
           {CAT_COLORS.map((c) => (
             <option key={c} value={c}>
-              {c.charAt(0).toUpperCase() + c.slice(1)}
+              {t(`addSighting.colors.${c}`)}
             </option>
           ))}
         </select>
       </div>
 
       <div className="field">
-        <label>Ear-tipped (TNR)</label>
+        <label>{t("addSighting.earTipped")}</label>
         <SegmentedControl
-          name="Ear-tipped"
+          name={t("addSighting.earTipped")}
           value={isEarTipped}
-          options={TRI_STATE_OPTIONS}
+          options={triStateOptions}
           onChange={setIsEarTipped}
         />
       </div>
 
       <div className="field">
-        <label>Stray</label>
+        <label>{t("addSighting.stray")}</label>
         <SegmentedControl
-          name="Stray"
+          name={t("addSighting.stray")}
           value={isStray}
-          options={TRI_STATE_OPTIONS}
+          options={triStateOptions}
           onChange={setIsStray}
         />
       </div>
 
       <div className="row wizard-nav">
         <button className="btn btn-ghost btn-block" onClick={onClose} disabled={saving}>
-          Cancel
+          {t("common.cancel")}
         </button>
         <button className="btn btn-primary btn-block" onClick={onSubmit} disabled={saving}>
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t("common.saving") : t("common.save")}
         </button>
       </div>
     </Modal>

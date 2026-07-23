@@ -12,7 +12,10 @@
     "catSighting": "Katzensichtung",
     "confirmations_one": "{{count}} Bestätigung",
     "confirmations_other": "{{count}} Bestätigungen",
-    "reload": "Neu laden"
+    "reload": "Neu laden",
+    "remove": "Entfernen",
+    "save": "Änderungen speichern",
+    "saving": "Speichern…"
   },
   "header": {
     "brand": "CatMap",
@@ -140,7 +143,21 @@
     "catNamePlaceholder": "Whiskers, Luna…",
     "contact": "So erreichst du uns",
     "contactPlaceholder": "Telefon, E-Mail oder Social Handle",
-    "contactHint": "Wird auf deinem Vermissten-Post angezeigt."
+    "contactHint": "Wird auf deinem Vermissten-Post angezeigt.",
+    "colorUnknown": "Unbekannt",
+    "uploadProgress": "Upload-Fortschritt",
+    "colors": {
+      "black": "Schwarz",
+      "white": "Weiß",
+      "gray": "Grau",
+      "orange": "Orange",
+      "brown": "Braun",
+      "tabby": "Getigert",
+      "calico": "Glückskatze",
+      "tuxedo": "Smoking",
+      "tortoiseshell": "Schildpatt",
+      "siamese": "Siam"
+    }
   },
   "sighting": {
     "title": "Katzensichtung",
@@ -200,7 +217,12 @@
       "wrong_location": "Falscher Standort",
       "duplicate": "Duplikat",
       "other": "Etwas anderes"
-    }
+    },
+    "poster": "Poster",
+    "lastSeenNear": "Zuletzt gesehen bei {{place}}",
+    "near": "Bei {{place}}",
+    "editTitle": "Sichtung bearbeiten",
+    "missingHelp": "Hast du diese Katze gesehen? Bitte melde dich."
   },
   "catProfile": {
     "title": "Katzenprofil",
@@ -278,5 +300,51 @@
     "notACat": "Dieses Foto sieht nicht nach einer Katze aus.",
     "networkUpload": "Netzwerkfehler beim Upload.",
     "searchFailed": "Suche fehlgeschlagen"
+  },
+  "poster": {
+    "title": "Poster für vermisste Katze",
+    "banner": "KATZE VERMISST",
+    "hint": "Optionale Angaben ergänzen und dann ein druckbares PDF-Poster herunterladen oder teilen.",
+    "lastSeen": "Zuletzt gesehen",
+    "color": "Farbe",
+    "answersTo": "Hört auf den Namen",
+    "area": "Umgebung",
+    "coords": "Koordinaten",
+    "reward": "Belohnung",
+    "rewardPlaceholder": "z. B. 100 €",
+    "phone": "Zusätzliche Telefonnummer",
+    "phonePlaceholder": "z. B. +49 …",
+    "answersToPlaceholder": "Name, auf den die Katze hört",
+    "contactHeading": "Bitte kontaktieren:",
+    "scanCaption": "Scannen für Updates und um eine Sichtung zu melden",
+    "download": "PDF herunterladen",
+    "share": "Teilen",
+    "downloaded": "Poster heruntergeladen",
+    "error": "Poster konnte nicht erstellt werden. Bitte erneut versuchen.",
+    "shareTitle": "Vermisste Katze: {{name}}"
+  },
+  "addPhotos": {
+    "title": "Fotos hinzufügen",
+    "added_one": "Foto hinzugefügt!",
+    "added_other": "Fotos hinzugefügt!",
+    "possibleCat": "Möglicherweise eine Katze auf einem dieser Fotos — wird nach dem Upload geprüft.",
+    "notCat": "Auf einem dieser Fotos konnten wir keine Katze erkennen — Fotos ohne Katze können abgelehnt werden.",
+    "uploading": "Wird hochgeladen…",
+    "submit": "Fotos hinzufügen"
+  },
+  "filters": {
+    "title": "Katzen filtern",
+    "postedBetween": "Veröffentlicht zwischen",
+    "fromDate": "Von Datum",
+    "toDate": "Bis Datum",
+    "type": "Typ",
+    "typeAll": "Alle",
+    "typeSightings": "Sichtungen",
+    "typeMissing": "Vermisst",
+    "any": "Alle",
+    "confidence": "Min. Katzenerkennungs-Konfidenz: {{pct}}%",
+    "confidenceHint": "Höhere Werte blenden Sichtungen aus, bei denen der Detektor weniger sicher war.",
+    "reset": "Zurücksetzen",
+    "apply": "Anwenden"
   }
 }
