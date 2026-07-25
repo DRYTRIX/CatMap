@@ -7,6 +7,24 @@ export default defineConfig(({ mode }) => ({
   legacy: {
     inconsistentCjsInterop: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the big statically-imported vendors into their own cacheable
+        // chunks so app-code edits don't bust them and they load in parallel.
+        // (onnxruntime, jspdf and html-to-image stay in their existing on-demand
+        // async chunks — don't list them here or they'd be pulled forward.)
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("leaflet")) return "vendor-map";
+          if (id.includes("@sentry")) return "vendor-sentry";
+          if (id.includes("@fortawesome")) return "vendor-icons";
+          if (id.includes("i18next")) return "vendor-i18n";
+          return undefined;
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     // Service worker is for the browser PWA only — not needed inside Capacitor WebView.

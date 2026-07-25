@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faTriangleExclamation, faInfo } from "@fortawesome/free-solid-svg-icons";
 const ToastContext = createContext(null);
@@ -22,19 +22,27 @@ export function ToastProvider({ children }) {
     [remove]
   );
 
-  const api = {
-    show: push,
-    success: (m, d) => push(m, "success", d),
-    error: (m, d) => push(m, "error", d ?? 4500),
-    info: (m, d) => push(m, "info", d),
-  };
+  const api = useMemo(
+    () => ({
+      show: push,
+      success: (m, d) => push(m, "success", d),
+      error: (m, d) => push(m, "error", d ?? 4500),
+      info: (m, d) => push(m, "info", d),
+    }),
+    [push]
+  );
 
   return (
     <ToastContext.Provider value={api}>
       {children}
       <div className="toast-stack" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.type}`} onClick={() => remove(t.id)}>
+          <div
+            key={t.id}
+            className={`toast toast-${t.type}`}
+            role={t.type === "error" ? "alert" : "status"}
+            onClick={() => remove(t.id)}
+          >
             <span className="toast-icon">
                 {t.type === "success" ? <FontAwesomeIcon icon={faCheck} /> : t.type === "error" ? <FontAwesomeIcon icon={faTriangleExclamation} /> : <FontAwesomeIcon icon={faInfo} />}
             </span>

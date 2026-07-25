@@ -1,23 +1,26 @@
 import { useTranslation } from "react-i18next";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
-import AddSightingModal from "./components/AddSightingModal";
-import SightingSheet from "./components/SightingSheet";
-import FilterPanel from "./components/FilterPanel";
-import FavoritesModal from "./components/FavoritesModal";
-import MySightingsModal from "./components/MySightingsModal";
-import RecentFeedModal from "./components/RecentFeedModal";
-import ReportIssueModal from "./components/ReportIssueModal";
-import CatProfileSheet from "./components/CatProfileSheet";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
 import OnboardingHint from "./components/OnboardingHint";
 import { ToastProvider, useToast } from "./components/Toast";
-import NotificationsModal from "./components/NotificationsModal";
-import SettingsModal from "./components/SettingsModal";
 import { fetchUnreadCount } from "./api";
+
+// Modals/sheets are only mounted when opened — code-split them so they stay out
+// of the initial bundle.
+const AddSightingModal = lazy(() => import("./components/AddSightingModal"));
+const SightingSheet = lazy(() => import("./components/SightingSheet"));
+const FilterPanel = lazy(() => import("./components/FilterPanel"));
+const FavoritesModal = lazy(() => import("./components/FavoritesModal"));
+const MySightingsModal = lazy(() => import("./components/MySightingsModal"));
+const RecentFeedModal = lazy(() => import("./components/RecentFeedModal"));
+const ReportIssueModal = lazy(() => import("./components/ReportIssueModal"));
+const CatProfileSheet = lazy(() => import("./components/CatProfileSheet"));
+const NotificationsModal = lazy(() => import("./components/NotificationsModal"));
+const SettingsModal = lazy(() => import("./components/SettingsModal"));
 import { markCreated } from "./deviceToken";
 import { flushQueue, pendingCount } from "./lib/offlineQueue";
 import { getPosition } from "./lib/geolocate";
@@ -96,19 +99,14 @@ function AppShell() {
     return false;
   }
 
-  useEffect(() => initNativeApp({ onBackButton: handleBackButton }), [
-    adding,
-    selectedId,
-    selectedCatId,
-    filtering,
-    showFavorites,
-    showMySightings,
-    showRecent,
-    showReportIssue,
-    showNotifications,
-    showSettings,
-    mapMenuOpen,
-  ]);
+  // Keep a ref to the latest handler so the native back-button listener is
+  // registered once instead of being torn down/re-added on every modal toggle.
+  const backHandlerRef = useRef(handleBackButton);
+  backHandlerRef.current = handleBackButton;
+  useEffect(
+    () => initNativeApp({ onBackButton: () => backHandlerRef.current() }),
+    []
+  );
 
   useEffect(() => {
     track("app_open");
@@ -174,6 +172,9 @@ function AppShell() {
         onItemDone: () => {
           setRefreshKey((k) => k + 1);
           toast.success(t("offline.sent"));
+        },
+        onItemFailed: () => {
+          toast.error(t("offline.failed"));
         },
       }).then(() => pendingCount().then(setQueueCount));
     }
@@ -268,6 +269,7 @@ function AppShell() {
 
       <Footer />
 
+      <Suspense fallback={null}>
       {adding && (
         <AddSightingModal onClose={closeAdd} onCreated={handleCreated} />
       )}
@@ -330,6 +332,7 @@ function AppShell() {
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      </Suspense>
 
       <OnboardingHint />
       <InstallPrompt />

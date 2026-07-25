@@ -1,11 +1,13 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "./styles.css";
 import "./i18n";
 import App from "./App";
-import AdminApp from "./admin/AdminApp";
+// Admin console is only reachable at /admin — keep its large bundle out of the
+// initial download for regular users.
+const AdminApp = lazy(() => import("./admin/AdminApp"));
 import AnalyticsGate from "./components/AnalyticsGate";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { initSentry } from "./sentry";
@@ -23,7 +25,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
       {isAdmin ? (
-        <AdminApp />
+        <Suspense fallback={null}>
+          <AdminApp />
+        </Suspense>
       ) : (
         <AnalyticsGate>
           <App />
