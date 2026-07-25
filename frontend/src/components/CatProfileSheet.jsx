@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -14,6 +15,7 @@ import Modal from "./Modal";
  * Props: id, onClose, onSelectSighting(id)
  */
 export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -46,8 +48,8 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
     <Modal onClose={onClose} labelledBy="cat-profile-title" className="sheet detail-sheet">
       <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
-        <h2 id="cat-profile-title">🐱 {data?.name || "Cat profile"}</h2>
-        <button className="icon-btn" aria-label="Close" onClick={onClose}>
+        <h2 id="cat-profile-title">🐱 {data?.name || t("catProfile.title")}</h2>
+        <button className="icon-btn" aria-label={t("common.close")} onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
@@ -65,16 +67,30 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
         <>
           <div className="cat-profile-meta">
             <p>
-              Spotted {data.sighting_count} time{data.sighting_count === 1 ? "" : "s"} · First seen{" "}
-              {timeAgo(data.first_seen_at)} · Last seen {timeAgo(data.last_seen_at)}
+              {t("catProfile.summary", {
+                count: data.sighting_count,
+                first: timeAgo(data.first_seen_at),
+                last: timeAgo(data.last_seen_at),
+              })}
             </p>
             {(data.color || data.is_ear_tipped != null || data.is_stray != null) && (
               <p className="hint">
                 {data.color && <span>{data.color} · </span>}
                 {data.is_ear_tipped != null && (
-                  <span>Ear-tipped: {data.is_ear_tipped ? "yes" : "no"} · </span>
+                  <span>
+                    {t("catProfile.earTipped", {
+                      value: data.is_ear_tipped ? t("common.yes") : t("common.no"),
+                    })}{" "}
+                    ·{" "}
+                  </span>
                 )}
-                {data.is_stray != null && <span>Stray: {data.is_stray ? "yes" : "no"}</span>}
+                {data.is_stray != null && (
+                  <span>
+                    {t("catProfile.stray", {
+                      value: data.is_stray ? t("common.yes") : t("common.no"),
+                    })}
+                  </span>
+                )}
               </p>
             )}
           </div>
@@ -116,15 +132,19 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
                   loading="lazy"
                 />
                 <div className="sighting-list-body">
-                  <p className="sighting-list-desc">{s.description || "Cat sighting"}</p>
+                  <p className="sighting-list-desc">{s.description || t("common.catSighting")}</p>
                   <p className="sighting-list-meta">
-                    🐱 {timeAgo(s.created_at)} · {s.confirmations_count} confirmation
-                    {s.confirmations_count === 1 ? "" : "s"}
+                    🐱 {timeAgo(s.created_at)} ·{" "}
+                    {t("common.confirmations", { count: s.confirmations_count })}
                   </p>
                 </div>
               </button>
             ))}
           </div>
+
+          {data.sightings.length === 0 && (
+            <div className="sighting-list-empty">{t("catProfile.empty")}</div>
+          )}
         </>
       )}
     </Modal>

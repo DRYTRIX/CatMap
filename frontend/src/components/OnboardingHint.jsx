@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
 
 const DISMISS_KEY = "catmap_onboarding_dismissed";
 
 /** One-time hint encouraging users to add their first cat sighting. */
 export default function OnboardingHint() {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(() => {
     try {
       return !localStorage.getItem(DISMISS_KEY);
@@ -28,10 +32,15 @@ export default function OnboardingHint() {
   return (
     <div className="onboarding-hint" role="status">
       <span className="onboarding-text">
-        Tap <strong>Add cat</strong> to pin your first sighting on the map.
+        {t("onboarding.hint", { action: t("header.addCat") })}
       </span>
-      <button type="button" className="onboarding-close" aria-label="Dismiss" onClick={dismiss}>
-        ✕
+      <button
+        type="button"
+        className="onboarding-close"
+        aria-label={t("onboarding.dismiss")}
+        onClick={dismiss}
+      >
+        <FontAwesomeIcon icon={faXmark} />
       </button>
     </div>
   );

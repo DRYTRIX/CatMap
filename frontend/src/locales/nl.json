@@ -23,7 +23,8 @@
     "donate": "Doneren",
     "toggleTheme": "Thema wisselen",
     "inView": "{{count}} in beeld",
-    "worldwide": "{{count}} katten wereldwijd"
+    "worldwide": "{{count}} katten wereldwijd",
+    "pendingUploads": "Wachtende uploads"
   },
   "footer": {
     "by": "CatMap door",
@@ -222,16 +223,19 @@
     "lastSeenNear": "Laatst gezien bij {{place}}",
     "near": "Bij {{place}}",
     "editTitle": "Waarneming bewerken",
-    "missingHelp": "Heb je deze kat gezien? Neem alsjeblieft contact op."
+    "missingHelp": "Heb je deze kat gezien? Neem alsjeblieft contact op.",
+    "shareTitle": "Kat op CatMap: {{desc}}",
+    "shareTitleGeneric": "Kattenwaarneming op CatMap",
+    "viewFullPhoto": "Bekijk volledige foto",
+    "photoOf": "Foto {{index}} van {{total}}"
   },
   "catProfile": {
-    "title": "Katprofiel",
-    "spottedTimes_one": "{{count}} keer gezien",
-    "spottedTimes_other": "{{count}} keer gezien",
-    "firstSeen": "Eerst gezien {{time}}",
-    "lastSeen": "Laatst gezien {{time}}",
-    "earTipped": "Geknipt oor: {{value}}",
-    "stray": "Zwerfkat: {{value}}"
+    "title": "Kattenprofiel",
+    "summary_one": "{{count}} keer gezien · Eerst gezien {{first}} · Laatst gezien {{last}}",
+    "summary_other": "{{count}} keer gezien · Eerst gezien {{first}} · Laatst gezien {{last}}",
+    "earTipped": "Oortip: {{value}}",
+    "stray": "Zwerfkat: {{value}}",
+    "empty": "Nog geen waarnemingen voor deze kat."
   },
   "comments": {
     "title": "Reacties",
@@ -249,7 +253,8 @@
   },
   "notifications": {
     "title": "Meldingen",
-    "empty": "Nog geen meldingen."
+    "empty": "Nog geen meldingen.",
+    "loadError": "Kon meldingen niet laden."
   },
   "settings": {
     "title": "Instellingen",
@@ -280,7 +285,8 @@
   },
   "offline": {
     "queued": "Offline opgeslagen — upload bij verbinding.",
-    "sent": "Offline melding geüpload!"
+    "sent": "Offline melding geüpload!",
+    "failed": "Een opgeslagen waarneming kon niet worden geüpload en is verwijderd."
   },
   "errorBoundary": {
     "title": "Er ging iets mis",
@@ -330,7 +336,9 @@
     "possibleCat": "Mogelijk een kat op een van deze foto's — dit wordt na het uploaden gecontroleerd.",
     "notCat": "We konden op een van deze foto's geen kat herkennen — foto's zonder kat kunnen worden geweigerd.",
     "uploading": "Uploaden…",
-    "submit": "Foto's toevoegen"
+    "submit": "Foto's toevoegen",
+    "slotsLeft_one": "Houd deze kat up-to-date door meer foto's toe te voegen. Nog {{count}} plek beschikbaar.",
+    "slotsLeft_other": "Houd deze kat up-to-date door meer foto's toe te voegen. Nog {{count}} plekken beschikbaar."
   },
   "filters": {
     "title": "Katten filteren",
@@ -346,5 +354,45 @@
     "confidenceHint": "Hogere waarden verbergen waarnemingen waar de detector minder zeker van was.",
     "reset": "Herstellen",
     "apply": "Toepassen"
+  },
+  "locationPicker": {
+    "hint": "Tik op de kaart of sleep de pin om de locatie in te stellen.",
+    "locating": "Locatie bepalen…",
+    "myLocation": "Mijn locatie",
+    "selected": "Geselecteerd: {{lat}}, {{lng}}"
+  },
+  "search": {
+    "placeholder": "Zoek een plaats…",
+    "ariaLabel": "Zoek een plaats"
+  },
+  "photoPick": {
+    "opening": "Openen…"
+  },
+  "onboarding": {
+    "hint": "Tik op {{action}} om je eerste waarneming op de kaart te plaatsen.",
+    "dismiss": "Sluiten"
+  },
+  "install": {
+    "ariaLabel": "CatMap installeren",
+    "title": "CatMap installeren",
+    "body": "Voeg het toe aan je startscherm voor de volledige app.",
+    "iosHint": "Tik op Delen en daarna op “Zet op beginscherm”.",
+    "action": "Installeren",
+    "dismiss": "Sluiten"
+  },
+  "consent": {
+    "ariaLabel": "Toestemming analyse",
+    "text": "We gebruiken anonieme analyse om te begrijpen hoe CatMap wordt gebruikt en de ervaring te verbeteren. Er worden geen foto's, locaties of persoonlijke gegevens naar Google gestuurd.",
+    "seeOur": "Bekijk ons",
+    "privacyPolicy": "Privacybeleid",
+    "or": "of",
+    "googlePrivacy": "Privacybeleid van Google",
+    "decline": "Weigeren",
+    "accept": "Accepteren"
+  },
+  "lightbox": {
+    "close": "Afbeelding sluiten",
+    "prev": "Vorige foto",
+    "next": "Volgende foto"
   }
 }

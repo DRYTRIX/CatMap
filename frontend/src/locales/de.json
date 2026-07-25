@@ -23,7 +23,8 @@
     "donate": "Spenden",
     "toggleTheme": "Design wechseln",
     "inView": "{{count}} sichtbar",
-    "worldwide": "{{count}} Katzen weltweit"
+    "worldwide": "{{count}} Katzen weltweit",
+    "pendingUploads": "Ausstehende Uploads"
   },
   "footer": {
     "by": "CatMap von",
@@ -222,16 +223,19 @@
     "lastSeenNear": "Zuletzt gesehen bei {{place}}",
     "near": "Bei {{place}}",
     "editTitle": "Sichtung bearbeiten",
-    "missingHelp": "Hast du diese Katze gesehen? Bitte melde dich."
+    "missingHelp": "Hast du diese Katze gesehen? Bitte melde dich.",
+    "shareTitle": "Katze auf CatMap: {{desc}}",
+    "shareTitleGeneric": "Katzensichtung auf CatMap",
+    "viewFullPhoto": "Vollständiges Foto ansehen",
+    "photoOf": "Foto {{index}} von {{total}}"
   },
   "catProfile": {
     "title": "Katzenprofil",
-    "spottedTimes_one": "{{count}} Mal gesichtet",
-    "spottedTimes_other": "{{count}} Mal gesichtet",
-    "firstSeen": "Erstmals gesehen {{time}}",
-    "lastSeen": "Zuletzt gesehen {{time}}",
-    "earTipped": "Gestutztes Ohr: {{value}}",
-    "stray": "Streuner: {{value}}"
+    "summary_one": "{{count}} Mal gesichtet · Zuerst gesehen {{first}} · Zuletzt gesehen {{last}}",
+    "summary_other": "{{count}} Mal gesichtet · Zuerst gesehen {{first}} · Zuletzt gesehen {{last}}",
+    "earTipped": "Ohrmarkierung: {{value}}",
+    "stray": "Streuner: {{value}}",
+    "empty": "Noch keine Sichtungen für diese Katze."
   },
   "comments": {
     "title": "Kommentare",
@@ -249,7 +253,8 @@
   },
   "notifications": {
     "title": "Benachrichtigungen",
-    "empty": "Noch keine Benachrichtigungen."
+    "empty": "Noch keine Benachrichtigungen.",
+    "loadError": "Benachrichtigungen konnten nicht geladen werden."
   },
   "settings": {
     "title": "Einstellungen",
@@ -280,7 +285,8 @@
   },
   "offline": {
     "queued": "Offline gespeichert — wird hochgeladen, sobald du online bist.",
-    "sent": "Offline-Sichtung hochgeladen!"
+    "sent": "Offline-Sichtung hochgeladen!",
+    "failed": "Eine gespeicherte Sichtung konnte nicht hochgeladen werden und wurde verworfen."
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",
@@ -330,7 +336,9 @@
     "possibleCat": "Möglicherweise eine Katze auf einem dieser Fotos — wird nach dem Upload geprüft.",
     "notCat": "Auf einem dieser Fotos konnten wir keine Katze erkennen — Fotos ohne Katze können abgelehnt werden.",
     "uploading": "Wird hochgeladen…",
-    "submit": "Fotos hinzufügen"
+    "submit": "Fotos hinzufügen",
+    "slotsLeft_one": "Halte diese Katze aktuell, indem du weitere Fotos hinzufügst. Noch {{count}} Platz frei.",
+    "slotsLeft_other": "Halte diese Katze aktuell, indem du weitere Fotos hinzufügst. Noch {{count}} Plätze frei."
   },
   "filters": {
     "title": "Katzen filtern",
@@ -346,5 +354,45 @@
     "confidenceHint": "Höhere Werte blenden Sichtungen aus, bei denen der Detektor weniger sicher war.",
     "reset": "Zurücksetzen",
     "apply": "Anwenden"
+  },
+  "locationPicker": {
+    "hint": "Tippe auf die Karte oder ziehe die Nadel, um den Ort festzulegen.",
+    "locating": "Standort wird ermittelt…",
+    "myLocation": "Mein Standort",
+    "selected": "Ausgewählt: {{lat}}, {{lng}}"
+  },
+  "search": {
+    "placeholder": "Ort suchen…",
+    "ariaLabel": "Nach einem Ort suchen"
+  },
+  "photoPick": {
+    "opening": "Wird geöffnet…"
+  },
+  "onboarding": {
+    "hint": "Tippe auf {{action}}, um deine erste Sichtung auf der Karte zu markieren.",
+    "dismiss": "Schließen"
+  },
+  "install": {
+    "ariaLabel": "CatMap installieren",
+    "title": "CatMap installieren",
+    "body": "Füge es zum Startbildschirm hinzu für die volle App.",
+    "iosHint": "Tippe auf Teilen und dann auf „Zum Home-Bildschirm“.",
+    "action": "Installieren",
+    "dismiss": "Schließen"
+  },
+  "consent": {
+    "ariaLabel": "Analyse-Einwilligung",
+    "text": "Wir verwenden anonyme Analysen, um zu verstehen, wie CatMap genutzt wird, und die Erfahrung zu verbessern. Es werden keine Fotos, Standorte oder persönlichen Daten an Google gesendet.",
+    "seeOur": "Siehe unsere",
+    "privacyPolicy": "Datenschutzerklärung",
+    "or": "oder",
+    "googlePrivacy": "Datenschutzerklärung von Google",
+    "decline": "Ablehnen",
+    "accept": "Akzeptieren"
+  },
+  "lightbox": {
+    "close": "Bild schließen",
+    "prev": "Vorheriges Foto",
+    "next": "Nächstes Foto"
   }
 }

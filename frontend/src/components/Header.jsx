@@ -67,7 +67,7 @@ export default function Header({
       <SearchBar map={map} />
       <div className="header-actions">
         {queueCount > 0 && (
-          <span className="queue-badge" title="Pending uploads">
+          <span className="queue-badge" title={t("header.pendingUploads")}>
             {queueCount}
           </span>
         )}

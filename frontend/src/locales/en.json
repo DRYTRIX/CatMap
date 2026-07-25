@@ -23,7 +23,8 @@
     "donate": "Donate",
     "toggleTheme": "Toggle theme",
     "inView": "{{count}} in view",
-    "worldwide": "{{count}} cats worldwide"
+    "worldwide": "{{count}} cats worldwide",
+    "pendingUploads": "Pending uploads"
   },
   "footer": {
     "by": "CatMap by",
@@ -222,16 +223,19 @@
     "lastSeenNear": "Last seen near {{place}}",
     "near": "Near {{place}}",
     "editTitle": "Edit sighting",
-    "missingHelp": "Have you seen this cat? Please reach out."
+    "missingHelp": "Have you seen this cat? Please reach out.",
+    "shareTitle": "Cat on CatMap: {{desc}}",
+    "shareTitleGeneric": "Cat sighting on CatMap",
+    "viewFullPhoto": "View full photo",
+    "photoOf": "Photo {{index}} of {{total}}"
   },
   "catProfile": {
     "title": "Cat profile",
-    "spottedTimes_one": "Spotted {{count}} time",
-    "spottedTimes_other": "Spotted {{count}} times",
-    "firstSeen": "First seen {{time}}",
-    "lastSeen": "Last seen {{time}}",
+    "summary_one": "Spotted {{count}} time · First seen {{first}} · Last seen {{last}}",
+    "summary_other": "Spotted {{count}} times · First seen {{first}} · Last seen {{last}}",
     "earTipped": "Ear-tipped: {{value}}",
-    "stray": "Stray: {{value}}"
+    "stray": "Stray: {{value}}",
+    "empty": "No sightings recorded for this cat yet."
   },
   "comments": {
     "title": "Comments",
@@ -249,7 +253,8 @@
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "No notifications yet."
+    "empty": "No notifications yet.",
+    "loadError": "Couldn't load notifications."
   },
   "settings": {
     "title": "Settings",
@@ -280,7 +285,8 @@
   },
   "offline": {
     "queued": "Saved offline — will upload when you're back online.",
-    "sent": "Offline sighting uploaded!"
+    "sent": "Offline sighting uploaded!",
+    "failed": "A saved sighting couldn't be uploaded and was discarded."
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -330,7 +336,9 @@
     "possibleCat": "Possible cat in one of these photos — it will be reviewed after upload.",
     "notCat": "We couldn't spot a cat in one of these — photos without a cat may be rejected.",
     "uploading": "Uploading…",
-    "submit": "Add photos"
+    "submit": "Add photos",
+    "slotsLeft_one": "Help keep this cat up to date by adding more photos. {{count}} slot left.",
+    "slotsLeft_other": "Help keep this cat up to date by adding more photos. {{count}} slots left."
   },
   "filters": {
     "title": "Filter cats",
@@ -346,5 +354,45 @@
     "confidenceHint": "Higher values hide sightings the detector was less confident about.",
     "reset": "Reset",
     "apply": "Apply"
+  },
+  "locationPicker": {
+    "hint": "Tap the map or drag the pin to set the location.",
+    "locating": "Locating…",
+    "myLocation": "My location",
+    "selected": "Selected: {{lat}}, {{lng}}"
+  },
+  "search": {
+    "placeholder": "Search a place…",
+    "ariaLabel": "Search for a place"
+  },
+  "photoPick": {
+    "opening": "Opening…"
+  },
+  "onboarding": {
+    "hint": "Tap {{action}} to pin your first sighting on the map.",
+    "dismiss": "Dismiss"
+  },
+  "install": {
+    "ariaLabel": "Install CatMap",
+    "title": "Install CatMap",
+    "body": "Add it to your home screen for the full app.",
+    "iosHint": "Tap Share, then “Add to Home Screen.”",
+    "action": "Install",
+    "dismiss": "Dismiss"
+  },
+  "consent": {
+    "ariaLabel": "Analytics consent",
+    "text": "We use anonymous analytics to understand how CatMap is used and improve the experience. No photos, locations, or personal data are sent to Google.",
+    "seeOur": "See our",
+    "privacyPolicy": "Privacy Policy",
+    "or": "or",
+    "googlePrivacy": "Google Privacy Policy",
+    "decline": "Decline",
+    "accept": "Accept"
+  },
+  "lightbox": {
+    "close": "Close image",
+    "prev": "Previous photo",
+    "next": "Next photo"
   }
 }

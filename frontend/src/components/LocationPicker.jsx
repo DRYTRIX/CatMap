@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import { defaultIcon } from "../leafletIcon";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import { getPosition } from "../lib/geolocate";
+import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLocationDot } from "@fortawesome/free-solid-svg-icons";
+import { faLocationDot, faSpinner } from "@fortawesome/free-solid-svg-icons";
 function ClickCapture({ onPick }) {
   useMapEvents({
     click(e) {
@@ -15,6 +17,8 @@ function ClickCapture({ onPick }) {
 }
 
 export default function LocationPicker({ value, onChange }) {
+  const { t } = useTranslation();
+  const toast = useToast();
   const [map, setMap] = useState(null);
   const [locating, setLocating] = useState(false);
   const center = value || { lat: 20, lng: 0 };
@@ -28,19 +32,27 @@ export default function LocationPicker({ value, onChange }) {
         onChange({ lat: latitude, lng: longitude });
         if (map) map.setView([latitude, longitude], 15);
       })
+      .catch(() => toast.error(t("map.locateError")))
       .finally(() => setLocating(false));
   }
 
   return (
     <div>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <p className="hint">Tap the map or drag the pin to set the location.</p>
-        <button type="button" className="btn btn-ghost" onClick={useMyLocation}>
+        <p className="hint">{t("locationPicker.hint")}</p>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={useMyLocation}
+          disabled={locating}
+        >
           {locating ? (
-            "Locating…"
+            <>
+              <FontAwesomeIcon icon={faSpinner} spin /> {t("locationPicker.locating")}
+            </>
           ) : (
             <>
-              <FontAwesomeIcon icon={faLocationDot} /> My location
+              <FontAwesomeIcon icon={faLocationDot} /> {t("locationPicker.myLocation")}
             </>
           )}
         </button>
@@ -71,7 +83,10 @@ export default function LocationPicker({ value, onChange }) {
       </div>
       {value && (
         <p className="hint">
-          Selected: {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
+          {t("locationPicker.selected", {
+            lat: value.lat.toFixed(5),
+            lng: value.lng.toFixed(5),
+          })}
         </p>
       )}
     </div>

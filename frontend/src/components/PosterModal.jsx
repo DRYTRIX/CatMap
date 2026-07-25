@@ -122,6 +122,7 @@ export default function PosterModal({ data, address, onClose }) {
 
   return (
     <Modal onClose={onClose} labelledBy="poster-title" className="sheet poster-sheet">
+      <div className="sheet-handle" aria-hidden="true" />
       <div className="wizard-head">
         <h2 id="poster-title">{t("poster.title")}</h2>
         <button className="icon-btn" aria-label={t("common.close")} onClick={onClose}>

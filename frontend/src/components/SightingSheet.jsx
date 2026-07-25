@@ -162,8 +162,8 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   async function onShare() {
     const url = sightingShareUrl(id);
     const title = data?.description
-      ? `Cat on CatMap: ${data.description.slice(0, 80)}`
-      : "Cat sighting on CatMap";
+      ? t("sighting.shareTitle", { desc: data.description.slice(0, 80) })
+      : t("sighting.shareTitleGeneric");
 
     let file;
     try {
@@ -351,12 +351,12 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
               track("sighting_photo_expand");
               setLightbox(true);
             }}
-            aria-label="View full photo"
+            aria-label={t("sighting.viewFullPhoto")}
           >
             <img
               className={`card-img detail-img ${imgLoaded ? "is-loaded" : ""}`}
               src={assetUrl(data.photos[activePhoto]?.thumbnail_url ?? data.thumbnail_url)}
-              alt="Cat sighting"
+              alt={t("common.catSighting")}
               onLoad={() => setImgLoaded(true)}
             />
             <span className="card-img-zoom" aria-hidden="true">⛶</span>
@@ -370,7 +370,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                     type="button"
                     role="listitem"
                     className={`photo-thumb ${i === activePhoto ? "is-active" : ""}`}
-                    aria-label={`Photo ${i + 1} of ${data.photos.length}`}
+                    aria-label={t("sighting.photoOf", { index: i + 1, total: data.photos.length })}
                     aria-current={i === activePhoto}
                     onClick={() => {
                       setActivePhoto(i);
@@ -387,7 +387,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                       onClick={() => onDeletePhoto(p.id)}
                       disabled={busy}
                     >
-                      ×
+                      <FontAwesomeIcon icon={faXmark} />
                     </button>
                   )}
                 </div>
@@ -557,7 +557,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
 
       {lightbox && data && (
         <Lightbox
-          images={data.photos.map((p) => ({ src: assetUrl(p.photo_url), alt: "Cat sighting" }))}
+          images={data.photos.map((p) => ({ src: assetUrl(p.photo_url), alt: t("common.catSighting") }))}
           index={activePhoto}
           onNavigate={setActivePhoto}
           onClose={() => setLightbox(false)}
@@ -606,7 +606,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             <h2 id="report-title">{t("sighting.reportTitle")}</h2>
             <button
               className="icon-btn"
-              aria-label="Close"
+              aria-label={t("common.close")}
               onClick={() => setReportOpen(false)}
             >
               <FontAwesomeIcon icon={faXmark} />
@@ -663,7 +663,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             <h2 id="similar-title">{t("sighting.similarTitle")}</h2>
             <button
               className="icon-btn"
-              aria-label="Close"
+              aria-label={t("common.close")}
               onClick={() => setSimilarOpen(false)}
             >
               <FontAwesomeIcon icon={faXmark} />
@@ -700,7 +700,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                     loading="lazy"
                   />
                   <div className="sighting-list-body">
-                    <p className="sighting-list-desc">{s.description || "Cat sighting"}</p>
+                    <p className="sighting-list-desc">{s.description || t("common.catSighting")}</p>
                     <p className="sighting-list-meta">
                       🐱 {timeAgo(s.created_at)} · {t("sighting.linkSameCat")}
                     </p>

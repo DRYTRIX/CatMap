@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
 import { isNativePlatform } from "../lib/platform";
 
@@ -16,6 +19,7 @@ function isStandalone() {
 
 /** Custom install banner: native prompt on Android/desktop, hint on iOS. */
 export default function InstallPrompt() {
+  const { t } = useTranslation();
   const [deferred, setDeferred] = useState(null);
   const [visible, setVisible] = useState(false);
   const [iosHint, setIosHint] = useState(false);
@@ -66,23 +70,19 @@ export default function InstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="install-banner" role="dialog" aria-label="Install CatMap">
+    <div className="install-banner" role="dialog" aria-label={t("install.ariaLabel")}>
       <span className="install-icon">🐱</span>
       <div className="install-text">
-        <strong>Install CatMap</strong>
-        <span>
-          {iosHint
-            ? "Tap Share, then “Add to Home Screen.”"
-            : "Add it to your home screen for the full app."}
-        </span>
+        <strong>{t("install.title")}</strong>
+        <span>{iosHint ? t("install.iosHint") : t("install.body")}</span>
       </div>
       {!iosHint && (
         <button className="btn btn-primary install-action" onClick={install}>
-          Install
+          {t("install.action")}
         </button>
       )}
-      <button className="install-close" aria-label="Dismiss" onClick={dismiss}>
-        ✕
+      <button className="install-close" aria-label={t("install.dismiss")} onClick={dismiss}>
+        <FontAwesomeIcon icon={faXmark} />
       </button>
     </div>
   );

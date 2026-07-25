@@ -118,10 +118,7 @@ export default function AddPhotosModal({ sighting, remaining, onClose, onAdded }
       </div>
 
       <div className="field">
-        <p className="hint">
-          Help keep this cat up to date by adding more photos. {remaining} slot
-          {remaining === 1 ? "" : "s"} left.
-        </p>
+        <p className="hint">{t("addPhotos.slotsLeft", { count: remaining })}</p>
 
         {photos.length > 0 ? (
           <div className="photo-grid">

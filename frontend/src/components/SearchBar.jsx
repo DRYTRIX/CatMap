@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { track } from "../analytics";
 import { geocode } from "../api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 /** Place search using OpenStreetMap Nominatim. Flies the map on selection. */
 export default function SearchBar({ map }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const abortRef = useRef(null);
   const timerRef = useRef(null);
   const boxRef = useRef(null);
@@ -18,6 +21,7 @@ export default function SearchBar({ map }) {
     clearTimeout(timerRef.current);
     if (q.length < 3) {
       setResults([]);
+      setActiveIndex(-1);
       setLoading(false);
       return;
     }
@@ -29,6 +33,7 @@ export default function SearchBar({ map }) {
       try {
         const data = await geocode(q, controller.signal);
         setResults(data);
+        setActiveIndex(-1);
         setOpen(true);
         track("search", { result_count: data.length });
       } catch {
@@ -48,6 +53,22 @@ export default function SearchBar({ map }) {
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
+
+  function onKeyDown(e) {
+    if (!open || results.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % results.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + results.length) % results.length);
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      choose(results[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
 
   function choose(r) {
     track("search_select", { has_bounds: Boolean(r.boundingbox) });
@@ -74,25 +95,31 @@ export default function SearchBar({ map }) {
       <input
         type="search"
         className="search-input"
-        placeholder="Search a place…"
+        placeholder={t("search.placeholder")}
         value={query}
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
-        aria-label="Search for a place"
+        aria-controls="search-results-list"
+        aria-activedescendant={
+          activeIndex >= 0 ? `search-result-${activeIndex}` : undefined
+        }
+        aria-label={t("search.ariaLabel")}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length && setOpen(true)}
+        onKeyDown={onKeyDown}
       />
       {loading && <span className="search-spinner" aria-hidden="true" />}
       {open && results.length > 0 && (
-        <ul className="search-results" role="listbox">
-          {results.map((r) => (
+        <ul className="search-results" role="listbox" id="search-results-list">
+          {results.map((r, i) => (
             <li key={r.place_id}>
               <button
                 type="button"
-                className="search-result"
+                id={`search-result-${i}`}
+                className={`search-result ${i === activeIndex ? "is-active" : ""}`}
                 role="option"
-                aria-selected="false"
+                aria-selected={i === activeIndex}
                 onClick={() => choose(r)}
               >
                 <span className="search-result-name">

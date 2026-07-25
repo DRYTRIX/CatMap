@@ -1,7 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faChevronRight, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 /**
  * Full-screen image viewer. Tap the backdrop or press Esc to close.
@@ -10,6 +12,9 @@ import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons
  * for a swipeable/arrow-key gallery.
  */
 export default function Lightbox({ src, images, index = 0, alt = "", onClose, onNavigate }) {
+  const { t } = useTranslation();
+  const panelRef = useRef(null);
+  useFocusTrap(panelRef, true);
   const hasImages = Array.isArray(images) && images.length > 0;
   const gallery = hasImages && images.length > 1; // controls nav arrows/counter
   // Show the selected image whenever an `images` array is given (even a single
@@ -31,9 +36,16 @@ export default function Lightbox({ src, images, index = 0, alt = "", onClose, on
 
   // Portal to <body> so it escapes Leaflet's transformed popup container.
   return createPortal(
-    <div className="lightbox" onClick={onClose} role="dialog" aria-modal="true">
-      <button className="lightbox-close" aria-label="Close image" onClick={onClose}>
-        ✕
+    <div
+      className="lightbox"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      ref={panelRef}
+      tabIndex={-1}
+    >
+      <button className="lightbox-close" aria-label={t("lightbox.close")} onClick={onClose}>
+        <FontAwesomeIcon icon={faXmark} />
       </button>
       <img
         className="lightbox-img"
@@ -45,7 +57,7 @@ export default function Lightbox({ src, images, index = 0, alt = "", onClose, on
         <>
           <button
             className="lightbox-nav lightbox-prev"
-            aria-label="Previous photo"
+            aria-label={t("lightbox.prev")}
             onClick={(e) => {
               e.stopPropagation();
               onNavigate((index - 1 + images.length) % images.length);
@@ -55,7 +67,7 @@ export default function Lightbox({ src, images, index = 0, alt = "", onClose, on
           </button>
           <button
             className="lightbox-nav lightbox-next"
-            aria-label="Next photo"
+            aria-label={t("lightbox.next")}
             onClick={(e) => {
               e.stopPropagation();
               onNavigate((index + 1) % images.length);

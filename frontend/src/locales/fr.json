@@ -23,7 +23,8 @@
     "donate": "Faire un don",
     "toggleTheme": "Changer de thème",
     "inView": "{{count}} visibles",
-    "worldwide": "{{count}} chats dans le monde"
+    "worldwide": "{{count}} chats dans le monde",
+    "pendingUploads": "Téléversements en attente"
   },
   "footer": {
     "by": "CatMap par",
@@ -222,16 +223,19 @@
     "lastSeenNear": "Vu(e) pour la dernière fois près de {{place}}",
     "near": "Près de {{place}}",
     "editTitle": "Modifier l'observation",
-    "missingHelp": "Avez-vous vu ce chat ? Merci de nous contacter."
+    "missingHelp": "Avez-vous vu ce chat ? Merci de nous contacter.",
+    "shareTitle": "Chat sur CatMap : {{desc}}",
+    "shareTitleGeneric": "Observation de chat sur CatMap",
+    "viewFullPhoto": "Voir la photo en entier",
+    "photoOf": "Photo {{index}} sur {{total}}"
   },
   "catProfile": {
     "title": "Profil du chat",
-    "spottedTimes_one": "Vu {{count}} fois",
-    "spottedTimes_other": "Vu {{count}} fois",
-    "firstSeen": "Vu pour la première fois {{time}}",
-    "lastSeen": "Vu pour la dernière fois {{time}}",
+    "summary_one": "Vu {{count}} fois · Première fois {{first}} · Dernière fois {{last}}",
+    "summary_other": "Vu {{count}} fois · Première fois {{first}} · Dernière fois {{last}}",
     "earTipped": "Oreille coupée : {{value}}",
-    "stray": "Errant : {{value}}"
+    "stray": "Errant : {{value}}",
+    "empty": "Aucune observation enregistrée pour ce chat."
   },
   "comments": {
     "title": "Commentaires",
@@ -249,7 +253,8 @@
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "Aucune notification pour l'instant."
+    "empty": "Aucune notification pour l'instant.",
+    "loadError": "Impossible de charger les notifications."
   },
   "settings": {
     "title": "Paramètres",
@@ -280,7 +285,8 @@
   },
   "offline": {
     "queued": "Enregistré hors ligne — envoi à la reconnexion.",
-    "sent": "Signalement hors ligne envoyé !"
+    "sent": "Signalement hors ligne envoyé !",
+    "failed": "Une observation enregistrée n'a pas pu être envoyée et a été supprimée."
   },
   "errorBoundary": {
     "title": "Une erreur s'est produite",
@@ -330,7 +336,9 @@
     "possibleCat": "Chat possible sur l'une de ces photos — elle sera vérifiée après l'envoi.",
     "notCat": "Nous n'avons pas détecté de chat sur l'une de ces photos — les photos sans chat peuvent être refusées.",
     "uploading": "Envoi…",
-    "submit": "Ajouter des photos"
+    "submit": "Ajouter des photos",
+    "slotsLeft_one": "Gardez ce chat à jour en ajoutant plus de photos. {{count}} emplacement restant.",
+    "slotsLeft_other": "Gardez ce chat à jour en ajoutant plus de photos. {{count}} emplacements restants."
   },
   "filters": {
     "title": "Filtrer les chats",
@@ -346,5 +354,45 @@
     "confidenceHint": "Des valeurs plus élevées masquent les observations dont le détecteur était moins sûr.",
     "reset": "Réinitialiser",
     "apply": "Appliquer"
+  },
+  "locationPicker": {
+    "hint": "Touchez la carte ou faites glisser le repère pour définir le lieu.",
+    "locating": "Localisation…",
+    "myLocation": "Ma position",
+    "selected": "Sélectionné : {{lat}}, {{lng}}"
+  },
+  "search": {
+    "placeholder": "Rechercher un lieu…",
+    "ariaLabel": "Rechercher un lieu"
+  },
+  "photoPick": {
+    "opening": "Ouverture…"
+  },
+  "onboarding": {
+    "hint": "Touchez {{action}} pour placer votre première observation sur la carte.",
+    "dismiss": "Fermer"
+  },
+  "install": {
+    "ariaLabel": "Installer CatMap",
+    "title": "Installer CatMap",
+    "body": "Ajoutez-le à votre écran d'accueil pour l'app complète.",
+    "iosHint": "Touchez Partager, puis « Sur l'écran d'accueil ».",
+    "action": "Installer",
+    "dismiss": "Fermer"
+  },
+  "consent": {
+    "ariaLabel": "Consentement analytique",
+    "text": "Nous utilisons des analyses anonymes pour comprendre comment CatMap est utilisé et améliorer l'expérience. Aucune photo, localisation ou donnée personnelle n'est envoyée à Google.",
+    "seeOur": "Consultez notre",
+    "privacyPolicy": "Politique de confidentialité",
+    "or": "ou",
+    "googlePrivacy": "Politique de confidentialité de Google",
+    "decline": "Refuser",
+    "accept": "Accepter"
+  },
+  "lightbox": {
+    "close": "Fermer l'image",
+    "prev": "Photo précédente",
+    "next": "Photo suivante"
   }
 }

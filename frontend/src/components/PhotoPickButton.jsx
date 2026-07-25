@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fileInputAccept } from "../lib/photoGps";
 import { pickNativePhotos, useNativePhotoPicker } from "../lib/pickPhotos";
 
@@ -16,6 +17,7 @@ export default function PhotoPickButton({
   className = "btn btn-ghost btn-block",
   style,
 }) {
+  const { t } = useTranslation();
   const native = useNativePhotoPicker();
   const fileRef = useRef(null);
   const [picking, setPicking] = useState(false);
@@ -34,7 +36,7 @@ export default function PhotoPickButton({
   }
 
   const busy = disabled || picking;
-  const text = picking ? "Opening…" : label;
+  const text = picking ? t("photoPick.opening") : label;
 
   if (native) {
     return (
