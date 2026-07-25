@@ -18,17 +18,19 @@ export default function NotificationsModal({ onClose, onSelectSighting }) {
   const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let active = true;
     fetchNotifications()
       .then((rows) => active && setItems(rows))
+      .catch(() => active && setError(t("notifications.loadError")))
       .finally(() => active && setLoading(false));
     markNotificationsRead().catch(() => {});
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   function openItem(item) {
     if (item.sighting_id) onSelectSighting?.(item.sighting_id);
@@ -52,8 +54,10 @@ export default function NotificationsModal({ onClose, onSelectSighting }) {
         </>
       )}
 
-      {!loading && items.length === 0 && (
-        <p className="hint">{t("notifications.empty")}</p>
+      {!loading && error && <p className="error">{error}</p>}
+
+      {!loading && !error && items.length === 0 && (
+        <div className="sighting-list-empty">{t("notifications.empty")}</div>
       )}
 
       <div className="sighting-list" role="list">

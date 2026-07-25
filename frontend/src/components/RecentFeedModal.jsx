@@ -6,6 +6,7 @@ import { assetUrl, fetchRecent } from "../api";
 import { getPosition } from "../lib/geolocate";
 import { timeAgo } from "../lib/time";
 import Modal from "./Modal";
+import { useToast } from "./Toast";
 
 const TABS = [
   { id: "all", kind: "", status: "active" },
@@ -16,6 +17,7 @@ const TABS = [
 
 export default function RecentFeedModal({ onClose, onSelect }) {
   const { t } = useTranslation();
+  const toast = useToast();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [sort, setSort] = useState("recent");
@@ -39,8 +41,11 @@ export default function RecentFeedModal({ onClose, onSelect }) {
       .then((pos) =>
         setNearCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       )
-      .catch(() => setNearMe(false));
-  }, [nearMe]);
+      .catch(() => {
+        setNearMe(false);
+        toast.error(t("map.locateError"));
+      });
+  }, [nearMe, toast, t]);
 
   useEffect(() => {
     let active = true;

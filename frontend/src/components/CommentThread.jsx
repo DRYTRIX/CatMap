@@ -69,11 +69,15 @@ export default function CommentThread({ sightingId, isMissing, canDeleteOwn, onC
   }
 
   async function onReport(commentId) {
+    if (busy) return;
+    setBusy(true);
     try {
       await reportComment(sightingId, commentId);
       toast.success(t("comments.reported"));
     } catch (err) {
       toast.error(err.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -112,12 +116,12 @@ export default function CommentThread({ sightingId, isMissing, canDeleteOwn, onC
             </p>
             <div className="comment-actions">
               {c.is_mine && canDeleteOwn && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDelete(c.id)}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDelete(c.id)} disabled={busy}>
                   {t("common.delete")}
                 </button>
               )}
               {!c.is_mine && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onReport(c.id)}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onReport(c.id)} disabled={busy}>
                   {t("sighting.report")}
                 </button>
               )}

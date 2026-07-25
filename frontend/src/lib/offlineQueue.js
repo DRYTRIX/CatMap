@@ -71,7 +71,7 @@ export async function pendingCount() {
   });
 }
 
-export async function flushQueue({ onProgress, onItemDone } = {}) {
+export async function flushQueue({ onProgress, onItemDone, onItemFailed } = {}) {
   await purgeExpired().catch(() => {});
   const db = await openDb();
   const items = await new Promise((resolve, reject) => {
@@ -104,8 +104,18 @@ export async function flushQueue({ onProgress, onItemDone } = {}) {
         tx.onerror = () => reject(tx.error);
       });
       onItemDone?.(created);
-    } catch {
-      break;
+    } catch (err) {
+      // Network/offline errors: stop and keep the item to retry when back online.
+      if (isNetworkError(err)) break;
+      // Non-retryable failures (e.g. 4xx: rejected photo, invalid coords): drop
+      // the item so it can't poison the queue and block everything behind it.
+      await new Promise((resolve) => {
+        const tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).delete(item.id);
+        tx.oncomplete = resolve;
+        tx.onerror = resolve;
+      });
+      onItemFailed?.(err, item);
     }
   }
 }

@@ -27,6 +27,7 @@ export default function SettingsModal({ onClose }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const [nearbyEnabled, setNearbyEnabled] = useState(false);
   const [radiusKm, setRadiusKm] = useState(5);
   const [alertLocation, setAlertLocation] = useState(null);
@@ -44,10 +45,29 @@ export default function SettingsModal({ onClose }) {
       .catch(() => {});
     if (isNativePlatform()) {
       registerNativePush().catch(() => {});
+    } else if ("serviceWorker" in navigator) {
+      // Reflect the real subscription state so an already-subscribed user sees
+      // "Disable" instead of re-subscribing.
+      let active = true;
+      navigator.serviceWorker.ready
+        .then((reg) => reg.pushManager.getSubscription())
+        .then((sub) => active && setPushEnabled(!!sub))
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
     }
   }, []);
 
+  // Radius clamped to the input's 1–100 range; falls back to 5 on empty/NaN.
+  function clampRadius() {
+    const n = Number(radiusKm);
+    if (Number.isNaN(n)) return 5;
+    return Math.min(100, Math.max(1, n));
+  }
+
   async function enableWebPush() {
+    if (pushBusy) return;
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       toast.error(t("settings.pushUnsupported"));
       return;
@@ -57,6 +77,7 @@ export default function SettingsModal({ onClose }) {
       toast.error(t("settings.pushDenied"));
       return;
     }
+    setPushBusy(true);
     try {
       const { public_key: vapidKey } = await fetchVapidPublicKey();
       const reg = await navigator.serviceWorker.ready;
@@ -69,16 +90,20 @@ export default function SettingsModal({ onClose }) {
         subscription: JSON.stringify(sub.toJSON()),
         alertLat: nearbyEnabled ? alertLocation?.lat : undefined,
         alertLng: nearbyEnabled ? alertLocation?.lng : undefined,
-        alertRadiusKm: nearbyEnabled ? radiusKm : undefined,
+        alertRadiusKm: nearbyEnabled ? clampRadius() : undefined,
       });
       setPushEnabled(true);
       toast.success(t("settings.pushEnabled"));
     } catch (e) {
       toast.error(e.message || t("settings.pushFailed"));
+    } finally {
+      setPushBusy(false);
     }
   }
 
   async function disableWebPush() {
+    if (pushBusy) return;
+    setPushBusy(true);
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
@@ -90,6 +115,8 @@ export default function SettingsModal({ onClose }) {
       toast.success(t("settings.pushDisabled"));
     } catch (e) {
       toast.error(e.message);
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -104,7 +131,7 @@ export default function SettingsModal({ onClose }) {
         setAlertLocation({ lat, lng });
       }
       if (isNativePlatform()) {
-        await registerNativePush({ alertLat: lat, alertLng: lng, alertRadiusKm: radiusKm });
+        await registerNativePush({ alertLat: lat, alertLng: lng, alertRadiusKm: clampRadius() });
       } else {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
@@ -114,7 +141,7 @@ export default function SettingsModal({ onClose }) {
             subscription: JSON.stringify(sub.toJSON()),
             alertLat: nearbyEnabled ? lat : undefined,
             alertLng: nearbyEnabled ? lng : undefined,
-            alertRadiusKm: nearbyEnabled ? radiusKm : undefined,
+            alertRadiusKm: nearbyEnabled ? clampRadius() : undefined,
           });
         }
       }
@@ -160,6 +187,7 @@ export default function SettingsModal({ onClose }) {
             type="button"
             className="btn btn-primary btn-block"
             onClick={pushEnabled ? disableWebPush : enableWebPush}
+            disabled={pushBusy}
           >
             {pushEnabled ? t("settings.disablePush") : t("settings.enablePush")}
           </button>
@@ -181,7 +209,10 @@ export default function SettingsModal({ onClose }) {
               min={1}
               max={100}
               value={radiusKm}
-              onChange={(e) => setRadiusKm(Number(e.target.value))}
+              onChange={(e) =>
+                setRadiusKm(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              onBlur={() => setRadiusKm(clampRadius())}
             />
             <button type="button" className="btn btn-ghost btn-block" onClick={saveNearbyAlerts}>
               {t("settings.saveNearby")}

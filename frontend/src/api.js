@@ -5,6 +5,10 @@ import { isNativePlatform } from "./lib/platform";
 
 const RENDER_API = "https://catmap-backend.onrender.com";
 
+// Abort photo uploads that stall (frozen connection) so the UI can recover
+// instead of hanging with a stuck progress bar / disabled submit button.
+const UPLOAD_TIMEOUT_MS = 120_000;
+
 // In dev, VITE_API_BASE is unset and we use the Vite proxy / same origin.
 // Mobile/native builds always talk to the Render-hosted backend.
 const API_BASE = (
@@ -32,7 +36,10 @@ async function handle(res) {
     }
     throw new Error(translateApiError(detail));
   }
-  return res.json();
+  // 204 No Content (and other empty bodies) have nothing to parse; a 2xx with
+  // an unparseable/empty body resolves to null rather than throwing.
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
 }
 
 export async function fetchStats() {
@@ -172,6 +179,7 @@ export function createSighting({
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/api/sightings`);
     xhr.setRequestHeader("X-Device-Token", getDeviceToken());
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
 
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
@@ -193,6 +201,9 @@ export function createSighting({
       }
     };
     xhr.onerror = () => reject(new Error(translateApiError("Network error during upload.")));
+    // Treat a timeout as a (retryable) network error so the offline queue holds
+    // the item for a later retry instead of dropping it.
+    xhr.ontimeout = () => reject(new Error(translateApiError("Network error during upload.")));
     xhr.send(form);
   });
 }
@@ -212,6 +223,7 @@ export function addSightingPhotos(id, files, onProgress) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/api/sightings/${id}/photos`);
     xhr.setRequestHeader("X-Device-Token", getDeviceToken());
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
 
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
@@ -233,6 +245,7 @@ export function addSightingPhotos(id, files, onProgress) {
       }
     };
     xhr.onerror = () => reject(new Error(translateApiError("Network error during upload.")));
+    xhr.ontimeout = () => reject(new Error(translateApiError("Network error during upload.")));
     xhr.send(form);
   });
 }
