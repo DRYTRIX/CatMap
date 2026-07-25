@@ -10,10 +10,12 @@
   --ink-500: #475569;
   --ink-400: #64748b;
   --line: #e2e8f0;
+  --border: #e2e8f0;
   --surface: #ffffff;
   --surface-2: #f8fafc;
   --success: #16a34a;
   --danger: #dc2626;
+  --accent: #f59e0b;
 
   /* Radius / shadow / motion */
   --r-sm: 10px;
@@ -41,10 +43,12 @@
   --ink-500: #cbd5e1;
   --ink-400: #94a3b8;
   --line: #334155;
+  --border: #334155;
   --surface: #1e293b;
   --surface-2: #0f172a;
   --success: #4ade80;
   --danger: #f87171;
+  --accent: #fbbf24;
   --sh-1: 0 1px 3px rgba(0, 0, 0, 0.4);
   --sh-2: 0 6px 18px rgba(0, 0, 0, 0.45);
   --sh-3: 0 14px 40px rgba(0, 0, 0, 0.6);
@@ -98,6 +102,27 @@ body,
   filter: brightness(0.62) invert(1) contrast(0.85) hue-rotate(180deg) saturate(0.6);
 }
 
+/* ---------- Keyboard focus ---------- */
+/* Visible focus ring for keyboard users on every interactive surface.
+   Mouse/touch focus stays ring-free via :focus-visible. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="radio"]:focus-visible,
+[tabindex]:focus-visible,
+.icon-btn:focus-visible,
+.map-ctrl:focus-visible,
+.map-menu-item:focus-visible,
+.segmented-opt:focus-visible,
+.sighting-list-item:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   border: none;
@@ -121,6 +146,10 @@ body,
   background: #fcd9a3;
   box-shadow: none;
   cursor: not-allowed;
+}
+[data-theme="dark"] .btn-primary:disabled {
+  background: rgba(251, 191, 36, 0.28);
+  color: rgba(255, 255, 255, 0.55);
 }
 .btn-ghost {
   background: var(--surface-2);
@@ -267,6 +296,15 @@ body,
   .brand-name {
     display: none;
   }
+  /* Collapse the Donate/Add buttons to their icons so up to 7 header controls
+     don't crowd or overflow on the narrowest phones. */
+  .add-btn-label {
+    display: none;
+  }
+  .add-btn {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 }
 
 /* ---------- Search ---------- */
@@ -335,7 +373,8 @@ body,
   cursor: pointer;
 }
 .search-result:hover,
-.search-result:focus {
+.search-result:focus,
+.search-result.is-active {
   background: var(--surface-2);
 }
 .search-result-name {
@@ -765,7 +804,7 @@ body,
 
 /* ---------- Fields ---------- */
 .field {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .field label {
   display: block;
@@ -773,6 +812,12 @@ body,
   font-weight: 700;
   margin-bottom: 6px;
   color: var(--ink-700);
+}
+/* Even 12px rhythm between stacked label+control pairs inside one .field,
+   matching the gap modals get from separate .field blocks. Scoped to direct
+   children so nested labels (photo picker, checkbox rows) aren't affected. */
+.field > label:not(:first-child) {
+  margin-top: 12px;
 }
 textarea {
   width: 100%;
@@ -936,6 +981,20 @@ textarea:focus {
 }
 .wizard-nav {
   gap: 10px;
+  /* Keep the action buttons visible while a tall form scrolls above them. */
+  position: sticky;
+  bottom: 0;
+  margin-top: 8px;
+  padding-top: 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+/* Share the row equally instead of each btn-block demanding 100% width
+   (two 100%-wide flex items + gap overflow the sheet otherwise). */
+.wizard-nav > .btn {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
 }
 .row {
   display: flex;
@@ -2103,6 +2162,14 @@ input[type="range"] {
   background: #dcfce7;
   color: #15803d;
 }
+[data-theme="dark"] .kind-badge--missing {
+  background: rgba(244, 63, 94, 0.18);
+  color: #fda4af;
+}
+[data-theme="dark"] .kind-badge--found {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
 .report-reasons {
   display: flex;
   flex-direction: column;
@@ -2221,6 +2288,44 @@ input[type="range"] {
 .comment-form textarea {
   width: 100%;
   margin-bottom: 8px;
+}
+.comment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.comment-location {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Checkbox + label row (Settings, RecentFeed near-me, CommentThread) */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink-700);
+  cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.near-me-toggle {
+  margin-left: auto;
+}
+
+/* Photo step columns (grid items in .photo-step) */
+.photo-preview-col,
+.photo-requirements-col {
+  min-width: 0;
 }
 .recent-feed-tabs,
 .recent-feed-sort {
