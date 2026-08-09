@@ -34,6 +34,12 @@ frontend/android/app/build/
 frontend/android/build/
 frontend/android/app/google-services.json
 
+# iOS / Capacitor secrets & build output
+frontend/ios/App/App/GoogleService-Info.plist
+frontend/ios/App/build/
+frontend/ios/App/output/
+frontend/ios/DerivedData/
+
 # OS / editor
 .DS_Store
 *.swp

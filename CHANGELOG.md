@@ -15,7 +15,7 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Device-token blocklist for moderation (`/api/admin/blocked-tokens`).
 - Device identity export/import (QR + JSON) in Settings.
 - Offline sighting queue (IndexedDB) with auto-flush on reconnect.
-- iOS platform prep (`frontend/ios/RELEASE.md`).
+- iOS Capacitor platform + CI IPA builds (`frontend/ios/`, release workflow).
 - `PUBLIC_SITE_URL` setting wired into backend config (fixes a crash on the
   `/s/{id}` share page).
 - Dependabot configuration for pip, npm, Docker base images, and GitHub

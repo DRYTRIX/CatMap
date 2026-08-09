@@ -218,9 +218,11 @@ from production.
 
 The frontend is an installable PWA: open it on a phone and **Add to Home
 Screen** for a full-screen, app-like experience with camera capture and
-geolocation. Because all logic lives in the React app, it can later be wrapped
-with [Capacitor](https://capacitorjs.com/) to ship real App Store / Play Store
-builds without rewriting features.
+geolocation. The same React app is wrapped with
+[Capacitor](https://capacitorjs.com/) for native **Android** and **iOS**
+store builds. Tag a release (`vMAJOR.MINOR.PATCH`) to produce APK/AAB/IPA
+artifacts — see [`frontend/android/RELEASE.md`](frontend/android/RELEASE.md)
+and [`frontend/ios/RELEASE.md`](frontend/ios/RELEASE.md).
 
 ---
 

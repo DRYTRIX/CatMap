@@ -2,7 +2,7 @@
 
 ## Automated release (recommended)
 
-Releases are triggered by pushing a **semver git tag**. This deploys backend and frontend to Render, builds a signed Android APK + AAB, and publishes a GitHub Release with both artifacts attached.
+Releases are triggered by pushing a **semver git tag**. This deploys backend and frontend to Render, builds a signed Android APK + AAB and a signed iOS IPA, and publishes a GitHub Release with the artifacts attached.
 
 ### Release a new version
 
@@ -17,10 +17,10 @@ The workflow ([`.github/workflows/release.yml`](../../.github/workflows/release.
 
 1. Validates the tag format
 2. Deploys `catmap-backend` and `catmap-frontend` on Render (at the tagged commit)
-3. Builds a signed release APK and AAB with `versionName` from the tag and a monotonically increasing `versionCode`
-4. Creates a GitHub Release with the APK and AAB attached
+3. Builds a signed release APK and AAB with `versionName` from the tag and a monotonically increasing `versionCode`, plus a signed iOS IPA with matching version numbers
+4. Creates a GitHub Release with the APK, AAB, and IPA attached
 
-Download the AAB from the GitHub Release and upload it to Google Play Console.
+Download the AAB from the GitHub Release and upload it to Google Play Console. Download the IPA for App Store Connect (see [`frontend/ios/RELEASE.md`](../ios/RELEASE.md)).
 
 ### One-time setup
 
@@ -192,8 +192,8 @@ Native Android push uses Firebase Cloud Messaging via `@capacitor/push-notificat
 Web Push (browser/PWA) uses VAPID instead — generate keys with `python backend/scripts/generate_vapid.py` and set `VAPID_*` on the backend. Test either channel with `POST /api/admin/push/test` (admin token required).
 
 ## Optional fast-follow
-- **App Links** for `https://catmap.drytrix.com/s/{id}` so shared links open in the app
-- **iOS build** — same Capacitor project: `npx cap add ios`
+- **App Links / Universal Links** for `https://catmap.drytrix.com/s/{id}` so shared links open in the app
+- See [iOS RELEASE.md](../ios/RELEASE.md) for App Store / TestFlight IPA builds (same tag-triggered workflow)
 
 ## Troubleshooting
 

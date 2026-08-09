@@ -3,7 +3,7 @@ import { isNativePlatform } from "./platform";
 
 let registered = false;
 
-/** Register FCM token on native Android (no-op when plugin unavailable). */
+/** Register FCM/APNs push token on native Android/iOS (no-op when plugin unavailable). */
 export async function registerNativePush({ alertLat, alertLng, alertRadiusKm } = {}) {
   if (!isNativePlatform() || registered) return;
 
@@ -16,6 +16,7 @@ export async function registerNativePush({ alertLat, alertLng, alertRadiusKm } =
 
     PushNotifications.addListener("registration", async (token) => {
       if (!token?.value) return;
+      // Android: FCM token. iOS: APNs device token from Capacitor (FCM when Firebase Messaging is wired).
       await subscribePush({
         platform: "fcm",
         subscription: token.value,
@@ -26,11 +27,11 @@ export async function registerNativePush({ alertLat, alertLng, alertRadiusKm } =
     });
 
     PushNotifications.addListener("registrationError", () => {
-      /* FCM not configured — inbox still works */
+      /* Push not configured — inbox still works */
     });
 
     registered = true;
   } catch {
-    /* plugin missing or google-services.json not present */
+    /* plugin missing or native push config not present */
   }
 }

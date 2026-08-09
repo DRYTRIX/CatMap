@@ -162,9 +162,133 @@ jobs:
           path: release-artifacts/
           retention-days: 90
 
+  ios-release:
+    runs-on: macos-latest
+    needs: validate-tag
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build mobile bundle and sync Capacitor
+        working-directory: frontend
+        run: bash scripts/build-mobile.sh
+
+      - name: Write GoogleService-Info.plist (FCM)
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          if [[ -z "$GOOGLE_SERVICE_INFO_PLIST" ]]; then
+            echo "::error::Missing secret IOS_GOOGLE_SERVICE_INFO_PLIST (paste contents of frontend/ios/App/App/GoogleService-Info.plist)"
+            exit 1
+          fi
+          printf '%s\n' "$GOOGLE_SERVICE_INFO_PLIST" > frontend/ios/App/App/GoogleService-Info.plist
+          # Sanity-check it looks like Firebase iOS config (do not print the file).
+          plutil -lint frontend/ios/App/App/GoogleService-Info.plist
+          python3 -c "import pathlib; t=pathlib.Path('frontend/ios/App/App/GoogleService-Info.plist').read_text(); assert 'GOOGLE_APP_ID' in t and 'BUNDLE_ID' in t"
+
+      - name: Stage App Store Connect API key
+        id: asc_key
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -z "$ASC_KEY_ID" || -z "$ASC_ISSUER_ID" || -z "$ASC_KEY_BASE64" || -z "$TEAM_ID" ]]; then
+            echo "::error::Missing one or more iOS signing secrets (APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_PRIVATE_KEY_BASE64, APPLE_TEAM_ID)"
+            exit 1
+          fi
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          echo "$ASC_KEY_BASE64" | base64 -d > "$KEY_PATH"
+          echo "key_path=$KEY_PATH" >> "$GITHUB_OUTPUT"
+          # Also place where altool/xcode may look for API keys.
+          mkdir -p "$HOME/private_keys"
+          cp "$KEY_PATH" "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Resolve Swift packages
+        working-directory: frontend/ios/App
+        run: xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+
+      - name: Archive signed iOS app
+        working-directory: frontend/ios/App
+        env:
+          VERSION: ${{ needs.validate-tag.outputs.version }}
+          VERSION_CODE: ${{ needs.validate-tag.outputs.version_code }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ steps.asc_key.outputs.key_path }}
+        run: |
+          mkdir -p build
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$VERSION_CODE" \
+            DEVELOPMENT_TEAM="$TEAM_ID"
+
+      - name: Export IPA
+        working-directory: frontend/ios/App
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ steps.asc_key.outputs.key_path }}
+        run: |
+          # Inject team ID into export options for automatic signing.
+          /usr/libexec/PlistBuddy -c "Add :teamID string ${TEAM_ID}" ExportOptions.plist 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Set :teamID ${TEAM_ID}" ExportOptions.plist
+          mkdir -p build/export
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/App.xcarchive" \
+            -exportPath "$PWD/build/export" \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -authenticationKeyPath "$ASC_KEY_PATH"
+
+      - name: Rename iOS artifact
+        env:
+          TAG: ${{ needs.validate-tag.outputs.tag }}
+        run: |
+          mkdir -p release-artifacts
+          IPA="$(ls frontend/ios/App/build/export/*.ipa | head -n1)"
+          if [[ -z "$IPA" || ! -f "$IPA" ]]; then
+            echo "::error::Export produced no .ipa"
+            exit 1
+          fi
+          cp "$IPA" "release-artifacts/catmap-${TAG}.ipa"
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-release-${{ needs.validate-tag.outputs.tag }}
+          path: release-artifacts/
+          retention-days: 90
+
   github-release:
     runs-on: ubuntu-latest
-    needs: [validate-tag, deploy-render, android-release]
+    needs: [validate-tag, deploy-render, android-release, ios-release]
     permissions:
       contents: write
     steps:
@@ -176,6 +300,12 @@ jobs:
           name: android-release-${{ needs.validate-tag.outputs.tag }}
           path: release-artifacts
 
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ios-release-${{ needs.validate-tag.outputs.tag }}
+          path: release-artifacts
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -185,3 +315,4 @@ jobs:
           files: |
             release-artifacts/catmap-${{ needs.validate-tag.outputs.tag }}.apk
             release-artifacts/catmap-${{ needs.validate-tag.outputs.tag }}.aab
+            release-artifacts/catmap-${{ needs.validate-tag.outputs.tag }}.ipa

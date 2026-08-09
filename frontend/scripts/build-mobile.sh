@@ -36,8 +36,14 @@ rm -rf "$ROOT/dist"
 cp -r "$WORK/dist" "$ROOT/"
 
 if [ -f "$CAP_CLI" ]; then
-  echo "==> Syncing Capacitor Android project"
-  (cd "$ROOT" && node "$CAP_CLI" sync android)
+  if [ -d "$ROOT/android" ]; then
+    echo "==> Syncing Capacitor Android project"
+    (cd "$ROOT" && node "$CAP_CLI" sync android)
+  fi
+  if [ -d "$ROOT/ios/App" ]; then
+    echo "==> Syncing Capacitor iOS project"
+    (cd "$ROOT" && node "$CAP_CLI" sync ios)
+  fi
 fi
 
 echo "==> Mobile build complete: $ROOT/dist"
