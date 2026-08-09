@@ -1,14 +1,24 @@
 """Comments / tips on sightings."""
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Query, Request, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+)
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, writable_device_token, no_cache, optional_device_token
+from ..deps import no_cache, optional_device_token, writable_device_token
 from ..models import Comment, CommentReport, Sighting
+from ..notifications import notify_comment_reported
 from ..ratelimit import limiter
 from ..schemas import CommentOut, CommentReportResult
 
@@ -144,6 +154,7 @@ def report_comment(
     request: Request,
     sighting_id: str,
     comment_id: str,
+    background_tasks: BackgroundTasks,
     token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> CommentReportResult:
@@ -161,7 +172,27 @@ def report_comment(
         return CommentReportResult(reported=False, hidden=comment.status == "hidden")
 
     comment.reports_count += 1
+    auto_hidden = False
     if comment.reports_count >= settings.auto_hide_threshold:
         comment.status = "hidden"
+        auto_hidden = True
     db.commit()
+
+    background_tasks.add_task(
+        notify_comment_reported,
+        sighting_id=sighting_id,
+        comment_id=comment_id,
+        reports_count=comment.reports_count,
+        hidden=auto_hidden,
+    )
+    if auto_hidden and comment.device_token:
+        from ..user_notifications import notify_comment_hidden
+
+        background_tasks.add_task(
+            notify_comment_hidden,
+            comment_id=comment_id,
+            author_token=comment.device_token,
+            sighting_id=sighting_id,
+        )
+
     return CommentReportResult(reported=True, hidden=comment.status == "hidden")

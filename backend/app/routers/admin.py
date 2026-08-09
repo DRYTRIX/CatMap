@@ -3,12 +3,24 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Response
 from sqlalchemy import func, select, text
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
-from ..models import AdminAction, BlockedToken, Cat, Comment, Confirmation, IssueReport, Photo, Report, Sighting
+from ..models import (
+    AdminAction,
+    BlockedToken,
+    Cat,
+    Comment,
+    Confirmation,
+    IssueReport,
+    Photo,
+    PushSubscription,
+    Report,
+    Sighting,
+)
+from ..push import submit_push
 from ..schemas import (
     AdminActionRow,
     AdminCommentRow,
@@ -347,6 +359,16 @@ def approve(
             creator_token=creator,
             approved=True,
         )
+    from ..user_notifications import notify_nearby_sighting
+
+    background_tasks.add_task(
+        notify_nearby_sighting,
+        sighting_id=sighting.id,
+        lat=sighting.lat,
+        lng=sighting.lng,
+        description=sighting.description,
+        kind=sighting.kind,
+    )
     return {"id": sighting.id, "status": sighting.status}
 
 
@@ -619,3 +641,31 @@ def unblock_token(token_value: str, db: Session = Depends(get_db)):
     if row:
         db.delete(row)
         db.commit()
+
+
+@router.post("/push/test")
+def test_push(
+    device_token: str = Form(...),
+    title: str = Form("CatMap test"),
+    body: str = Form("Push notifications are working."),
+    url: str = Form("/"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Send a test push to every subscription for a device token."""
+    token = device_token.strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="device_token required.")
+
+    subs = db.execute(
+        select(PushSubscription).where(PushSubscription.device_token == token)
+    ).scalars().all()
+
+    for sub in subs:
+        submit_push(
+            sub,
+            title=title.strip() or "CatMap test",
+            body=body.strip(),
+            url=url.strip() or "/",
+        )
+
+    return {"subscriptions_found": len(subs), "queued": len(subs)}

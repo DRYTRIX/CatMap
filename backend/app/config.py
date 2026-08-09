@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     # Web Push (VAPID). Empty keys disable browser push.
     vapid_public_key: str = ""
     vapid_private_key: str = ""
-    vapid_subject: str = "mailto:admin@catmap.local"
+    vapid_subject: str = "mailto:admin@catmap.drytrix.com"
 
     # FCM HTTP v1 — JSON service account for the Firebase project.
     fcm_service_account_json: str = ""

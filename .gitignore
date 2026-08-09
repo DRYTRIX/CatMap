@@ -32,6 +32,7 @@ frontend/android/.gradle/
 frontend/android/local.properties
 frontend/android/app/build/
 frontend/android/build/
+frontend/android/app/google-services.json
 
 # OS / editor
 .DS_Store

@@ -105,6 +105,18 @@ jobs:
         working-directory: frontend
         run: bash scripts/build-mobile.sh
 
+      - name: Write google-services.json (FCM)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: |
+          if [[ -z "$GOOGLE_SERVICES_JSON" ]]; then
+            echo "::error::Missing secret ANDROID_GOOGLE_SERVICES_JSON (paste contents of frontend/android/app/google-services.json)"
+            exit 1
+          fi
+          printf '%s\n' "$GOOGLE_SERVICES_JSON" > frontend/android/app/google-services.json
+          # Sanity-check it looks like Firebase config (do not print the file).
+          python3 -c "import json,sys; d=json.load(open('frontend/android/app/google-services.json')); assert 'project_info' in d and 'client' in d"
+
       - name: Configure Android signing
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

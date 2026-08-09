@@ -167,3 +167,46 @@ def notify_issue_reported(
         public_site_url=settings.public_site_url,
     )
     notify_telegram(text)
+
+
+def notify_sighting_reported(
+    *,
+    sighting_id: str,
+    reason: str,
+    reports_count: int,
+    hidden: bool,
+) -> None:
+    settings = get_settings()
+    site = settings.public_site_url.rstrip("/")
+    reason_text = (reason or "").strip() or "(unspecified)"
+    lines = [
+        "<b>Sighting reported</b>",
+        f"Reason: {_escape(reason_text)}",
+        f"Reports: {reports_count}",
+        f'<a href="{_escape(f"{site}/s/{sighting_id}")}">View sighting</a>',
+        f'<a href="{_escape(f"{site}/admin")}">Open admin panel</a>',
+    ]
+    if hidden:
+        lines.insert(1, "Status: auto-hidden")
+    notify_telegram("\n".join(lines))
+
+
+def notify_comment_reported(
+    *,
+    sighting_id: str,
+    comment_id: str,
+    reports_count: int,
+    hidden: bool,
+) -> None:
+    settings = get_settings()
+    site = settings.public_site_url.rstrip("/")
+    lines = [
+        "<b>Comment reported</b>",
+        f"Comment id: {_escape(comment_id)}",
+        f"Reports: {reports_count}",
+        f'<a href="{_escape(f"{site}/s/{sighting_id}")}">View sighting</a>',
+        f'<a href="{_escape(f"{site}/admin")}">Open admin panel</a>',
+    ]
+    if hidden:
+        lines.insert(1, "Status: auto-hidden")
+    notify_telegram("\n".join(lines))

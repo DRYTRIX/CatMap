@@ -11,12 +11,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
-from .models import Comment, Notification, PushSubscription, Sighting
-from .push import send_push_to_token
+from .models import Comment, Confirmation, Notification, PushSubscription, Sighting
+from .push import submit_push
 
 logger = logging.getLogger(__name__)
 
 EARTH_RADIUS_KM = 6371.0
+
+_NEARBY_COPY = {
+    "missing": ("Missing cat near you", "A cat was reported missing nearby."),
+    "sighting": ("Cat sighted near you", "Someone spotted a cat nearby."),
+}
 
 
 def _session() -> Session:
@@ -29,6 +34,33 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     dlng = rlng2 - rlng1
     a = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlng / 2) ** 2
     return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
+
+
+def _engaged_tokens(
+    db: Session,
+    *,
+    sighting_id: str,
+    exclude: str | None = None,
+) -> set[str]:
+    """Devices that commented on or confirmed a sighting (excluding one token)."""
+    recipients: set[str] = set()
+    for token in db.scalars(
+        select(Comment.device_token)
+        .where(Comment.sighting_id == sighting_id, Comment.status == "visible")
+        .distinct()
+    ).all():
+        if token:
+            recipients.add(token)
+    for token in db.scalars(
+        select(Confirmation.device_token)
+        .where(Confirmation.sighting_id == sighting_id)
+        .distinct()
+    ).all():
+        if token:
+            recipients.add(token)
+    if exclude:
+        recipients.discard(exclude)
+    return recipients
 
 
 def _create_notification(
@@ -59,7 +91,7 @@ def _dispatch_push(recipient_token: str, title: str, body: str, url: str | None 
             select(PushSubscription).where(PushSubscription.device_token == recipient_token)
         ).scalars().all()
         for sub in subs:
-            send_push_to_token(sub, title=title, body=body, url=url)
+            submit_push(sub, title=title, body=body, url=url)
     except Exception:
         logger.exception("push dispatch failed for token prefix=%s", recipient_token[:8])
     finally:
@@ -188,9 +220,91 @@ def notify_sighting_moderated(
     )
 
 
-def notify_nearby_missing_cat(
-    *, sighting_id: str, lat: float, lng: float, description: str
+def notify_photo_added(
+    *,
+    sighting_id: str,
+    creator_token: str,
+    contributor_token: str,
+    photo_count: int,
 ) -> None:
+    """Notify the sighting creator when someone else adds photos."""
+    if not creator_token or creator_token == contributor_token:
+        return
+    count = max(1, photo_count)
+    body = (
+        f"{count} new photo{'s' if count != 1 else ''} were added to your sighting."
+    )
+    notify_inbox_and_push(
+        recipient_token=creator_token,
+        ntype="photo_added",
+        title="New photo on your sighting",
+        body=body,
+        sighting_id=sighting_id,
+        payload={"photo_count": count},
+        url=f"/?s={sighting_id}",
+    )
+
+
+def notify_sighting_status_changed(
+    *,
+    sighting_id: str,
+    actor_token: str,
+    status: str,
+) -> None:
+    """Notify engaged devices when a sighting is marked found or gone."""
+    if status == "found":
+        title = "Missing cat marked as found"
+        body = "Good news — the owner marked this missing cat as found."
+        ntype = "sighting_found"
+    elif status == "gone":
+        title = "Sighting marked as gone"
+        body = "The poster marked this cat as no longer there."
+        ntype = "sighting_gone"
+    else:
+        return
+
+    db = _session()
+    try:
+        recipients = _engaged_tokens(db, sighting_id=sighting_id, exclude=actor_token)
+        for token in recipients:
+            _create_notification(
+                db,
+                recipient_token=token,
+                ntype=ntype,
+                sighting_id=sighting_id,
+                payload={"title": title, "body": body},
+            )
+        db.commit()
+        for token in recipients:
+            _dispatch_push(token, title, body, url=f"/?s={sighting_id}")
+    except Exception:
+        db.rollback()
+        logger.exception("notify_sighting_status_changed failed")
+    finally:
+        db.close()
+
+
+def notify_comment_hidden(*, comment_id: str, author_token: str, sighting_id: str) -> None:
+    notify_inbox_and_push(
+        recipient_token=author_token,
+        ntype="comment_hidden",
+        title="Your comment was hidden",
+        body="Enough reports were filed — your comment is no longer visible.",
+        sighting_id=sighting_id,
+        comment_id=comment_id,
+        url=f"/?s={sighting_id}",
+    )
+
+
+def notify_nearby_sighting(
+    *,
+    sighting_id: str,
+    lat: float,
+    lng: float,
+    description: str,
+    kind: str = "missing",
+) -> None:
+    """Alert geo-subscribed devices about a new nearby sighting of any kind."""
     db = _session()
     try:
         subs = db.execute(
@@ -201,9 +315,11 @@ def notify_nearby_missing_cat(
             )
         ).scalars().all()
 
-        desc = (description or "").strip()[:120] or "A cat was reported missing nearby."
-        title = "Missing cat near you"
-        body = desc
+        title, default_body = _NEARBY_COPY.get(
+            kind, ("Cat near you", "A cat was reported nearby.")
+        )
+        desc = (description or "").strip()[:120] or default_body
+        ntype = "missing_nearby" if kind == "missing" else "sighting_nearby"
 
         for sub in subs:
             radius = sub.alert_radius_km or 0
@@ -216,18 +332,36 @@ def notify_nearby_missing_cat(
                 _create_notification(
                     db,
                     recipient_token=sub.device_token,
-                    ntype="missing_nearby",
+                    ntype=ntype,
                     sighting_id=sighting_id,
-                    payload={"title": title, "body": body, "distance_km": round(dist, 1)},
+                    payload={
+                        "title": title,
+                        "body": desc,
+                        "distance_km": round(dist, 1),
+                        "kind": kind,
+                    },
                 )
-                send_push_to_token(sub, title=title, body=body, url=f"/?s={sighting_id}")
+                submit_push(sub, title=title, body=desc, url=f"/?s={sighting_id}")
 
         db.commit()
     except Exception:
         db.rollback()
-        logger.exception("notify_nearby_missing_cat failed")
+        logger.exception("notify_nearby_sighting failed")
     finally:
         db.close()
+
+
+def notify_nearby_missing_cat(
+    *, sighting_id: str, lat: float, lng: float, description: str
+) -> None:
+    """Backward-compatible alias for missing-cat nearby alerts."""
+    notify_nearby_sighting(
+        sighting_id=sighting_id,
+        lat=lat,
+        lng=lng,
+        description=description,
+        kind="missing",
+    )
 
 
 def mark_notifications_read(db: Session, token: str, ids: list[str] | None) -> int:

@@ -50,6 +50,7 @@ Add GitHub repository secrets:
 | `ANDROID_KEYSTORE_PASSWORD` | Keystore password from `keystore.properties` |
 | `ANDROID_KEY_ALIAS` | Key alias (default: `catmap`) |
 | `ANDROID_KEY_PASSWORD` | Key password from `keystore.properties` |
+| `ANDROID_GOOGLE_SERVICES_JSON` | Full contents of `frontend/android/app/google-services.json` (Firebase; required for FCM) |
 
 ### Version numbering
 
@@ -174,6 +175,21 @@ For CI releases, version comes from the git tag. For manual local builds you can
 ```
 
 Or edit defaults in `android/app/build.gradle` (not recommended for production releases).
+
+## Push notifications (FCM)
+
+Native Android push uses Firebase Cloud Messaging via `@capacitor/push-notifications`.
+
+### One-time Firebase setup
+
+1. [Firebase Console](https://console.firebase.google.com/) → create/select a project → **Add Android app** with package `com.drytrix.catmap`.
+2. Download `google-services.json` → place at `frontend/android/app/google-services.json` (gitignored).
+3. Add the same file contents as GitHub secret `ANDROID_GOOGLE_SERVICES_JSON` (repo → Settings → Secrets and variables → Actions). The release workflow writes it into the Android tree before Gradle so CI builds include FCM.
+4. Project Settings → **Service accounts** → **Generate new private key**.
+5. Paste the JSON as a **single line** into Render → `catmap-backend` → Environment → `FCM_SERVICE_ACCOUNT_JSON`.
+6. Tag a release (`git tag vX.Y.Z && git push origin vX.Y.Z`) — or rebuild locally with `npm run cap:sync` then a release build.
+
+Web Push (browser/PWA) uses VAPID instead — generate keys with `python backend/scripts/generate_vapid.py` and set `VAPID_*` on the backend. Test either channel with `POST /api/admin/push/test` (admin token required).
 
 ## Optional fast-follow
 - **App Links** for `https://catmap.drytrix.com/s/{id}` so shared links open in the app

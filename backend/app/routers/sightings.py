@@ -23,7 +23,7 @@ from ..database import get_db
 from ..deps import device_token, no_cache, writable_device_token
 from ..images import InvalidImageError, extract_gps, process_upload
 from ..models import Confirmation, Photo, Report, Sighting
-from ..notifications import notify_sighting_created
+from ..notifications import notify_sighting_created, notify_sighting_reported
 from ..ratelimit import limiter
 from ..schemas import (
     ConfirmResult,
@@ -475,15 +475,16 @@ async def create_sighting(
         photo_count=1 + len(sighting.photos),
         pending=pending,
     )
-    if post_kind == "missing" and not pending:
-        from ..user_notifications import notify_nearby_missing_cat
+    if not pending:
+        from ..user_notifications import notify_nearby_sighting
 
         background_tasks.add_task(
-            notify_nearby_missing_cat,
+            notify_nearby_sighting,
             sighting_id=sighting.id,
             lat=sighting.lat,
             lng=sighting.lng,
             description=sighting.description,
+            kind=post_kind,
         )
     result = _detail(sighting)
     result["pending"] = pending
@@ -699,6 +700,7 @@ def get_extra_thumbnail(
 async def add_photos(
     request: Request,
     sighting_id: str,
+    background_tasks: BackgroundTasks,
     images: list[UploadFile] = File(default=[]),
     image: UploadFile | None = File(None),
     token: str = Depends(writable_device_token),
@@ -795,10 +797,19 @@ async def add_photos(
 
     db.commit()
     db.refresh(sighting)
+
+    if sighting.creator_token and sighting.creator_token != token:
+        from ..user_notifications import notify_photo_added
+
+        background_tasks.add_task(
+            notify_photo_added,
+            sighting_id=sighting.id,
+            creator_token=sighting.creator_token,
+            contributor_token=token,
+            photo_count=len(processed),
+        )
+
     return _detail(sighting)
-
-
-@router.delete("/{sighting_id}/photos/{photo_id}", status_code=204)
 @limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def delete_extra_photo(
     request: Request,
@@ -875,6 +886,7 @@ def confirm_sighting(
 def report_sighting(
     request: Request,
     sighting_id: str,
+    background_tasks: BackgroundTasks,
     reason: str = Form(""),
     token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
@@ -901,9 +913,29 @@ def report_sighting(
         return ReportResult(reported=False, hidden=sighting.status == "hidden")
 
     sighting.reports_count += 1
+    auto_hidden = False
     if sighting.reports_count >= settings.auto_hide_threshold:
         sighting.status = "hidden"
+        auto_hidden = True
     db.commit()
+
+    background_tasks.add_task(
+        notify_sighting_reported,
+        sighting_id=sighting_id,
+        reason=reason,
+        reports_count=sighting.reports_count,
+        hidden=auto_hidden,
+    )
+    if auto_hidden and sighting.creator_token:
+        from ..user_notifications import notify_sighting_moderated
+
+        background_tasks.add_task(
+            notify_sighting_moderated,
+            sighting_id=sighting_id,
+            creator_token=sighting.creator_token,
+            approved=False,
+        )
+
     return ReportResult(reported=True, hidden=sighting.status == "hidden")
 
 
@@ -969,6 +1001,7 @@ def update_sighting(
 def mark_gone(
     request: Request,
     sighting_id: str,
+    background_tasks: BackgroundTasks,
     token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -977,6 +1010,15 @@ def mark_gone(
     sighting.status = "gone"
     db.commit()
     db.refresh(sighting)
+
+    from ..user_notifications import notify_sighting_status_changed
+
+    background_tasks.add_task(
+        notify_sighting_status_changed,
+        sighting_id=sighting.id,
+        actor_token=token,
+        status="gone",
+    )
     return _detail(sighting)
 
 
@@ -985,6 +1027,7 @@ def mark_gone(
 def mark_found(
     request: Request,
     sighting_id: str,
+    background_tasks: BackgroundTasks,
     token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -1000,6 +1043,15 @@ def mark_found(
     sighting.status = "found"
     db.commit()
     db.refresh(sighting)
+
+    from ..user_notifications import notify_sighting_status_changed
+
+    background_tasks.add_task(
+        notify_sighting_status_changed,
+        sighting_id=sighting.id,
+        actor_token=token,
+        status="found",
+    )
     return _detail(sighting)
 
 
