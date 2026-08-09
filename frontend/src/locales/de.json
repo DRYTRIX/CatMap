@@ -91,7 +91,7 @@
     "messagePlaceholder": "Was ist passiert? Was hast du erwartet?",
     "submit": "Meldung senden",
     "submitting": "Wird gesendet…",
-    "success": "Danke — deine Meldung wurde gesendet.",
+    "success": "Danke — deine Meldung wurde an das CatMap-Team gesendet.",
     "categories": {
       "bug": "Fehler oder Störung",
       "wrong_data": "Falsche Kartendaten",
@@ -270,6 +270,9 @@
     "radiusKm": "Alarmradius (km)",
     "saveNearby": "Alarmeinstellungen speichern",
     "nearbySaved": "Alarmeinstellungen gespeichert.",
+    "help": "Hilfe",
+    "helpHint": "Fehler oder etwas funktioniert nicht? Sag uns Bescheid, wir schauen nach.",
+    "reportIssue": "Problem melden",
     "myData": "Meine Daten",
     "myDataHint": "Speichere diesen Code, um deine Sichtungen auf ein anderes Gerät zu übertragen.",
     "qrAlt": "QR-Code mit Gerätedaten",
@@ -290,7 +293,11 @@
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",
-    "message": "CatMap hat einen unerwarteten Fehler festgestellt. Versuche, die Seite neu zu laden."
+    "message": "CatMap hat einen unerwarteten Fehler festgestellt. Versuche, die Seite neu zu laden.",
+    "report": "Absturzbericht senden",
+    "reporting": "Bericht wird gesendet…",
+    "reported": "Absturzbericht gesendet",
+    "reportFailed": "Senden fehlgeschlagen — erneut versuchen"
   },
   "errors": {
     "requestFailed": "Anfrage fehlgeschlagen ({{status}})",

@@ -1,23 +1,43 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { assetUrl, fetchCatProfile } from "../api";
+import { faBell, faBellSlash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  assetUrl,
+  fetchCatProfile,
+  renameCatProfile,
+  unlinkSightingFromCat,
+  unwatchTarget,
+  watchTarget,
+} from "../api";
 import { timeAgo } from "../lib/time";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import { catIcon } from "../lib/markers";
 import Modal from "./Modal";
+import { useToast } from "./Toast";
 
 /**
- * Cat profile sheet: sightings timeline, photo strip, mini-map.
+ * Cat profile sheet: sightings timeline, photo strip, mini-map, rename/unlink.
  *
  * Props: id, onClose, onSelectSighting(id)
  */
 export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
   const { t } = useTranslation();
+  const toast = useToast();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [watching, setWatching] = useState(false);
+
+  function load(signal) {
+    return fetchCatProfile(id, signal).then((d) => {
+      setData(d);
+      setNameDraft(d.name || "");
+      setWatching(Boolean(d.watching));
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -25,11 +45,9 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
     setData(null);
     setError(null);
 
-    fetchCatProfile(id, controller.signal)
-      .then((d) => active && setData(d))
-      .catch((e) => {
-        if (active && e.name !== "AbortError") setError(e.message);
-      });
+    load(controller.signal).catch((e) => {
+      if (active && e.name !== "AbortError") setError(e.message);
+    });
 
     return () => {
       active = false;
@@ -43,6 +61,54 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
         data.sightings.reduce((sum, s) => sum + s.lng, 0) / data.sightings.length,
       ]
     : [20, 0];
+
+  const trail = (data?.sightings || []).map((s) => [s.lat, s.lng]);
+
+  async function onRename() {
+    setBusy(true);
+    try {
+      const updated = await renameCatProfile(id, nameDraft.trim());
+      setData(updated);
+      toast.success(t("catProfile.renameSuccess"));
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onUnlink(sightingId) {
+    setBusy(true);
+    try {
+      const updated = await unlinkSightingFromCat(id, sightingId);
+      setData(updated);
+      toast.success(t("catProfile.unlinkSuccess"));
+      if (!updated.sightings?.length) onClose();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onToggleWatch() {
+    setBusy(true);
+    try {
+      if (watching) {
+        await unwatchTarget("cat", id);
+        setWatching(false);
+        toast.success(t("sighting.unwatchSuccess"));
+      } else {
+        await watchTarget("cat", id);
+        setWatching(true);
+        toast.success(t("sighting.watchSuccess"));
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <Modal onClose={onClose} labelledBy="cat-profile-title" className="sheet detail-sheet">
@@ -95,7 +161,41 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
             )}
           </div>
 
-          {data.sightings.length > 1 && (
+          {data.is_mine ? (
+            <div className="field cat-rename">
+              <label htmlFor="cat-rename">{t("catProfile.rename")}</label>
+              <div className="row">
+                <input
+                  id="cat-rename"
+                  type="text"
+                  value={nameDraft}
+                  maxLength={50}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={onRename}
+                  disabled={busy}
+                >
+                  {t("common.save")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={onToggleWatch}
+              disabled={busy}
+              aria-pressed={watching}
+            >
+              <FontAwesomeIcon icon={watching ? faBellSlash : faBell} />{" "}
+              {watching ? t("sighting.watching") : t("sighting.watch")}
+            </button>
+          )}
+
+          {data.sightings.length > 0 && (
             <div className="cat-profile-map">
               <MapContainer
                 center={center}
@@ -105,6 +205,9 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
                 style={{ height: 140, width: "100%", borderRadius: 12 }}
               >
                 <TileLayer {...OSM_TILE_PROPS} />
+                {trail.length > 1 && (
+                  <Polyline positions={trail} pathOptions={{ color: "#2a6f6f", weight: 2 }} />
+                )}
                 {data.sightings.map((s) => (
                   <Marker
                     key={s.id}
@@ -113,32 +216,44 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
                   />
                 ))}
               </MapContainer>
+              <p className="hint">{t("catProfile.timelineHint")}</p>
             </div>
           )}
 
           <div className="sighting-list" role="list">
             {data.sightings.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className="sighting-list-item"
-                role="listitem"
-                onClick={() => onSelectSighting?.(s.id)}
-              >
-                <img
-                  className="sighting-list-thumb"
-                  src={assetUrl(s.thumbnail_url)}
-                  alt=""
-                  loading="lazy"
-                />
-                <div className="sighting-list-body">
-                  <p className="sighting-list-desc">{s.description || t("common.catSighting")}</p>
-                  <p className="sighting-list-meta">
-                    🐱 {timeAgo(s.created_at)} ·{" "}
-                    {t("common.confirmations", { count: s.confirmations_count })}
-                  </p>
-                </div>
-              </button>
+              <div key={s.id} className="sighting-list-item-wrap">
+                <button
+                  type="button"
+                  className="sighting-list-item"
+                  role="listitem"
+                  onClick={() => onSelectSighting?.(s.id)}
+                >
+                  <img
+                    className="sighting-list-thumb"
+                    src={assetUrl(s.thumbnail_url)}
+                    alt=""
+                    loading="lazy"
+                  />
+                  <div className="sighting-list-body">
+                    <p className="sighting-list-desc">{s.description || t("common.catSighting")}</p>
+                    <p className="sighting-list-meta">
+                      🐱 {timeAgo(s.created_at)} ·{" "}
+                      {t("common.confirmations", { count: s.confirmations_count })}
+                    </p>
+                  </div>
+                </button>
+                {data.is_mine && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onUnlink(s.id)}
+                    disabled={busy}
+                  >
+                    {t("catProfile.unlink")}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
 

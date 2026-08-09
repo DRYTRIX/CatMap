@@ -91,7 +91,7 @@
     "messagePlaceholder": "Wat gebeurde er? Wat had je verwacht?",
     "submit": "Melding versturen",
     "submitting": "Versturen…",
-    "success": "Bedankt — je melding is verstuurd.",
+    "success": "Bedankt — je melding is naar het CatMap-team gestuurd.",
     "categories": {
       "bug": "Bug of storing",
       "wrong_data": "Verkeerde kaartgegevens",
@@ -270,6 +270,9 @@
     "radiusKm": "Alarmradius (km)",
     "saveNearby": "Voorkeuren opslaan",
     "nearbySaved": "Voorkeuren opgeslagen.",
+    "help": "Help",
+    "helpHint": "Bug of iets dat niet werkt? Laat het ons weten, dan kijken we ernaar.",
+    "reportIssue": "Probleem melden",
     "myData": "Mijn gegevens",
     "myDataHint": "Bewaar deze code om je meldingen over te zetten.",
     "qrAlt": "QR-code met apparaatgegevens",
@@ -290,7 +293,11 @@
   },
   "errorBoundary": {
     "title": "Er ging iets mis",
-    "message": "CatMap heeft een onverwachte fout ondervonden. Probeer de pagina te herladen."
+    "message": "CatMap heeft een onverwachte fout ondervonden. Probeer de pagina te herladen.",
+    "report": "Crashrapport versturen",
+    "reporting": "Rapport versturen…",
+    "reported": "Crashrapport verstuurd",
+    "reportFailed": "Rapport versturen mislukt — probeer opnieuw"
   },
   "errors": {
     "requestFailed": "Verzoek mislukt ({{status}})",

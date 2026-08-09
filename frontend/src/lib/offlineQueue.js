@@ -71,6 +71,26 @@ export async function pendingCount() {
   });
 }
 
+export async function listPending() {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function removePending(id) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function flushQueue({ onProgress, onItemDone, onItemFailed } = {}) {
   await purgeExpired().catch(() => {});
   const db = await openDb();
@@ -95,6 +115,7 @@ export async function flushQueue({ onProgress, onItemDone, onItemFailed } = {}) 
         kind: item.kind,
         catName: item.catName,
         contact: item.contact,
+        contactPublic: item.contactPublic,
         onProgress,
       });
       await new Promise((resolve, reject) => {

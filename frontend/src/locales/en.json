@@ -72,8 +72,9 @@
     "confirmed": "Most confirmed",
     "empty": "No sightings yet — be the first!",
     "loadError": "Couldn't load recent sightings.",
-    "searchPlaceholder": "Search descriptions…",
+    "searchPlaceholder": "Search descriptions or names…",
     "nearMe": "Near me",
+    "loadMore": "Load more",
     "tabs": {
       "all": "All",
       "sightings": "Sightings",
@@ -91,7 +92,7 @@
     "messagePlaceholder": "What happened? What did you expect?",
     "submit": "Send report",
     "submitting": "Sending…",
-    "success": "Thanks — your report was sent.",
+    "success": "Thanks — your report was sent to the CatMap team.",
     "categories": {
       "bug": "Bug or glitch",
       "wrong_data": "Wrong map data",
@@ -144,7 +145,8 @@
     "catNamePlaceholder": "Whiskers, Luna…",
     "contact": "How to reach you",
     "contactPlaceholder": "Phone, email, or social handle",
-    "contactHint": "Shown on your missing-cat post so finders can contact you.",
+    "contactHint": "Optional. Leave unchecked to keep contact private — finders can still send you a private tip in the app.",
+    "contactPublic": "Show my contact publicly on the map",
     "colorUnknown": "Unknown",
     "uploadProgress": "Upload progress",
     "colors": {
@@ -167,8 +169,24 @@
     "missingSince": "Missing since {{time}}",
     "missingBadge": "Missing",
     "foundBadge": "Found",
+    "pendingBadge": "Under review",
+    "goneBadge": "Gone",
+    "hiddenBadge": "Hidden",
+    "pendingStatus": "This post is awaiting review and is not on the public map yet.",
+    "goneStatus": "You marked this cat as gone.",
+    "hiddenStatus": "This post was hidden by moderation.",
     "catNameLabel": "Name",
     "contactLabel": "Contact",
+    "contactPrivateHint": "The owner kept their contact private. Send a private tip below.",
+    "privateTip": "Send private tip to owner",
+    "privateTipPlaceholder": "I think I saw your cat near…",
+    "privateTipSend": "Send tip",
+    "privateTipSent": "Private tip sent to the owner.",
+    "watch": "Watch",
+    "watching": "Watching",
+    "watchSuccess": "You'll get alerts when this cat is updated.",
+    "unwatchSuccess": "Stopped watching.",
+    "editLocation": "Location",
     "editSuccess": "Sighting updated.",
     "stale": "may be outdated",
     "confirm": "Still here? Confirm",
@@ -235,7 +253,12 @@
     "summary_other": "Spotted {{count}} times · First seen {{first}} · Last seen {{last}}",
     "earTipped": "Ear-tipped: {{value}}",
     "stray": "Stray: {{value}}",
-    "empty": "No sightings recorded for this cat yet."
+    "empty": "No sightings recorded for this cat yet.",
+    "rename": "Name this cat",
+    "renameSuccess": "Cat name updated.",
+    "unlink": "Unlink",
+    "unlinkSuccess": "Sighting unlinked from this profile.",
+    "timelineHint": "Sightings on the timeline map, oldest to newest."
   },
   "comments": {
     "title": "Comments",
@@ -249,12 +272,15 @@
     "posting": "Posting…",
     "posted": "Posted!",
     "deleted": "Removed.",
-    "reported": "Thanks — reported."
+    "reported": "Thanks — reported.",
+    "tipMap": "Search party map",
+    "tipMapHint": "Tip locations and the original pin."
   },
   "notifications": {
     "title": "Notifications",
     "empty": "No notifications yet.",
-    "loadError": "Couldn't load notifications."
+    "loadError": "Couldn't load notifications.",
+    "markAllRead": "Mark all as read"
   },
   "settings": {
     "title": "Settings",
@@ -267,11 +293,17 @@
     "pushDenied": "Notification permission denied.",
     "pushFailed": "Couldn't enable push notifications.",
     "nearbyMissing": "Alert me about missing cats nearby",
+    "nearbyHint": "Uses your current location and turns on push if needed.",
+    "nearbyNeedsPush": "Enable push notifications first to save nearby alerts.",
+    "clearNearby": "Clear nearby alerts",
     "radiusKm": "Alert radius (km)",
     "saveNearby": "Save alert preferences",
     "nearbySaved": "Alert preferences saved.",
+    "help": "Help",
+    "helpHint": "Found a bug or something that isn't working? Tell us and we'll look into it.",
+    "reportIssue": "Report an issue",
     "myData": "My data",
-    "myDataHint": "Save this code to transfer your sightings to another device.",
+    "myDataHint": "Save this code to transfer your identity, favorites, and ownership to another device.",
     "qrAlt": "QR code with your device data",
     "copyData": "Copy backup data",
     "copied": "Copied!",
@@ -286,11 +318,20 @@
   "offline": {
     "queued": "Saved offline — will upload when you're back online.",
     "sent": "Offline sighting uploaded!",
-    "failed": "A saved sighting couldn't be uploaded and was discarded."
+    "failed": "A saved sighting couldn't be uploaded and was discarded.",
+    "queueTitle": "Pending uploads",
+    "queueHint": "These sightings will upload when you're back online.",
+    "queueEmpty": "No pending uploads.",
+    "retryAll": "Retry uploads",
+    "retryDone": "Queue processed."
   },
   "errorBoundary": {
     "title": "Something went wrong",
-    "message": "CatMap hit an unexpected error. Try reloading the page."
+    "message": "CatMap hit an unexpected error. Try reloading the page.",
+    "report": "Send crash report",
+    "reporting": "Sending report…",
+    "reported": "Crash report sent",
+    "reportFailed": "Couldn't send report — try again"
   },
   "errors": {
     "requestFailed": "Request failed ({{status}})",
@@ -362,15 +403,26 @@
     "selected": "Selected: {{lat}}, {{lng}}"
   },
   "search": {
-    "placeholder": "Search a place…",
-    "ariaLabel": "Search for a place"
+    "placeholder": "Search places or cats…",
+    "ariaLabel": "Search for a place or cat"
   },
   "photoPick": {
     "opening": "Opening…"
   },
   "onboarding": {
     "hint": "Tap {{action}} to pin your first sighting on the map.",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Got it",
+    "welcomeTitle": "Welcome to CatMap",
+    "welcomeBody": "Anonymous neighborhood map for spotting cats and finding missing ones — no account needed.",
+    "sightingVsMissingTitle": "Sighting or missing?",
+    "sightingVsMissingBody": "Use {{action}} to pin a cat you saw, or choose “My cat is missing” so neighbors can tip you.",
+    "confirmReportTitle": "Confirm and report",
+    "confirmReportBody": "Tap confirm when a cat is still there. Use report for spam or wrong pins so the map stays useful.",
+    "permissionsTitle": "Location and notifications",
+    "permissionsBody": "Allow location to center the map and optional nearby alerts. You can change this anytime in Settings."
   },
   "install": {
     "ariaLabel": "Install CatMap",

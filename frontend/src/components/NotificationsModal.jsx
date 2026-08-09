@@ -26,15 +26,31 @@ export default function NotificationsModal({ onClose, onSelectSighting }) {
       .then((rows) => active && setItems(rows))
       .catch(() => active && setError(t("notifications.loadError")))
       .finally(() => active && setLoading(false));
-    markNotificationsRead().catch(() => {});
     return () => {
       active = false;
     };
   }, [t]);
 
   function openItem(item) {
+    if (!item.read_at) {
+      markNotificationsRead([item.id]).catch(() => {});
+      setItems((rows) =>
+        rows.map((n) =>
+          n.id === item.id ? { ...n, read_at: new Date().toISOString() } : n
+        )
+      );
+    }
     if (item.sighting_id) onSelectSighting?.(item.sighting_id);
     onClose();
+  }
+
+  function markAllRead() {
+    const unread = items.filter((n) => !n.read_at).map((n) => n.id);
+    if (!unread.length) return;
+    markNotificationsRead(unread).catch(() => {});
+    setItems((rows) =>
+      rows.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
+    );
   }
 
   return (
@@ -46,6 +62,12 @@ export default function NotificationsModal({ onClose, onSelectSighting }) {
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
+
+      {items.some((n) => !n.read_at) && (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={markAllRead}>
+          {t("notifications.markAllRead")}
+        </button>
+      )}
 
       {loading && (
         <>

@@ -26,6 +26,9 @@ export default function RecentFeedModal({ onClose, onSelect }) {
   const [debouncedQ, setDebouncedQ] = useState("");
   const [nearMe, setNearMe] = useState(false);
   const [nearCoords, setNearCoords] = useState(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const PAGE = 30;
 
   useEffect(() => {
     const tmr = setTimeout(() => setDebouncedQ(query.trim()), 300);
@@ -48,14 +51,21 @@ export default function RecentFeedModal({ onClose, onSelect }) {
   }, [nearMe, toast, t]);
 
   useEffect(() => {
+    setOffset(0);
+  }, [sort, tab, debouncedQ, nearCoords]);
+
+  useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setItems(null);
-    setError(null);
+    if (offset === 0) {
+      setItems(null);
+      setError(null);
+    }
 
     const tabCfg = TABS.find((x) => x.id === tab) || TABS[0];
     const params = {
-      limit: 30,
+      limit: PAGE,
+      offset,
       sort,
       kind: tabCfg.kind || undefined,
       status: tabCfg.status,
@@ -68,11 +78,15 @@ export default function RecentFeedModal({ onClose, onSelect }) {
     }
 
     fetchRecent(params, controller.signal)
-      .then((data) => active && setItems(data))
+      .then((data) => {
+        if (!active) return;
+        setHasMore(data.length >= PAGE);
+        setItems((prev) => (offset === 0 ? data : [...(prev || []), ...data]));
+      })
       .catch((err) => {
         if (active && err.name !== "AbortError") {
           setError(err.message || t("recentFeed.loadError"));
-          setItems([]);
+          if (offset === 0) setItems([]);
         }
       });
 
@@ -80,7 +94,7 @@ export default function RecentFeedModal({ onClose, onSelect }) {
       active = false;
       controller.abort();
     };
-  }, [sort, tab, debouncedQ, nearCoords, t]);
+  }, [sort, tab, debouncedQ, nearCoords, offset, t]);
 
   return (
     <Modal onClose={onClose} labelledBy="recent-feed-title" className="sheet">
@@ -191,6 +205,16 @@ export default function RecentFeedModal({ onClose, onSelect }) {
             </button>
           ))}
         </div>
+      )}
+
+      {hasMore && items && items.length > 0 && (
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          onClick={() => setOffset((o) => o + PAGE)}
+        >
+          {t("recentFeed.loadMore")}
+        </button>
       )}
     </Modal>
   );

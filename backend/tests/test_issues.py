@@ -66,11 +66,29 @@ def test_submit_issue_triggers_telegram(client, monkeypatch):
         res = _submit(client, category="wrong_data", message="Wrong pin location")
 
     assert res.status_code == 201
+    issue_id = res.json()["id"]
     notify.assert_called_once()
     text = notify.call_args.args[0]
     assert "<b>Issue report</b>" in text
+    assert f"Id: {issue_id}" in text
     assert "wrong_data" in text
     assert "Wrong pin location" in text
+
+    get_settings.cache_clear()
+
+
+def test_submit_bug_triggers_telegram_bug_title(client, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-bot-token")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "123456789")
+    get_settings.cache_clear()
+
+    with patch("app.notifications.notify_telegram") as notify:
+        res = _submit(client, category="bug", message="Crash on load")
+
+    assert res.status_code == 201
+    text = notify.call_args.args[0]
+    assert "<b>Bug report</b>" in text
+    assert f"Id: {res.json()['id']}" in text
 
     get_settings.cache_clear()
 
@@ -130,13 +148,32 @@ def test_build_issue_notification():
     from app.notifications import build_issue_notification
 
     text = build_issue_notification(
+        issue_id="iss-123",
         category="bug",
         message="App crashed",
         page_url="https://catmap.example.com/?s=abc",
         public_site_url="https://catmap.example.com",
     )
-    assert "<b>Issue report</b>" in text
+    assert "<b>Bug report</b>" in text
+    assert "Id: iss-123" in text
     assert "bug" in text
     assert "App crashed" in text
     assert "https://catmap.example.com/?s=abc" in text
     assert "/admin" in text
+
+
+def test_build_issue_notification_truncates_long_message():
+    from app.notifications import _MAX_ISSUE_MSG, build_issue_notification
+
+    long_msg = "x" * (_MAX_ISSUE_MSG + 50)
+    text = build_issue_notification(
+        issue_id="iss-long",
+        category="other",
+        message=long_msg,
+        page_url=None,
+        public_site_url="https://catmap.example.com",
+    )
+    assert "<b>Issue report</b>" in text
+    assert "…" in text
+    assert long_msg not in text
+    assert f"x" * 100 in text

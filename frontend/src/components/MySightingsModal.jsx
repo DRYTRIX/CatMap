@@ -93,6 +93,24 @@ export default function MySightingsModal({ onClose, onSelect }) {
                       <span className="kind-badge kind-badge--found">{t("sighting.foundBadge")}</span>
                     </>
                   )}
+                  {d.status === "pending" && (
+                    <>
+                      {" · "}
+                      <span className="kind-badge kind-badge--pending">{t("sighting.pendingBadge")}</span>
+                    </>
+                  )}
+                  {d.status === "gone" && (
+                    <>
+                      {" · "}
+                      <span className="kind-badge">{t("sighting.goneBadge")}</span>
+                    </>
+                  )}
+                  {d.status === "hidden" && (
+                    <>
+                      {" · "}
+                      <span className="kind-badge">{t("sighting.hiddenBadge")}</span>
+                    </>
+                  )}
                 </p>
               </div>
             </button>

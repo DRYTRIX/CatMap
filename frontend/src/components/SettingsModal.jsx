@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 import {
+  fetchPushAlertPrefs,
   fetchVapidPublicKey,
   subscribePush,
   unsubscribePush,
@@ -23,7 +24,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export default function SettingsModal({ onClose }) {
+export default function SettingsModal({ onClose, onReportIssue }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -43,56 +44,78 @@ export default function SettingsModal({ onClose }) {
     QRCode.toDataURL(data, { width: 200, margin: 1 })
       .then(setQrUrl)
       .catch(() => {});
+
+    let active = true;
+    fetchPushAlertPrefs()
+      .then((prefs) => {
+        if (!active) return;
+        if (prefs.has_subscription) setPushEnabled(true);
+        if (prefs.alert_lat != null && prefs.alert_lng != null) {
+          setNearbyEnabled(true);
+          setAlertLocation({ lat: prefs.alert_lat, lng: prefs.alert_lng });
+          if (prefs.alert_radius_km) setRadiusKm(prefs.alert_radius_km);
+        }
+      })
+      .catch(() => {});
+
     if (isNativePlatform()) {
       registerNativePush().catch(() => {});
     } else if ("serviceWorker" in navigator) {
-      // Reflect the real subscription state so an already-subscribed user sees
-      // "Disable" instead of re-subscribing.
-      let active = true;
       navigator.serviceWorker.ready
         .then((reg) => reg.pushManager.getSubscription())
-        .then((sub) => active && setPushEnabled(!!sub))
+        .then((sub) => {
+          if (active && sub) setPushEnabled(true);
+        })
         .catch(() => {});
-      return () => {
-        active = false;
-      };
     }
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // Radius clamped to the input's 1–100 range; falls back to 5 on empty/NaN.
   function clampRadius() {
     const n = Number(radiusKm);
     if (Number.isNaN(n)) return 5;
     return Math.min(100, Math.max(1, n));
   }
 
-  async function enableWebPush() {
-    if (pushBusy) return;
+  async function ensureWebPushSubscription({ alertLat, alertLng, alertRadiusKm }) {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-      toast.error(t("settings.pushUnsupported"));
-      return;
+      throw new Error(t("settings.pushUnsupported"));
     }
     const perm = await Notification.requestPermission();
     if (perm !== "granted") {
-      toast.error(t("settings.pushDenied"));
-      return;
+      throw new Error(t("settings.pushDenied"));
     }
-    setPushBusy(true);
-    try {
-      const { public_key: vapidKey } = await fetchVapidPublicKey();
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
+    const { public_key: vapidKey } = await fetchVapidPublicKey();
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
-      await subscribePush({
-        platform: "webpush",
-        subscription: JSON.stringify(sub.toJSON()),
+    }
+    await subscribePush({
+      platform: "webpush",
+      subscription: JSON.stringify(sub.toJSON()),
+      alertLat,
+      alertLng,
+      alertRadiusKm,
+    });
+    setPushEnabled(true);
+    return sub;
+  }
+
+  async function enableWebPush() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      await ensureWebPushSubscription({
         alertLat: nearbyEnabled ? alertLocation?.lat : undefined,
         alertLng: nearbyEnabled ? alertLocation?.lng : undefined,
         alertRadiusKm: nearbyEnabled ? clampRadius() : undefined,
       });
-      setPushEnabled(true);
       toast.success(t("settings.pushEnabled"));
     } catch (e) {
       toast.error(e.message || t("settings.pushFailed"));
@@ -112,6 +135,7 @@ export default function SettingsModal({ onClose }) {
         await sub.unsubscribe();
       }
       setPushEnabled(false);
+      setNearbyEnabled(false);
       toast.success(t("settings.pushDisabled"));
     } catch (e) {
       toast.error(e.message);
@@ -130,8 +154,19 @@ export default function SettingsModal({ onClose }) {
         lng = pos.coords.longitude;
         setAlertLocation({ lat, lng });
       }
+      const radius = clampRadius();
       if (isNativePlatform()) {
-        await registerNativePush({ alertLat: lat, alertLng: lng, alertRadiusKm: clampRadius() });
+        await registerNativePush({
+          alertLat: nearbyEnabled ? lat : undefined,
+          alertLng: nearbyEnabled ? lng : undefined,
+          alertRadiusKm: nearbyEnabled ? radius : undefined,
+        });
+      } else if (nearbyEnabled) {
+        await ensureWebPushSubscription({
+          alertLat: lat,
+          alertLng: lng,
+          alertRadiusKm: radius,
+        });
       } else {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
@@ -139,15 +174,18 @@ export default function SettingsModal({ onClose }) {
           await subscribePush({
             platform: "webpush",
             subscription: JSON.stringify(sub.toJSON()),
-            alertLat: nearbyEnabled ? lat : undefined,
-            alertLng: nearbyEnabled ? lng : undefined,
-            alertRadiusKm: nearbyEnabled ? clampRadius() : undefined,
+            alertLat: undefined,
+            alertLng: undefined,
+            alertRadiusKm: undefined,
           });
+        } else {
+          toast.error(t("settings.nearbyNeedsPush"));
+          return;
         }
       }
       toast.success(t("settings.nearbySaved"));
     } catch (e) {
-      toast.error(e.message);
+      toast.error(e.message || t("settings.pushFailed"));
     }
   }
 
@@ -202,6 +240,7 @@ export default function SettingsModal({ onClose }) {
         </label>
         {nearbyEnabled && (
           <>
+            <p className="hint">{t("settings.nearbyHint")}</p>
             <label htmlFor="radius-km">{t("settings.radiusKm")}</label>
             <input
               id="radius-km"
@@ -219,6 +258,26 @@ export default function SettingsModal({ onClose }) {
             </button>
           </>
         )}
+        {!nearbyEnabled && pushEnabled && (
+          <button type="button" className="btn btn-ghost btn-block" onClick={saveNearbyAlerts}>
+            {t("settings.clearNearby")}
+          </button>
+        )}
+      </section>
+
+      <section className="settings-section">
+        <h3>{t("settings.help")}</h3>
+        <p className="hint">{t("settings.helpHint")}</p>
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          onClick={() => {
+            onClose();
+            onReportIssue?.();
+          }}
+        >
+          {t("settings.reportIssue")}
+        </button>
       </section>
 
       <section className="settings-section">

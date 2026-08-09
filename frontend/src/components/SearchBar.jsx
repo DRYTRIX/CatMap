@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { track } from "../analytics";
-import { geocode } from "../api";
+import { fetchRecent, geocode } from "../api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
-/** Place search using OpenStreetMap Nominatim. Flies the map on selection. */
-export default function SearchBar({ map }) {
+
+/** Combined place + cat search. Flies the map or opens a sighting. */
+export default function SearchBar({ map, onSelectSighting }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -19,7 +20,7 @@ export default function SearchBar({ map }) {
   useEffect(() => {
     const q = query.trim();
     clearTimeout(timerRef.current);
-    if (q.length < 3) {
+    if (q.length < 2) {
       setResults([]);
       setActiveIndex(-1);
       setLoading(false);
@@ -31,11 +32,35 @@ export default function SearchBar({ map }) {
       abortRef.current = controller;
       setLoading(true);
       try {
-        const data = await geocode(q, controller.signal);
-        setResults(data);
+        const [places, cats] = await Promise.all([
+          q.length >= 3
+            ? geocode(q, controller.signal).catch(() => [])
+            : Promise.resolve([]),
+          fetchRecent({ limit: 8, q, status: "active" }, controller.signal).catch(() => []),
+        ]);
+        const combined = [
+          ...cats.map((c) => ({
+            type: "cat",
+            id: c.id,
+            title: c.cat_name || c.description || t("common.catSighting"),
+            sub: c.kind === "missing" ? t("sighting.missingBadge") : t("common.catSighting"),
+            lat: c.lat,
+            lng: c.lng,
+          })),
+          ...places.map((r) => ({
+            type: "place",
+            id: r.place_id,
+            title: r.display_name.split(",")[0],
+            sub: r.display_name.split(",").slice(1).join(",").trim(),
+            lat: Number(r.lat),
+            lng: Number(r.lon),
+            boundingbox: r.boundingbox,
+          })),
+        ];
+        setResults(combined);
         setActiveIndex(-1);
         setOpen(true);
-        track("search", { result_count: data.length });
+        track("search", { result_count: combined.length });
       } catch {
         /* aborted or failed — ignore */
       } finally {
@@ -43,9 +68,8 @@ export default function SearchBar({ map }) {
       }
     }, 400);
     return () => clearTimeout(timerRef.current);
-  }, [query]);
+  }, [query, t]);
 
-  // Close the dropdown when clicking outside.
   useEffect(() => {
     function onDocClick(e) {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
@@ -71,10 +95,15 @@ export default function SearchBar({ map }) {
   }
 
   function choose(r) {
-    track("search_select", { has_bounds: Boolean(r.boundingbox) });
-    setQuery(r.display_name.split(",")[0]);
+    track("search_select", { type: r.type });
+    setQuery(r.title);
     setOpen(false);
     setResults([]);
+    if (r.type === "cat") {
+      onSelectSighting?.(r.id);
+      if (map && r.lat != null) map.setView([r.lat, r.lng], 16);
+      return;
+    }
     if (!map) return;
     if (r.boundingbox) {
       const [s, n, w, e] = r.boundingbox.map(Number);
@@ -83,7 +112,7 @@ export default function SearchBar({ map }) {
         [n, e],
       ]);
     } else {
-      map.setView([Number(r.lat), Number(r.lon)], 14);
+      map.setView([r.lat, r.lng], 14);
     }
   }
 
@@ -113,7 +142,7 @@ export default function SearchBar({ map }) {
       {open && results.length > 0 && (
         <ul className="search-results" role="listbox" id="search-results-list">
           {results.map((r, i) => (
-            <li key={r.place_id}>
+            <li key={`${r.type}-${r.id}`}>
               <button
                 type="button"
                 id={`search-result-${i}`}
@@ -122,12 +151,8 @@ export default function SearchBar({ map }) {
                 aria-selected={i === activeIndex}
                 onClick={() => choose(r)}
               >
-                <span className="search-result-name">
-                  {r.display_name.split(",")[0]}
-                </span>
-                <span className="search-result-sub">
-                  {r.display_name.split(",").slice(1).join(",").trim()}
-                </span>
+                <span className="search-result-name">{r.title}</span>
+                <span className="search-result-sub">{r.sub}</span>
               </button>
             </li>
           ))}

@@ -38,7 +38,7 @@ export function markConfirmed(id) {
   localStorage.setItem(CONFIRMED_KEY, JSON.stringify([...set]));
 }
 
-// Sightings created on this device (so we can show the Delete action).
+// Sightings created on this device (cache; ownership UI prefers server is_mine).
 const CREATED_KEY = "catmap_created";
 
 export function getCreatedSet() {
@@ -55,6 +55,7 @@ export function markCreated(id) {
   localStorage.setItem(CREATED_KEY, JSON.stringify([...set]));
 }
 
+/** Local cache fallback; prefer `data.is_mine` from the API when available. */
 export function isMine(id) {
   return getCreatedSet().has(id);
 }
@@ -68,13 +69,15 @@ export function exportIdentity() {
     /* ignore */
   }
   return JSON.stringify({
-    v: 1,
+    v: 2,
     token: getDeviceToken(),
     favorites,
+    created: [...getCreatedSet()],
+    confirmed: [...getConfirmedSet()],
   });
 }
 
-/** Replace local identity from exported JSON (merges favorites). */
+/** Replace local identity from exported JSON (merges favorites/created/confirmed). */
 export function importIdentity(jsonText) {
   const data = JSON.parse(jsonText);
   if (!data?.token || typeof data.token !== "string") {
@@ -87,5 +90,15 @@ export function importIdentity(jsonText) {
     );
     for (const id of data.favorites) existing.add(id);
     localStorage.setItem("catmap_favorites", JSON.stringify([...existing]));
+  }
+  if (Array.isArray(data.created)) {
+    const existing = getCreatedSet();
+    for (const id of data.created) existing.add(id);
+    localStorage.setItem(CREATED_KEY, JSON.stringify([...existing]));
+  }
+  if (Array.isArray(data.confirmed)) {
+    const existing = getConfirmedSet();
+    for (const id of data.confirmed) existing.add(id);
+    localStorage.setItem(CONFIRMED_KEY, JSON.stringify([...existing]));
   }
 }

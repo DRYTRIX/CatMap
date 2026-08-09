@@ -23,6 +23,8 @@ export default function Header({
   queueCount = 0,
   onNotifications,
   onSettings,
+  onQueue,
+  onSelectSighting,
 }) {
   const { t } = useTranslation();
   const [globalTotal, setGlobalTotal] = useState(null);
@@ -64,12 +66,18 @@ export default function Header({
         )}
       </div>
 
-      <SearchBar map={map} />
+      <SearchBar map={map} onSelectSighting={onSelectSighting} />
       <div className="header-actions">
         {queueCount > 0 && (
-          <span className="queue-badge" title={t("header.pendingUploads")}>
+          <button
+            type="button"
+            className="queue-badge"
+            title={t("header.pendingUploads")}
+            aria-label={t("header.pendingUploads")}
+            onClick={onQueue}
+          >
             {queueCount}
-          </span>
+          </button>
         )}
         <button
           type="button"

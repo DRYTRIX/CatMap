@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
-from ..deps import writable_device_token
-from ..models import Cat, Sighting
+from ..deps import optional_device_token, writable_device_token
+from ..models import Cat, Sighting, Watch
 from ..schemas import CatProfile, CatProfileSighting
 
 router = APIRouter(prefix="/cats", tags=["cats"])
@@ -36,7 +36,28 @@ def _get_own_cat(db: Session, cat_id: str, token: str) -> Cat:
     return cat
 
 
-def _profile(cat: Cat, sightings: list[Sighting]) -> dict:
+def _is_watching(db: Session, token: str | None, cat_id: str) -> bool:
+    if not token:
+        return False
+    return (
+        db.execute(
+            select(Watch.id).where(
+                Watch.device_token == token,
+                Watch.target_type == "cat",
+                Watch.target_id == cat_id,
+            )
+        ).scalar_one_or_none()
+        is not None
+    )
+
+
+def _profile(
+    cat: Cat,
+    sightings: list[Sighting],
+    *,
+    db: Session,
+    token: str | None = None,
+) -> dict:
     active = [s for s in sightings if s.status == "active"]
     if not active:
         active = sightings
@@ -74,7 +95,19 @@ def _profile(cat: Cat, sightings: list[Sighting]) -> dict:
         "color": latest.color if latest else None,
         "is_ear_tipped": latest.is_ear_tipped if latest else None,
         "is_stray": latest.is_stray if latest else None,
+        "is_mine": bool(token and cat.creator_token == token),
+        "watching": _is_watching(db, token, cat.id),
     }
+
+
+def _active_sightings(db: Session, cat_id: str) -> list[Sighting]:
+    stmt = (
+        select(Sighting)
+        .where(Sighting.cat_id == cat_id, Sighting.status == "active")
+        .options(selectinload(Sighting.photos))
+        .order_by(Sighting.created_at.asc())
+    )
+    return list(db.execute(stmt).scalars().all())
 
 
 @router.post("", response_model=CatProfile, status_code=201)
@@ -105,12 +138,13 @@ def create_cat(
 
     db.commit()
     db.refresh(cat)
-    return _profile(cat, sightings)
+    return _profile(cat, sightings, db=db, token=token)
 
 
 @router.get("/{cat_id}", response_model=CatProfile)
 def get_cat(
     cat_id: str,
+    token: str | None = Depends(optional_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
     """Public cat profile with linked active sightings."""
@@ -118,16 +152,26 @@ def get_cat(
     if cat is None:
         raise HTTPException(status_code=404, detail="Cat profile not found.")
 
-    stmt = (
-        select(Sighting)
-        .where(Sighting.cat_id == cat_id, Sighting.status == "active")
-        .options(selectinload(Sighting.photos))
-        .order_by(Sighting.created_at.asc())
-    )
-    sightings = list(db.execute(stmt).scalars().all())
+    sightings = _active_sightings(db, cat_id)
     if not sightings:
         raise HTTPException(status_code=404, detail="Cat profile not found.")
-    return _profile(cat, sightings)
+    return _profile(cat, sightings, db=db, token=token)
+
+
+@router.patch("/{cat_id}", response_model=CatProfile)
+def rename_cat(
+    cat_id: str,
+    name: str = Form(""),
+    token: str = Depends(writable_device_token),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Rename one of your cat profiles."""
+    cat = _get_own_cat(db, cat_id, token)
+    cat.name = (name or "").strip()[:MAX_CAT_NAME] or None
+    db.commit()
+    db.refresh(cat)
+    sightings = _active_sightings(db, cat_id)
+    return _profile(cat, sightings, db=db, token=token)
 
 
 @router.post("/{cat_id}/link", response_model=CatProfile)
@@ -145,14 +189,9 @@ def link_sighting(
     sighting.cat_id = cat.id
     db.commit()
 
-    stmt = (
-        select(Sighting)
-        .where(Sighting.cat_id == cat_id, Sighting.status == "active")
-        .order_by(Sighting.created_at.asc())
-    )
-    sightings = list(db.execute(stmt).scalars().all())
+    sightings = _active_sightings(db, cat_id)
     db.refresh(cat)
-    return _profile(cat, sightings)
+    return _profile(cat, sightings, db=db, token=token)
 
 
 @router.post("/{cat_id}/unlink", response_model=CatProfile)
@@ -170,11 +209,9 @@ def unlink_sighting(
     sighting.cat_id = None
     db.commit()
 
-    stmt = (
-        select(Sighting)
-        .where(Sighting.cat_id == cat_id, Sighting.status == "active")
-        .order_by(Sighting.created_at.asc())
-    )
-    sightings = list(db.execute(stmt).scalars().all())
+    sightings = _active_sightings(db, cat_id)
     db.refresh(cat)
-    return _profile(cat, sightings)
+    if not sightings:
+        # Profile with no remaining sightings is still returned empty for the owner.
+        return _profile(cat, [], db=db, token=token)
+    return _profile(cat, sightings, db=db, token=token)

@@ -6,6 +6,26 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Server-authoritative ownership (`is_mine`) on sighting/cat details; identity
+  backup now includes created + confirmed IDs.
+- My cats lists pending / gone / hidden posts; creators can open their own
+  off-map posts.
+- Nearby alert prefs load from `GET /api/push/alerts`; saving enables push when
+  needed.
+- Private tips to missing-cat owners (`POST /api/sightings/{id}/message`) with
+  opt-in public contact (`contact_public`).
+- Watch / follow sightings and cat profiles (`/api/watches`) with confirm alerts;
+  favorites auto-watch.
+- Cat profile rename (`PATCH /api/cats/{id}`), unlink UI, and timeline trail map.
+- Missing-cat tip map (search-party pins) in the tips thread.
+- Combined place + cat search; recent feed pagination; offline queue manager UI;
+  multi-step onboarding; mark-individual notification read.
+
+### Fixed
+- Tipsters can delete their own comments (was gated on sighting ownership).
+- Edit sighting now supports correcting the map pin location.
+
+### Added (prior)
 - Missing-cat posts: optional `cat_name` and `contact` fields; mark-as-found flow.
 - Comment/tip threads on sightings (with optional location for missing cats).
 - User notification inbox plus Web Push (VAPID) and Android FCM delivery.

@@ -12,6 +12,7 @@ from .config import get_settings
 logger = logging.getLogger(__name__)
 
 _MAX_DESC = 200
+_MAX_ISSUE_MSG = 1500
 
 
 def _escape(text: str) -> str:
@@ -128,6 +129,7 @@ def notify_sighting_created(
 
 def build_issue_notification(
     *,
+    issue_id: str,
     category: str,
     message: str,
     page_url: str | None,
@@ -137,13 +139,15 @@ def build_issue_notification(
     admin_url = f"{site}/admin"
 
     msg = (message or "").strip()
-    if len(msg) > _MAX_DESC:
-        msg = msg[: _MAX_DESC - 1] + "…"
+    if len(msg) > _MAX_ISSUE_MSG:
+        msg = msg[: _MAX_ISSUE_MSG - 1] + "…"
     if not msg:
         msg = "(no message)"
 
+    title = "Bug report" if category == "bug" else "Issue report"
     lines = [
-        "<b>Issue report</b>",
+        f"<b>{title}</b>",
+        f"Id: {_escape(issue_id)}",
         f"Category: {_escape(category)}",
         f"Message: {_escape(msg)}",
     ]
@@ -155,12 +159,14 @@ def build_issue_notification(
 
 def notify_issue_reported(
     *,
+    issue_id: str,
     category: str,
     message: str,
     page_url: str | None,
 ) -> None:
     settings = get_settings()
     text = build_issue_notification(
+        issue_id=issue_id,
         category=category,
         message=message,
         page_url=page_url,

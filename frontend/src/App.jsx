@@ -19,6 +19,7 @@ const MySightingsModal = lazy(() => import("./components/MySightingsModal"));
 const RecentFeedModal = lazy(() => import("./components/RecentFeedModal"));
 const ReportIssueModal = lazy(() => import("./components/ReportIssueModal"));
 const CatProfileSheet = lazy(() => import("./components/CatProfileSheet"));
+const OfflineQueueModal = lazy(() => import("./components/OfflineQueueModal"));
 const NotificationsModal = lazy(() => import("./components/NotificationsModal"));
 const SettingsModal = lazy(() => import("./components/SettingsModal"));
 import { markCreated } from "./deviceToken";
@@ -45,6 +46,7 @@ function AppShell() {
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showOfflineQueue, setShowOfflineQueue] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [queueCount, setQueueCount] = useState(0);
   const [viewMode, setViewMode] = useState("map");
@@ -90,6 +92,10 @@ function AppShell() {
     }
     if (showSettings) {
       setShowSettings(false);
+      return true;
+    }
+    if (showOfflineQueue) {
+      setShowOfflineQueue(false);
       return true;
     }
     if (mapMenuOpen) {
@@ -237,6 +243,8 @@ function AppShell() {
         queueCount={queueCount}
         onNotifications={() => setShowNotifications(true)}
         onSettings={() => setShowSettings(true)}
+        onQueue={() => setShowOfflineQueue(true)}
+        onSelectSighting={setSelectedId}
       />
 
       <main className="map-wrap">
@@ -331,7 +339,22 @@ function AppShell() {
         />
       )}
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onReportIssue={() => {
+            setShowSettings(false);
+            setShowReportIssue(true);
+          }}
+        />
+      )}
+
+      {showOfflineQueue && (
+        <OfflineQueueModal
+          onClose={() => setShowOfflineQueue(false)}
+          onFlushed={() => pendingCount().then(setQueueCount)}
+        />
+      )}
       </Suspense>
 
       <OnboardingHint />

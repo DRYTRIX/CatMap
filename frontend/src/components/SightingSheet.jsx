@@ -13,6 +13,9 @@ import {
   markGone,
   reportSighting,
   reverseGeocode,
+  sendPrivateTip,
+  unwatchTarget,
+  watchTarget,
 } from "../api";
 import CommentThread from "./CommentThread";
 // Lazy-loaded: pulls jspdf / html-to-image / qrcode / map compositor out of the
@@ -21,7 +24,7 @@ const PosterModal = lazy(() => import("./PosterModal"));
 import { track } from "../analytics";
 import { shareSighting } from "../lib/share";
 import { sightingShareUrl } from "../lib/publicUrl";
-import { getConfirmedSet, isMine, markConfirmed } from "../deviceToken";
+import { getConfirmedSet, markConfirmed, markCreated } from "../deviceToken";
 import { timeAgo } from "../lib/time";
 import { isFavorite, toggleFavorite } from "../lib/favorites";
 import Modal from "./Modal";
@@ -42,6 +45,8 @@ import {
   faFilePdf,
   faLocationDot,
   faPhone,
+  faBell,
+  faBellSlash,
   faHeart as faHeartSolid,
 } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
@@ -81,6 +86,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   const [editing, setEditing] = useState(false);
   const [addingPhotos, setAddingPhotos] = useState(false);
   const [favorite, setFavorite] = useState(() => isFavorite(id));
+  const [watching, setWatching] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [similarOpen, setSimilarOpen] = useState(false);
@@ -88,7 +94,9 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   const [linking, setLinking] = useState(false);
   const [address, setAddress] = useState(null);
   const [posterOpen, setPosterOpen] = useState(false);
-  const mine = isMine(id);
+  const [privateTip, setPrivateTip] = useState("");
+  const [privateTipOpen, setPrivateTipOpen] = useState(false);
+  const mine = Boolean(data?.is_mine);
 
   useEffect(() => {
     const source =
@@ -100,8 +108,15 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     setError(null);
     setActivePhoto(0);
     setFavorite(isFavorite(id));
+    setWatching(false);
+    setConfirmed(getConfirmedSet().has(id));
     fetchSighting(id)
-      .then((d) => active && setData(d))
+      .then((d) => {
+        if (!active) return;
+        setData(d);
+        setWatching(Boolean(d.watching));
+        if (d.is_mine) markCreated(id);
+      })
       .catch((e) => active && setError(e.message));
     return () => {
       active = false;
@@ -123,6 +138,42 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
       ctrl.abort();
     };
   }, [data?.lat, data?.lng]);
+
+  async function onToggleWatch() {
+    setBusy(true);
+    try {
+      if (watching) {
+        await unwatchTarget("sighting", id);
+        setWatching(false);
+        toast.success(t("sighting.unwatchSuccess"));
+      } else {
+        await watchTarget("sighting", id);
+        setWatching(true);
+        toast.success(t("sighting.watchSuccess"));
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onSendPrivateTip(e) {
+    e.preventDefault();
+    const body = privateTip.trim();
+    if (!body) return;
+    setBusy(true);
+    try {
+      await sendPrivateTip(id, body);
+      setPrivateTip("");
+      setPrivateTipOpen(false);
+      toast.success(t("sighting.privateTipSent"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onDeletePhoto(photoId) {
     if (photoId === "primary") return;
@@ -196,6 +247,16 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     setFavorite(nowFavorite);
     track("sighting_favorite", { favorite: nowFavorite });
     toast.success(nowFavorite ? t("sighting.favoriteAdded") : t("sighting.favoriteRemoved"));
+    // Favorites also follow the pin so reconfirmations can notify.
+    if (nowFavorite) {
+      watchTarget("sighting", id)
+        .then(() => setWatching(true))
+        .catch(() => {});
+    } else if (watching) {
+      unwatchTarget("sighting", id)
+        .then(() => setWatching(false))
+        .catch(() => {});
+    }
   }
 
   async function submitReport(reason) {
@@ -421,7 +482,47 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                     <strong>{t("sighting.contactLabel")}:</strong> {data.contact}
                   </p>
                 ))}
+              {!mine && !isFound && !data.contact && (
+                <p className="hint">{t("sighting.contactPrivateHint")}</p>
+              )}
+              {!mine && !isFound && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={() => setPrivateTipOpen((v) => !v)}
+                >
+                  {t("sighting.privateTip")}
+                </button>
+              )}
+              {privateTipOpen && (
+                <form className="private-tip-form" onSubmit={onSendPrivateTip}>
+                  <textarea
+                    value={privateTip}
+                    onChange={(e) => setPrivateTip(e.target.value)}
+                    placeholder={t("sighting.privateTipPlaceholder")}
+                    maxLength={500}
+                    rows={3}
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-block"
+                    disabled={busy || !privateTip.trim()}
+                  >
+                    {t("sighting.privateTipSend")}
+                  </button>
+                </form>
+              )}
             </div>
+          )}
+
+          {data.status === "pending" && (
+            <p className="hint status-pending">{t("sighting.pendingStatus")}</p>
+          )}
+          {data.status === "gone" && (
+            <p className="hint">{t("sighting.goneStatus")}</p>
+          )}
+          {data.status === "hidden" && (
+            <p className="hint">{t("sighting.hiddenStatus")}</p>
           )}
 
           {address && (
@@ -474,6 +575,9 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             sightingId={id}
             isMissing={isMissing}
             canDeleteOwn={mine}
+            showTipMap={isMissing}
+            pinLat={data.lat}
+            pinLng={data.lng}
             onChanged={onChanged}
           />
 
@@ -486,6 +590,17 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
               <FontAwesomeIcon icon={favorite ? faHeartSolid : faHeartRegular} />{" "}
               {favorite ? t("sighting.saved") : t("sighting.save")}
             </button>
+            {!mine && !isFound && data.status === "active" && (
+              <button
+                className="btn btn-ghost"
+                onClick={onToggleWatch}
+                disabled={busy}
+                aria-pressed={watching}
+              >
+                <FontAwesomeIcon icon={watching ? faBellSlash : faBell} />{" "}
+                {watching ? t("sighting.watching") : t("sighting.watch")}
+              </button>
+            )}
             <button className="btn btn-ghost" onClick={onShare} disabled={busy}>
               <FontAwesomeIcon icon={faShare} /> {t("sighting.share")}
             </button>

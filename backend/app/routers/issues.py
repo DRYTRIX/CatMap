@@ -61,6 +61,7 @@ def submit_issue(
 
     background_tasks.add_task(
         notify_issue_reported,
+        issue_id=issue.id,
         category=issue.category,
         message=issue.message,
         page_url=issue.page_url,

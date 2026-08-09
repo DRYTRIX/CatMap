@@ -13,22 +13,23 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..cat_detection import detect_cat, get_detection_status
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, no_cache, writable_device_token
+from ..deps import device_token, no_cache, optional_device_token, writable_device_token
 from ..images import InvalidImageError, extract_gps, process_upload
-from ..models import Confirmation, Photo, Report, Sighting
+from ..models import Confirmation, Photo, Report, Sighting, Watch
 from ..notifications import notify_sighting_created, notify_sighting_reported
 from ..ratelimit import limiter
 from ..schemas import (
     ConfirmResult,
     CreateSightingResult,
     PhotoOut,
+    PrivateMessageResult,
     ReportResult,
     SightingCluster,
     SightingDetail,
@@ -52,6 +53,12 @@ ALLOWED_KINDS = {"sighting", "missing"}
 
 # Statuses that are still fetchable by id / photo (map only shows "active").
 VIEWABLE_STATUSES = {"active", "found"}
+
+# Creator can still open their own posts that are off the public map.
+OWNER_VIEWABLE_STATUSES = {"active", "found", "pending", "gone", "hidden"}
+
+# Statuses listed in "My cats".
+MINE_STATUSES = ("active", "found", "pending", "gone", "hidden")
 
 
 def _photo_url(sighting_id: str) -> str:
@@ -98,8 +105,17 @@ def _is_stale(last_seen: datetime) -> bool:
     return last_seen < datetime.now(UTC) - timedelta(days=settings.stale_after_days)
 
 
-def _detail(s: Sighting) -> dict:
+def _detail(
+    s: Sighting,
+    *,
+    token: str | None = None,
+    watching: bool | None = None,
+) -> dict:
     last_seen = _last_seen(s)
+    is_mine = bool(token and s.creator_token == token)
+    contact_public = bool(getattr(s, "contact_public", False))
+    # Hide contact from the public unless the owner opted in; always show to owner.
+    contact = s.contact if (is_mine or contact_public) else None
     return {
         "id": s.id,
         "lat": s.lat,
@@ -119,8 +135,24 @@ def _detail(s: Sighting) -> dict:
         "kind": s.kind,
         "status": s.status,
         "cat_name": s.cat_name,
-        "contact": s.contact,
+        "contact": contact,
+        "contact_public": contact_public,
+        "is_mine": is_mine,
+        "watching": bool(watching) if watching is not None else False,
     }
+
+
+def _is_watching(db: Session, token: str | None, target_type: str, target_id: str) -> bool:
+    if not token:
+        return False
+    row = db.execute(
+        select(Watch.id).where(
+            Watch.device_token == token,
+            Watch.target_type == target_type,
+            Watch.target_id == target_id,
+        )
+    ).scalar_one_or_none()
+    return row is not None
 
 
 def _bbox_filter_conditions(
@@ -176,12 +208,22 @@ def _normalize_kind(kind: str | None) -> str:
     return value
 
 
-def _get_viewable_sighting(db: Session, sighting_id: str) -> Sighting:
-    """Fetch a sighting that is still viewable (active or found), or 404."""
+def _get_viewable_sighting(
+    db: Session, sighting_id: str, token: str | None = None
+) -> Sighting:
+    """Fetch a sighting that is still viewable (active/found), or the owner's off-map post."""
     sighting = db.get(Sighting, sighting_id)
-    if sighting is None or sighting.status not in VIEWABLE_STATUSES:
+    if sighting is None:
         raise HTTPException(status_code=404, detail="Sighting not found.")
-    return sighting
+    if sighting.status in VIEWABLE_STATUSES:
+        return sighting
+    if (
+        token
+        and sighting.creator_token == token
+        and sighting.status in OWNER_VIEWABLE_STATUSES
+    ):
+        return sighting
+    raise HTTPException(status_code=404, detail="Sighting not found.")
 
 
 @router.get("", response_model=list[SightingDot])
@@ -356,6 +398,7 @@ async def create_sighting(
     kind: str = Form("sighting"),
     cat_name: str | None = Form(None),
     contact: str | None = Form(None),
+    contact_public: bool = Form(False),
     token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -455,6 +498,7 @@ async def create_sighting(
         kind=post_kind,
         cat_name=_normalize_cat_name(cat_name) if post_kind == "missing" else None,
         contact=_normalize_contact(contact) if post_kind == "missing" else None,
+        contact_public=bool(contact_public) if post_kind == "missing" else False,
         status="pending" if pending else "active",
     )
     for position, (main_bytes, thumb_bytes, mime) in enumerate(processed[1:], start=1):
@@ -486,7 +530,7 @@ async def create_sighting(
             description=sighting.description,
             kind=post_kind,
         )
-    result = _detail(sighting)
+    result = _detail(sighting, token=token)
     result["pending"] = pending
     return result
 
@@ -527,7 +571,13 @@ def recent_sightings(
     if kind is not None:
         conditions.append(Sighting.kind == kind)
     if q:
-        conditions.append(Sighting.description.ilike(f"%{q.strip()[:100]}%"))
+        needle = f"%{q.strip()[:100]}%"
+        conditions.append(
+            or_(
+                Sighting.description.ilike(needle),
+                Sighting.cat_name.ilike(needle),
+            )
+        )
     if near_lat is not None and near_lng is not None and radius_km:
         deg = radius_km / 111.0
         conditions.extend([
@@ -564,18 +614,21 @@ def my_sightings(
     token: str = Depends(device_token),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """Sightings created by the calling device (active + found), newest first."""
+    """Sightings created by the calling device (all statuses), newest first."""
     stmt = (
         select(Sighting)
         .where(
             Sighting.creator_token == token,
-            Sighting.status.in_(("active", "found")),
+            Sighting.status.in_(MINE_STATUSES),
         )
         .options(selectinload(Sighting.photos))
         .order_by(Sighting.created_at.desc())
         .limit(200)
     )
-    return [_detail(s) for s in db.execute(stmt).scalars().all()]
+    return [
+        _detail(s, token=token, watching=_is_watching(db, token, "sighting", s.id))
+        for s in db.execute(stmt).scalars().all()
+    ]
 
 
 # ~300 m in degrees (approximate; sufficient for "same cat?" suggestions).
@@ -639,15 +692,25 @@ def similar_sightings(
 @router.get("/{sighting_id}", response_model=SightingDetail)
 def get_sighting(
     sighting_id: str,
+    token: str | None = Depends(optional_device_token),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> dict:
-    return _detail(_get_viewable_sighting(db, sighting_id))
+    sighting = _get_viewable_sighting(db, sighting_id, token)
+    return _detail(
+        sighting,
+        token=token,
+        watching=_is_watching(db, token, "sighting", sighting.id),
+    )
 
 
 @router.get("/{sighting_id}/photo")
-def get_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
-    sighting = _get_viewable_sighting(db, sighting_id)
+def get_photo(
+    sighting_id: str,
+    token: str | None = Depends(optional_device_token),
+    db: Session = Depends(get_db),
+) -> Response:
+    sighting = _get_viewable_sighting(db, sighting_id, token)
     return Response(
         content=sighting.photo,
         media_type=sighting.photo_mime,
@@ -656,8 +719,12 @@ def get_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
 
 
 @router.get("/{sighting_id}/thumbnail")
-def get_thumbnail(sighting_id: str, db: Session = Depends(get_db)) -> Response:
-    sighting = _get_viewable_sighting(db, sighting_id)
+def get_thumbnail(
+    sighting_id: str,
+    token: str | None = Depends(optional_device_token),
+    db: Session = Depends(get_db),
+) -> Response:
+    sighting = _get_viewable_sighting(db, sighting_id, token)
     return Response(
         content=sighting.thumbnail,
         media_type=sighting.photo_mime,
@@ -962,6 +1029,7 @@ def update_sighting(
     lng: float | None = Form(None),
     cat_name: str | None = Form(None),
     contact: str | None = Form(None),
+    contact_public: bool | None = Form(None),
     token: str = Depends(writable_device_token),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -990,10 +1058,16 @@ def update_sighting(
             sighting.cat_name = _normalize_cat_name(cat_name)
         if contact is not None:
             sighting.contact = _normalize_contact(contact)
+        if contact_public is not None:
+            sighting.contact_public = bool(contact_public)
 
     db.commit()
     db.refresh(sighting)
-    return _detail(sighting)
+    return _detail(
+        sighting,
+        token=token,
+        watching=_is_watching(db, token, "sighting", sighting.id),
+    )
 
 
 @router.post("/{sighting_id}/gone", response_model=SightingDetail)
@@ -1019,7 +1093,7 @@ def mark_gone(
         actor_token=token,
         status="gone",
     )
-    return _detail(sighting)
+    return _detail(sighting, token=token)
 
 
 @router.post("/{sighting_id}/found", response_model=SightingDetail)
@@ -1052,7 +1126,44 @@ def mark_found(
         actor_token=token,
         status="found",
     )
-    return _detail(sighting)
+    return _detail(sighting, token=token)
+
+
+@router.post("/{sighting_id}/message", response_model=PrivateMessageResult)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def private_message(
+    request: Request,
+    sighting_id: str,
+    background_tasks: BackgroundTasks,
+    text: str = Form(...),
+    token: str = Depends(writable_device_token),
+    db: Session = Depends(get_db),
+) -> PrivateMessageResult:
+    """Send a private tip to the missing-cat owner (not shown publicly on the map)."""
+    sighting = _get_viewable_sighting(db, sighting_id, token)
+    if sighting.kind != "missing":
+        raise HTTPException(
+            status_code=400, detail="Private tips are only for missing-cat posts."
+        )
+    if sighting.status not in ("active", "found"):
+        raise HTTPException(status_code=404, detail="Sighting not found.")
+    if sighting.creator_token == token:
+        raise HTTPException(status_code=400, detail="Cannot message yourself.")
+
+    body = (text or "").strip()[:500]
+    if not body:
+        raise HTTPException(status_code=400, detail="Message required.")
+
+    from ..user_notifications import notify_private_tip
+
+    background_tasks.add_task(
+        notify_private_tip,
+        sighting_id=sighting.id,
+        creator_token=sighting.creator_token,
+        author_token=token,
+        message=body,
+    )
+    return PrivateMessageResult(sent=True)
 
 
 @router.delete("/{sighting_id}", status_code=204)

@@ -2210,6 +2210,12 @@ input[type="range"] {
   color: var(--ink-500);
   max-width: 320px;
 }
+.error-boundary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
 .cat-profile-link {
   margin: 8px 0 12px;
 }
@@ -2367,4 +2373,73 @@ input[type="range"] {
 }
 .sighting-list-item.is-unread {
   border-left: 3px solid var(--accent, #f59e0b);
+}
+
+.kind-badge--pending {
+  background: #f59e0b33;
+  color: #b45309;
+}
+.tip-map {
+  margin-bottom: 10px;
+}
+.tip-marker-dot,
+.tip-marker-pin {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #c45c26;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.tip-marker-pin {
+  width: 14px;
+  height: 14px;
+  background: #2a6f6f;
+}
+.private-tip-form {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+.onboarding-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 24px));
+}
+.onboarding-body {
+  flex: 1;
+}
+.onboarding-body strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.onboarding-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+.queue-badge {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+.cat-rename .row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cat-rename input {
+  flex: 1;
+}
+.sighting-list-item-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.status-pending {
+  color: #b45309;
 }

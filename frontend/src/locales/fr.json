@@ -91,7 +91,7 @@
     "messagePlaceholder": "Que s'est-il passé ? Qu'attendiez-vous ?",
     "submit": "Envoyer le signalement",
     "submitting": "Envoi…",
-    "success": "Merci — votre signalement a été envoyé.",
+    "success": "Merci — votre signalement a été envoyé à l'équipe CatMap.",
     "categories": {
       "bug": "Bug ou dysfonctionnement",
       "wrong_data": "Données de carte incorrectes",
@@ -270,6 +270,9 @@
     "radiusKm": "Rayon d'alerte (km)",
     "saveNearby": "Enregistrer les préférences",
     "nearbySaved": "Préférences enregistrées.",
+    "help": "Aide",
+    "helpHint": "Un bug ou quelque chose qui ne fonctionne pas ? Dites-le-nous, nous y jetterons un œil.",
+    "reportIssue": "Signaler un problème",
     "myData": "Mes données",
     "myDataHint": "Sauvegardez ce code pour transférer vos signalements.",
     "qrAlt": "QR code avec vos données",
@@ -290,7 +293,11 @@
   },
   "errorBoundary": {
     "title": "Une erreur s'est produite",
-    "message": "CatMap a rencontré une erreur inattendue. Essayez de recharger la page."
+    "message": "CatMap a rencontré une erreur inattendue. Essayez de recharger la page.",
+    "report": "Envoyer un rapport de plantage",
+    "reporting": "Envoi du rapport…",
+    "reported": "Rapport de plantage envoyé",
+    "reportFailed": "Échec de l'envoi — réessayez"
   },
   "errors": {
     "requestFailed": "Échec de la requête ({{status}})",

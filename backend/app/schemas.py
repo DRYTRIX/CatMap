@@ -46,6 +46,9 @@ class SightingDetail(BaseModel):
     status: str = "active"
     cat_name: str | None = None
     contact: str | None = None
+    contact_public: bool = False
+    is_mine: bool = False
+    watching: bool = False
 
 
 class SightingCluster(BaseModel):
@@ -168,6 +171,8 @@ class CatProfile(BaseModel):
     color: str | None = None
     is_ear_tipped: bool | None = None
     is_stray: bool | None = None
+    is_mine: bool = False
+    watching: bool = False
 
 
 class CreateSightingResult(BaseModel):
@@ -191,6 +196,9 @@ class CreateSightingResult(BaseModel):
     status: str = "active"
     cat_name: str | None = None
     contact: str | None = None
+    contact_public: bool = False
+    is_mine: bool = True
+    watching: bool = False
 
 
 class BBox(BaseModel):
@@ -241,6 +249,31 @@ class UnreadCountResult(BaseModel):
 class PushSubscribeResult(BaseModel):
     subscribed: bool
     id: str
+
+
+class PushAlertPrefs(BaseModel):
+    """Nearby-alert preferences for the calling device (any platform)."""
+
+    has_subscription: bool = False
+    alert_lat: float | None = None
+    alert_lng: float | None = None
+    alert_radius_km: float | None = None
+
+
+class WatchOut(BaseModel):
+    id: str
+    target_type: str
+    target_id: str
+    created_at: datetime
+
+
+class WatchResult(BaseModel):
+    watching: bool
+    id: str | None = None
+
+
+class PrivateMessageResult(BaseModel):
+    sent: bool = True
 
 
 class BlockedTokenRow(BaseModel):

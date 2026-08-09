@@ -65,6 +65,9 @@ class Sighting(Base):
     # Missing-cat posts: optional name and how to reach the owner.
     cat_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     contact: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # When False (default), contact is only shown to the creator; public viewers
+    # can still send a private tip via the message endpoint.
+    contact_public: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     # Optional descriptive attributes; NULL means "unknown"/not specified.
     color: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -284,6 +287,28 @@ class BlockedToken(Base):
     reason: Mapped[str] = mapped_column(String(280), default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, nullable=False
+    )
+
+
+class Watch(Base):
+    """Follow a sighting or cat profile for activity alerts (confirm/tip/found)."""
+
+    __tablename__ = "watches"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # "sighting" or "cat"
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "device_token", "target_type", "target_id", name="uq_watch_once"
+        ),
+        Index("ix_watches_target", "target_type", "target_id"),
     )
 
 

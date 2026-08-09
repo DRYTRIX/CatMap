@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
+import L from "leaflet";
 import {
   createComment,
   deleteComment,
@@ -8,10 +10,33 @@ import {
 } from "../api";
 import { getPosition } from "../lib/geolocate";
 import { timeAgo } from "../lib/time";
+import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import LocationPicker from "./LocationPicker";
 import { useToast } from "./Toast";
 
-export default function CommentThread({ sightingId, isMissing, canDeleteOwn, onChanged }) {
+const tipIcon = L.divIcon({
+  className: "tip-marker",
+  html: '<span class="tip-marker-dot"></span>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+const pinIcon = L.divIcon({
+  className: "tip-marker tip-marker--pin",
+  html: '<span class="tip-marker-pin"></span>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
+
+export default function CommentThread({
+  sightingId,
+  isMissing,
+  canDeleteOwn,
+  showTipMap = false,
+  pinLat,
+  pinLng,
+  onChanged,
+}) {
   const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState([]);
@@ -94,9 +119,51 @@ export default function CommentThread({ sightingId, isMissing, canDeleteOwn, onC
     }
   }
 
+  const tipPoints = items.filter((c) => c.lat != null && c.lng != null);
+  const mapPoints = [
+    ...(pinLat != null && pinLng != null ? [{ lat: pinLat, lng: pinLng, kind: "pin" }] : []),
+    ...tipPoints.map((c) => ({ lat: c.lat, lng: c.lng, kind: "tip", id: c.id })),
+  ];
+  const mapCenter =
+    mapPoints.length > 0
+      ? [
+          mapPoints.reduce((s, p) => s + p.lat, 0) / mapPoints.length,
+          mapPoints.reduce((s, p) => s + p.lng, 0) / mapPoints.length,
+        ]
+      : [20, 0];
+  const trail = tipPoints
+    .slice()
+    .reverse()
+    .map((c) => [c.lat, c.lng]);
+
   return (
     <section className="comment-thread" aria-label={t("comments.title")}>
       <h3>{isMissing ? t("comments.tipsTitle") : t("comments.title")}</h3>
+
+      {showTipMap && mapPoints.length > 1 && (
+        <div className="tip-map" aria-label={t("comments.tipMap")}>
+          <MapContainer
+            center={mapCenter}
+            zoom={14}
+            zoomControl={false}
+            attributionControl={false}
+            style={{ height: 140, width: "100%", borderRadius: 12 }}
+          >
+            <TileLayer {...OSM_TILE_PROPS} />
+            {trail.length > 1 && (
+              <Polyline positions={trail} pathOptions={{ color: "#c45c26", weight: 2 }} />
+            )}
+            {mapPoints.map((p, i) => (
+              <Marker
+                key={p.id || `pin-${i}`}
+                position={[p.lat, p.lng]}
+                icon={p.kind === "pin" ? pinIcon : tipIcon}
+              />
+            ))}
+          </MapContainer>
+          <p className="hint">{t("comments.tipMapHint")}</p>
+        </div>
+      )}
 
       {loading && <div className="skeleton skeleton-line" />}
 
@@ -115,7 +182,7 @@ export default function CommentThread({ sightingId, isMissing, canDeleteOwn, onC
               )}
             </p>
             <div className="comment-actions">
-              {c.is_mine && canDeleteOwn && (
+              {(c.is_mine || canDeleteOwn) && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDelete(c.id)} disabled={busy}>
                   {t("common.delete")}
                 </button>

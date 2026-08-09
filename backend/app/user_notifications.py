@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
-from .models import Comment, Confirmation, Notification, PushSubscription, Sighting
+from .models import Comment, Confirmation, Notification, PushSubscription, Sighting, Watch
 from .push import submit_push
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def _engaged_tokens(
     sighting_id: str,
     exclude: str | None = None,
 ) -> set[str]:
-    """Devices that commented on or confirmed a sighting (excluding one token)."""
+    """Devices that commented on, confirmed, or watch a sighting (excluding one token)."""
     recipients: set[str] = set()
     for token in db.scalars(
         select(Comment.device_token)
@@ -58,6 +58,27 @@ def _engaged_tokens(
     ).all():
         if token:
             recipients.add(token)
+
+    sighting = db.get(Sighting, sighting_id)
+    if sighting and sighting.cat_id:
+        for token in db.scalars(
+            select(Watch.device_token).where(
+                Watch.target_type == "cat",
+                Watch.target_id == sighting.cat_id,
+            )
+        ).all():
+            if token:
+                recipients.add(token)
+
+    for token in db.scalars(
+        select(Watch.device_token).where(
+            Watch.target_type == "sighting",
+            Watch.target_id == sighting_id,
+        )
+    ).all():
+        if token:
+            recipients.add(token)
+
     if exclude:
         recipients.discard(exclude)
     return recipients
@@ -138,6 +159,71 @@ def notify_sighting_confirmed(*, sighting_id: str, creator_token: str) -> None:
         title="Someone confirmed your sighting",
         body="Your cat sighting was just confirmed on CatMap.",
         sighting_id=sighting_id,
+        url=f"/?s={sighting_id}",
+    )
+    # Alert devices that explicitly watch this sighting / its cat profile.
+    db = _session()
+    try:
+        sighting = db.get(Sighting, sighting_id)
+        watchers: set[str] = set()
+        for token in db.scalars(
+            select(Watch.device_token).where(
+                Watch.target_type == "sighting",
+                Watch.target_id == sighting_id,
+            )
+        ).all():
+            if token:
+                watchers.add(token)
+        if sighting and sighting.cat_id:
+            for token in db.scalars(
+                select(Watch.device_token).where(
+                    Watch.target_type == "cat",
+                    Watch.target_id == sighting.cat_id,
+                )
+            ).all():
+                if token:
+                    watchers.add(token)
+        watchers.discard(creator_token)
+        title = "Watched cat confirmed"
+        body = "A cat you're watching was just confirmed."
+        for token in watchers:
+            _create_notification(
+                db,
+                recipient_token=token,
+                ntype="watch_confirmed",
+                sighting_id=sighting_id,
+                payload={"title": title, "body": body},
+            )
+        db.commit()
+        for token in watchers:
+            _dispatch_push(token, title, body, url=f"/?s={sighting_id}")
+    except Exception:
+        db.rollback()
+        logger.exception("notify watchers on confirm failed")
+    finally:
+        db.close()
+
+
+def notify_private_tip(
+    *,
+    sighting_id: str,
+    creator_token: str,
+    author_token: str,
+    message: str,
+) -> None:
+    """Private tip to a missing-cat owner (not a public comment)."""
+    if not creator_token or creator_token == author_token:
+        return
+    preview = (message or "").strip()
+    if len(preview) > 120:
+        preview = preview[:117] + "…"
+    notify_inbox_and_push(
+        recipient_token=creator_token,
+        ntype="private_tip",
+        title="Private tip about your missing cat",
+        body=preview or "Someone sent you a private tip.",
+        sighting_id=sighting_id,
+        payload={"message": message},
         url=f"/?s={sighting_id}",
     )
 

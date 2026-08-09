@@ -101,6 +101,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [description, setDescription] = useState("");
   const [catName, setCatName] = useState("");
   const [contact, setContact] = useState("");
+  const [contactPublic, setContactPublic] = useState(false);
   const [color, setColor] = useState("");
   const [isEarTipped, setIsEarTipped] = useState("");
   const [isStray, setIsStray] = useState("");
@@ -206,6 +207,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
         kind,
         catName: isMissing ? catName : "",
         contact: isMissing ? contact : "",
+        contactPublic: isMissing ? contactPublic : false,
         onProgress: setProgress,
       });
       submittedRef.current = true;
@@ -237,6 +239,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
             kind,
             catName: isMissing ? catName : "",
             contact: isMissing ? contact : "",
+            contactPublic: isMissing ? contactPublic : false,
           });
           submittedRef.current = true;
           toast.success(t("offline.queued"));
@@ -443,6 +446,14 @@ export default function AddSightingModal({ onClose, onCreated }) {
                 onChange={(e) => setContact(e.target.value)}
               />
               <p className="hint">{t("addSighting.contactHint")}</p>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={contactPublic}
+                  onChange={(e) => setContactPublic(e.target.checked)}
+                />
+                {t("addSighting.contactPublic")}
+              </label>
             </>
           )}
 

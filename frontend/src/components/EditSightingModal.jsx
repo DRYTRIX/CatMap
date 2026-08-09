@@ -7,6 +7,7 @@ import { updateSighting } from "../api";
 import { CAT_COLORS } from "../lib/filters";
 import Modal from "./Modal";
 import SegmentedControl from "./SegmentedControl";
+import LocationPicker from "./LocationPicker";
 import { useToast } from "./Toast";
 
 const TRI_STATE_KEYS = [
@@ -22,7 +23,7 @@ function boolToTri(value) {
 }
 
 /**
- * Edit a sighting's description and attributes (creator-only).
+ * Edit a sighting's description, attributes, and location (creator-only).
  *
  * Props: data (current SightingDetail), onClose, onSaved(updatedDetail).
  */
@@ -33,9 +34,11 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
   const [description, setDescription] = useState(data.description || "");
   const [catName, setCatName] = useState(data.cat_name || "");
   const [contact, setContact] = useState(data.contact || "");
+  const [contactPublic, setContactPublic] = useState(Boolean(data.contact_public));
   const [color, setColor] = useState(data.color || "");
   const [isEarTipped, setIsEarTipped] = useState(boolToTri(data.is_ear_tipped));
   const [isStray, setIsStray] = useState(boolToTri(data.is_stray));
+  const [location, setLocation] = useState({ lat: data.lat, lng: data.lng });
   const [saving, setSaving] = useState(false);
 
   const triStateOptions = TRI_STATE_KEYS.map((o) => ({
@@ -47,9 +50,14 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
     setSaving(true);
     try {
       const fields = { description, color };
+      if (location?.lat != null && location?.lng != null) {
+        fields.lat = location.lat;
+        fields.lng = location.lng;
+      }
       if (isMissing) {
         fields.cat_name = catName;
         fields.contact = contact;
+        fields.contact_public = contactPublic;
       }
       if (isEarTipped !== "") fields.is_ear_tipped = isEarTipped;
       if (isStray !== "") fields.is_stray = isStray;
@@ -86,6 +94,11 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
         <p className="hint char-count">{description.length}/1000</p>
       </div>
 
+      <div className="field">
+        <label>{t("sighting.editLocation")}</label>
+        <LocationPicker value={location} onChange={setLocation} />
+      </div>
+
       {isMissing && (
         <>
           <div className="field">
@@ -107,7 +120,16 @@ export default function EditSightingModal({ data, onClose, onSaved }) {
               maxLength={200}
               onChange={(e) => setContact(e.target.value)}
             />
+            <p className="hint">{t("addSighting.contactHint")}</p>
           </div>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={contactPublic}
+              onChange={(e) => setContactPublic(e.target.checked)}
+            />
+            {t("addSighting.contactPublic")}
+          </label>
         </>
       )}
 

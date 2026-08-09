@@ -8,7 +8,7 @@ from ..config import get_settings
 from ..database import get_db
 from ..deps import device_token, writable_device_token, no_cache
 from ..models import Notification, PushSubscription
-from ..schemas import NotificationOut, PushSubscribeResult, UnreadCountResult
+from ..schemas import NotificationOut, PushAlertPrefs, PushSubscribeResult, UnreadCountResult
 from ..user_notifications import mark_notifications_read, unread_count
 
 router = APIRouter(tags=["notifications"])
@@ -73,6 +73,30 @@ def vapid_public_key() -> dict:
     if not key:
         raise HTTPException(status_code=404, detail="Web push not configured.")
     return {"public_key": key}
+
+
+@router.get("/push/alerts", response_model=PushAlertPrefs)
+def get_alert_prefs(
+    token: str = Depends(device_token),
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> PushAlertPrefs:
+    """Return nearby-alert prefs from any subscription for this device."""
+    rows = db.execute(
+        select(PushSubscription)
+        .where(PushSubscription.device_token == token)
+        .order_by(PushSubscription.created_at.desc())
+    ).scalars().all()
+    if not rows:
+        return PushAlertPrefs(has_subscription=False)
+    # Prefer a row that already has alert coordinates configured.
+    chosen = next((r for r in rows if r.alert_lat is not None), rows[0])
+    return PushAlertPrefs(
+        has_subscription=True,
+        alert_lat=chosen.alert_lat,
+        alert_lng=chosen.alert_lng,
+        alert_radius_km=chosen.alert_radius_km,
+    )
 
 
 @router.post("/push/subscribe", response_model=PushSubscribeResult)

@@ -73,7 +73,9 @@ export async function fetchClusters(bbox, zoom, filters = {}, signal) {
 }
 
 export async function fetchSighting(id) {
-  const res = await fetch(`${API_BASE}/api/sightings/${id}`);
+  const res = await fetch(`${API_BASE}/api/sightings/${id}`, {
+    headers: authHeaders(),
+  });
   return handle(res);
 }
 
@@ -83,7 +85,10 @@ export async function fetchSimilarSightings(id, signal) {
 }
 
 export async function fetchCatProfile(id, signal) {
-  const res = await fetch(`${API_BASE}/api/cats/${id}`, { signal });
+  const res = await fetch(`${API_BASE}/api/cats/${id}`, {
+    headers: authHeaders(),
+    signal,
+  });
   return handle(res);
 }
 
@@ -117,6 +122,60 @@ export async function unlinkSightingFromCat(catId, sightingId) {
     method: "POST",
     headers: authHeaders(),
     body: form,
+  });
+  return handle(res);
+}
+
+export async function renameCatProfile(catId, name) {
+  const form = new FormData();
+  form.append("name", name ?? "");
+  const res = await fetch(`${API_BASE}/api/cats/${catId}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function sendPrivateTip(sightingId, text) {
+  const form = new FormData();
+  form.append("text", text);
+  const res = await fetch(`${API_BASE}/api/sightings/${sightingId}/message`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function fetchWatches(signal) {
+  const res = await fetch(`${API_BASE}/api/watches`, {
+    headers: authHeaders(),
+    signal,
+  });
+  return handle(res);
+}
+
+export async function watchTarget(targetType, targetId) {
+  const form = new FormData();
+  form.append("target_type", targetType);
+  form.append("target_id", targetId);
+  const res = await fetch(`${API_BASE}/api/watches`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function unwatchTarget(targetType, targetId) {
+  const params = new URLSearchParams({
+    target_type: targetType,
+    target_id: targetId,
+  });
+  const res = await fetch(`${API_BASE}/api/watches?${params}`, {
+    method: "DELETE",
+    headers: authHeaders(),
   });
   return handle(res);
 }
@@ -159,6 +218,7 @@ export function createSighting({
   kind = "sighting",
   catName = "",
   contact = "",
+  contactPublic = false,
   onProgress,
 }) {
   return new Promise((resolve, reject) => {
@@ -172,6 +232,7 @@ export function createSighting({
     form.append("kind", kind || "sighting");
     if (catName) form.append("cat_name", catName);
     if (contact) form.append("contact", contact);
+    if (kind === "missing") form.append("contact_public", contactPublic ? "true" : "false");
     if (color) form.append("color", color);
     if (isEarTipped !== "") form.append("is_ear_tipped", isEarTipped);
     if (isStray !== "") form.append("is_stray", isStray);
@@ -433,6 +494,14 @@ export async function markNotificationsRead(ids = []) {
 
 export async function fetchVapidPublicKey() {
   const res = await fetch(`${API_BASE}/api/push/vapid-public-key`);
+  return handle(res);
+}
+
+export async function fetchPushAlertPrefs(signal) {
+  const res = await fetch(`${API_BASE}/api/push/alerts`, {
+    headers: authHeaders(),
+    signal,
+  });
   return handle(res);
 }
 
