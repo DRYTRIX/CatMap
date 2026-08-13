@@ -133,3 +133,41 @@ def test_confirm_flow(client):
     assert client.post(
         "/api/sightings/nope/confirm", headers={"X-Device-Token": "user-0001"}
     ).status_code == 404
+
+
+def test_antimeridian_bbox_includes_both_sides(client):
+    """Views that cross 180° send min_lng > max_lng; those cats must still match."""
+    west = create_sighting(client, "device-aaaaaaaa", lat=0.0, lng=175.0).json()
+    east = create_sighting(client, "device-aaaaaaaa", lat=0.0, lng=-175.0).json()
+    create_sighting(client, "device-aaaaaaaa", lat=0.0, lng=0.0)
+
+    dots = client.get(
+        "/api/sightings",
+        params={"min_lat": -10, "max_lat": 10, "min_lng": 170, "max_lng": -170},
+    )
+    assert dots.status_code == 200
+    ids = {d["id"] for d in dots.json()}
+    assert west["id"] in ids
+    assert east["id"] in ids
+    assert len(ids) == 2
+
+    clusters = client.get(
+        "/api/sightings/clusters",
+        params={
+            "min_lat": -10,
+            "max_lat": 10,
+            "min_lng": 170,
+            "max_lng": -170,
+            "zoom": 4,
+        },
+    )
+    assert clusters.status_code == 200
+    assert sum(c["count"] for c in clusters.json()) == 2
+
+
+def test_inverted_lat_bbox_still_rejected(client):
+    r = client.get(
+        "/api/sightings",
+        params={"min_lat": 10, "max_lat": -10, "min_lng": -10, "max_lng": 10},
+    )
+    assert r.status_code == 400

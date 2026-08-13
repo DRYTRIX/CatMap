@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { dismissOnboarding } from "./helpers";
 
 test("opening the add-sighting wizard shows the photo requirements as pending", async ({ page }) => {
   await page.goto("/");
+  await dismissOnboarding(page);
 
   const addButton = page.getByRole("button", { name: "Add cat" });
   await expect(addButton).toBeVisible();

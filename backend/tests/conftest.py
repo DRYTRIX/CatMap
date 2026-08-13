@@ -1,16 +1,21 @@
 """Shared test fixtures.
 
-Runs the real FastAPI app against an in-memory SQLite database (shared across
-threads via StaticPool), with rate limiting disabled by default and a low
-create limit configured so the rate-limit test can exercise 429s.
+Runs the real FastAPI app. Locally this uses in-memory SQLite; CI can set
+DATABASE_URL to Postgres so the same suite hits a real database.
+Rate limiting is disabled by default, with a low create/mutate limit so the
+rate-limit tests can exercise 429s.
 """
 
 import io
 import os
 
-# Use SQLite before importing the app so the module-level engine doesn't pull
-# in the psycopg (Postgres) driver.
-os.environ["DATABASE_URL"] = "sqlite://"
+_provided_db = os.environ.get("DATABASE_URL", "")
+USE_POSTGRES = _provided_db.startswith("postgresql")
+if not USE_POSTGRES:
+    # Use SQLite before importing the app so the module-level engine doesn't
+    # pull in the psycopg (Postgres) driver.
+    os.environ["DATABASE_URL"] = "sqlite://"
+
 os.environ["RATE_LIMIT_CREATE"] = "5/minute"
 os.environ["RATE_LIMIT_CONFIRM"] = "1000/minute"
 os.environ["RATE_LIMIT_REPORT"] = "1000/minute"
@@ -24,25 +29,27 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from PIL import Image  # noqa: E402
 from PIL.TiffImagePlugin import IFDRational  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
 
 import app.database as db  # noqa: E402
 
-db.engine = create_engine(
-    "sqlite://",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-db.SessionLocal = sessionmaker(bind=db.engine, autoflush=False, expire_on_commit=False)
+if not USE_POSTGRES:
+    from sqlalchemy import create_engine  # noqa: E402
+    from sqlalchemy.orm import sessionmaker  # noqa: E402
+    from sqlalchemy.pool import StaticPool  # noqa: E402
+
+    db.engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    db.SessionLocal = sessionmaker(bind=db.engine, autoflush=False, expire_on_commit=False)
 
 import app.models  # noqa: E402,F401
 import app.main as main_module  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
 from app.ratelimit import limiter  # noqa: E402
 
-# Health check reads main_module.engine (bound at import) — point it at SQLite.
+# Health check reads main_module.engine (bound at import).
 main_module.engine = db.engine
 db.Base.metadata.create_all(bind=db.engine)
 limiter.enabled = False  # individual tests can re-enable
@@ -53,8 +60,12 @@ def _clean_db():
     """Wipe tables between tests for isolation."""
     yield
     with db.engine.begin() as conn:
-        for table in reversed(db.Base.metadata.sorted_tables):
-            conn.exec_driver_sql(f"DELETE FROM {table.name}")
+        if USE_POSTGRES:
+            names = ", ".join(f'"{t.name}"' for t in db.Base.metadata.sorted_tables)
+            conn.exec_driver_sql(f"TRUNCATE {names} RESTART IDENTITY CASCADE")
+        else:
+            for table in reversed(db.Base.metadata.sorted_tables):
+                conn.exec_driver_sql(f"DELETE FROM {table.name}")
 
 
 @pytest.fixture
