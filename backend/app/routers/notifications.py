@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, writable_device_token, no_cache
+from ..deps import device_token, no_cache, writable_device_token
 from ..models import Notification, PushSubscription
 from ..schemas import NotificationOut, PushAlertPrefs, PushSubscribeResult, UnreadCountResult
 from ..user_notifications import mark_notifications_read, unread_count

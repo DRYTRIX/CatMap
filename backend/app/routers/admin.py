@@ -613,7 +613,9 @@ def delete_comment(comment_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/blocked-tokens", response_model=list[BlockedTokenRow])
-def list_blocked(db: Session = Depends(get_db), limit: int = 50, offset: int = 0) -> list[BlockedTokenRow]:
+def list_blocked(
+    db: Session = Depends(get_db), limit: int = 50, offset: int = 0
+) -> list[BlockedTokenRow]:
     rows = db.execute(
         select(BlockedToken).order_by(BlockedToken.created_at.desc()).limit(limit).offset(offset)
     ).scalars().all()

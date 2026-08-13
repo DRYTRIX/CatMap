@@ -176,4 +176,4 @@ def test_build_issue_notification_truncates_long_message():
     assert "<b>Issue report</b>" in text
     assert "…" in text
     assert long_msg not in text
-    assert f"x" * 100 in text
+    assert "x" * 100 in text

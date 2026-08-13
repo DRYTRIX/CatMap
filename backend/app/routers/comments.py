@@ -92,7 +92,9 @@ def create_comment(
     if not body:
         raise HTTPException(status_code=400, detail="Comment text is required.")
     if len(body) > MAX_COMMENT_TEXT:
-        raise HTTPException(status_code=400, detail=f"Comment exceeds {MAX_COMMENT_TEXT} characters.")
+        raise HTTPException(
+            status_code=400, detail=f"Comment exceeds {MAX_COMMENT_TEXT} characters."
+        )
 
     if (lat is None) ^ (lng is None):
         raise HTTPException(status_code=400, detail="Provide both lat and lng for a location.")
