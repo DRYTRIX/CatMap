@@ -172,6 +172,8 @@ export default function MapView({
               key={`c-${c.lat}-${c.lng}`}
               position={[c.lat, c.lng]}
               icon={serverClusterIcon(c.count)}
+              title={t("map.clusterCount", { count: c.count })}
+              alt={t("map.clusterCount", { count: c.count })}
               eventHandlers={{
                 click: () => {
                   const map = mapRef.current;
@@ -193,14 +195,23 @@ export default function MapView({
             maxClusterRadius={50}
             iconCreateFunction={clusterIcon}
           >
-            {dots.map((d) => (
-              <Marker
-                key={d.id}
-                position={[d.lat, d.lng]}
-                icon={catIcon(d.confirmations_count, d.stale, d.kind)}
-                eventHandlers={{ click: () => onSelect?.(d.id) }}
-              />
-            ))}
+            {dots.map((d) => {
+              const label =
+                (d.description || "").trim() ||
+                (d.kind === "missing"
+                  ? t("sighting.titleMissing")
+                  : t("common.catSighting"));
+              return (
+                <Marker
+                  key={d.id}
+                  position={[d.lat, d.lng]}
+                  icon={catIcon(d.confirmations_count, d.stale, d.kind)}
+                  title={label}
+                  alt={label}
+                  eventHandlers={{ click: () => onSelect?.(d.id) }}
+                />
+              );
+            })}
           </MarkerClusterGroup>
         )}
       </MapContainer>

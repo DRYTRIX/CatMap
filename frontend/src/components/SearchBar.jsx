@@ -36,7 +36,21 @@ export default function SearchBar({ map, onSelectSighting }) {
           q.length >= 3
             ? geocode(q, controller.signal).catch(() => [])
             : Promise.resolve([]),
-          fetchRecent({ limit: 8, q, status: "active" }, controller.signal).catch(() => []),
+          fetchRecent(
+            {
+              limit: 20,
+              q,
+              status: "active",
+              ...(map
+                ? {
+                    near_lat: map.getCenter().lat,
+                    near_lng: map.getCenter().lng,
+                    radius_km: 500,
+                  }
+                : {}),
+            },
+            controller.signal
+          ).catch(() => []),
         ]);
         const combined = [
           ...cats.map((c) => ({
@@ -68,7 +82,7 @@ export default function SearchBar({ map, onSelectSighting }) {
       }
     }, 400);
     return () => clearTimeout(timerRef.current);
-  }, [query, t]);
+  }, [query, t, map]);
 
   useEffect(() => {
     function onDocClick(e) {

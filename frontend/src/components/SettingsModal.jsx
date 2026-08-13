@@ -7,7 +7,12 @@ import {
   subscribePush,
   unsubscribePush,
 } from "../api";
-import { exportIdentity, importIdentity } from "../deviceToken";
+import {
+  exportIdentity,
+  getDeviceToken,
+  importIdentity,
+  markBackedUp,
+} from "../deviceToken";
 import { getPosition } from "../lib/geolocate";
 import { isNativePlatform } from "../lib/platform";
 import { registerNativePush } from "../lib/pushNotifications";
@@ -191,7 +196,20 @@ export default function SettingsModal({ onClose, onReportIssue }) {
 
   function copyExport() {
     navigator.clipboard.writeText(exportJson).then(
-      () => toast.success(t("settings.copied")),
+      () => {
+        markBackedUp();
+        toast.success(t("settings.copied"));
+      },
+      () => toast.error(t("settings.copyFailed"))
+    );
+  }
+
+  function copyBackupCode() {
+    navigator.clipboard.writeText(getDeviceToken()).then(
+      () => {
+        markBackedUp();
+        toast.success(t("settings.copied"));
+      },
       () => toast.error(t("settings.copyFailed"))
     );
   }
@@ -280,11 +298,17 @@ export default function SettingsModal({ onClose, onReportIssue }) {
         </button>
       </section>
 
-      <section className="settings-section">
+      <section className="settings-section" id="settings-my-data">
         <h3>{t("settings.myData")}</h3>
         <p className="hint">{t("settings.myDataHint")}</p>
+        <p className="hint settings-qr-warning" role="alert">
+          {t("settings.qrWarning")}
+        </p>
         {qrUrl && <img src={qrUrl} alt={t("settings.qrAlt")} className="settings-qr" />}
         <textarea readOnly value={exportJson} rows={4} />
+        <button type="button" className="btn btn-ghost btn-block" onClick={copyBackupCode}>
+          {t("settings.copyBackupCode")}
+        </button>
         <button type="button" className="btn btn-ghost btn-block" onClick={copyExport}>
           {t("settings.copyData")}
         </button>

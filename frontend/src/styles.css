@@ -1476,6 +1476,46 @@ input[type="range"] {
   cursor: pointer;
 }
 
+.backup-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + var(--footer-h) + var(--safe-bottom));
+  z-index: 1750;
+  max-width: 460px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid #fed7aa;
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  box-shadow: var(--sh-3);
+  animation: rise 0.4s var(--ease) both;
+}
+
+.settings-qr-warning {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 10000;
+  padding: 8px 14px;
+  background: var(--surface, #fff);
+  color: var(--ink-900, #1e293b);
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+}
+.skip-link:focus {
+  left: 12px;
+}
+
 .onboarding-hint {
   position: fixed;
   left: 12px;

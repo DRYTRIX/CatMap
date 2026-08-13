@@ -6,6 +6,7 @@ import Footer from "./components/Footer";
 import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
 import OnboardingHint from "./components/OnboardingHint";
+import IdentityBackupBanner from "./components/IdentityBackupBanner";
 import { ToastProvider, useToast } from "./components/Toast";
 import { fetchUnreadCount } from "./api";
 
@@ -247,7 +248,7 @@ function AppShell() {
         onSelectSighting={setSelectedId}
       />
 
-      <main className="map-wrap">
+      <main className="map-wrap" id="map-root">
         <MapView
           refreshKey={refreshKey}
           filters={filters}
@@ -359,6 +360,10 @@ function AppShell() {
 
       <OnboardingHint />
       <InstallPrompt />
+      <IdentityBackupBanner
+        refreshKey={refreshKey}
+        onBackup={() => setShowSettings(true)}
+      />
     </div>
   );
 }

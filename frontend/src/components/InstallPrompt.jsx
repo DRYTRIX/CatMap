@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
 import { isNativePlatform } from "../lib/platform";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 const DISMISS_KEY = "catmap_install_dismissed";
 
@@ -20,9 +21,11 @@ function isStandalone() {
 /** Custom install banner: native prompt on Android/desktop, hint on iOS. */
 export default function InstallPrompt() {
   const { t } = useTranslation();
+  const panelRef = useRef(null);
   const [deferred, setDeferred] = useState(null);
   const [visible, setVisible] = useState(false);
   const [iosHint, setIosHint] = useState(false);
+  useFocusTrap(panelRef, visible);
 
   useEffect(() => {
     if (isNativePlatform() || localStorage.getItem(DISMISS_KEY) || isStandalone()) return undefined;
@@ -70,7 +73,14 @@ export default function InstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="install-banner" role="dialog" aria-label={t("install.ariaLabel")}>
+    <div
+      ref={panelRef}
+      className="install-banner"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("install.ariaLabel")}
+      tabIndex={-1}
+    >
       <span className="install-icon">🐱</span>
       <div className="install-text">
         <strong>{t("install.title")}</strong>

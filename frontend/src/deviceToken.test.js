@@ -4,8 +4,10 @@ import {
   getConfirmedSet,
   getCreatedSet,
   getDeviceToken,
+  hasBackedUp,
   importIdentity,
   isMine,
+  markBackedUp,
   markConfirmed,
   markCreated,
 } from "./deviceToken";
@@ -53,5 +55,12 @@ describe("deviceToken", () => {
     expect(getCreatedSet().has("c1")).toBe(true);
     expect(getConfirmedSet().has("k1")).toBe(true);
     expect(JSON.parse(localStorage.getItem("catmap_favorites"))).toContain("f1");
+    expect(hasBackedUp()).toBe(true);
+  });
+
+  it("tracks backup status independently of the device token", () => {
+    expect(hasBackedUp()).toBe(false);
+    markBackedUp();
+    expect(hasBackedUp()).toBe(true);
   });
 });

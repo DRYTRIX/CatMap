@@ -77,6 +77,17 @@ export function exportIdentity() {
   });
 }
 
+const BACKED_UP_KEY = "catmap_backed_up";
+
+/** True once the user has exported, copied, or imported a backup on this device. */
+export function hasBackedUp() {
+  return localStorage.getItem(BACKED_UP_KEY) === "1";
+}
+
+export function markBackedUp() {
+  localStorage.setItem(BACKED_UP_KEY, "1");
+}
+
 /** Replace local identity from exported JSON (merges favorites/created/confirmed). */
 export function importIdentity(jsonText) {
   const data = JSON.parse(jsonText);
@@ -84,6 +95,7 @@ export function importIdentity(jsonText) {
     throw new Error("Invalid identity data.");
   }
   localStorage.setItem(KEY, data.token);
+  markBackedUp();
   if (Array.isArray(data.favorites)) {
     const existing = new Set(
       JSON.parse(localStorage.getItem("catmap_favorites") || "[]")

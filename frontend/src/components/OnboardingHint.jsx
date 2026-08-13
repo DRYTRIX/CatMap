@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { track } from "../analytics";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 const DISMISS_KEY = "catmap_onboarding_dismissed";
 const STEPS = ["welcome", "sightingVsMissing", "confirmReport", "permissions"];
@@ -10,6 +11,7 @@ const STEPS = ["welcome", "sightingVsMissing", "confirmReport", "permissions"];
 /** Short multi-step onboarding for first-time visitors. */
 export default function OnboardingHint() {
   const { t } = useTranslation();
+  const panelRef = useRef(null);
   const [step, setStep] = useState(() => {
     try {
       return localStorage.getItem(DISMISS_KEY) ? -1 : 0;
@@ -17,6 +19,7 @@ export default function OnboardingHint() {
       return -1;
     }
   });
+  useFocusTrap(panelRef, step >= 0);
 
   function dismiss() {
     track("onboarding_dismiss", { step: STEPS[Math.max(0, step)] });
@@ -42,7 +45,14 @@ export default function OnboardingHint() {
   const key = STEPS[step];
 
   return (
-    <div className="onboarding-hint onboarding-card" role="dialog" aria-labelledby="onboarding-title">
+    <div
+      ref={panelRef}
+      className="onboarding-hint onboarding-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+      tabIndex={-1}
+    >
       <div className="onboarding-body">
         <strong id="onboarding-title">{t(`onboarding.${key}Title`)}</strong>
         <p className="onboarding-text">{t(`onboarding.${key}Body`, { action: t("header.addCat") })}</p>
