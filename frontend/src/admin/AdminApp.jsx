@@ -18,17 +18,27 @@ import {
   faThumbsUp,
   faTriangleExclamation,
   faBug,
+  faBan,
+  faComments,
+  faPaperPlane,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   adminApproveSighting,
   adminBlockToken,
+  adminDeleteBlockedToken,
+  adminDeleteComment,
   adminDeleteIssue,
   adminDeleteSighting,
+  adminHideComment,
   adminHideSighting,
   adminImageObjectUrl,
   adminResolveIssue,
+  adminSendPushTest,
+  adminUnhideComment,
   adminUnhideSighting,
   fetchAdminActions,
+  fetchAdminBlockedTokens,
+  fetchAdminComments,
   fetchAdminDatabaseUsage,
   fetchAdminIssues,
   fetchAdminMetrics,
@@ -186,6 +196,11 @@ function AdminPanel() {
   const [dbUsage, setDbUsage] = useState(null);
   const [issues, setIssues] = useState(null);
   const [issueStatus, setIssueStatus] = useState("open");
+  const [comments, setComments] = useState(null);
+  const [commentStatus, setCommentStatus] = useState("");
+  const [blockedTokens, setBlockedTokens] = useState(null);
+  const [pushDeviceToken, setPushDeviceToken] = useState("");
+  const [pushResult, setPushResult] = useState(null);
   const [sort, setSort] = useState("reports");
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState(null);
@@ -194,6 +209,7 @@ function AdminPanel() {
   const [lightboxLoadingId, setLightboxLoadingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleteIssueConfirmId, setDeleteIssueConfirmId] = useState(null);
+  const [deleteCommentConfirmId, setDeleteCommentConfirmId] = useState(null);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -262,6 +278,30 @@ function AdminPanel() {
     }
   }, [token, issueStatus]);
 
+  const loadComments = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await fetchAdminComments({
+        token,
+        status: commentStatus || undefined,
+        limit: PAGE_SIZE,
+      });
+      setComments(data);
+    } catch {
+      /* non-critical */
+    }
+  }, [token, commentStatus]);
+
+  const loadBlocked = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await fetchAdminBlockedTokens({ token, limit: PAGE_SIZE });
+      setBlockedTokens(data);
+    } catch {
+      /* non-critical */
+    }
+  }, [token]);
+
   useEffect(() => {
     load();
   }, [load]);
@@ -285,6 +325,14 @@ function AdminPanel() {
   useEffect(() => {
     loadIssues();
   }, [loadIssues]);
+
+  useEffect(() => {
+    loadComments();
+  }, [loadComments]);
+
+  useEffect(() => {
+    loadBlocked();
+  }, [loadBlocked]);
 
   function signIn(e) {
     e.preventDefault();
@@ -330,6 +378,8 @@ function AdminPanel() {
       loadActions();
       loadMetrics();
       loadIssues();
+      loadComments();
+      loadBlocked();
     } catch (e) {
       if (e.message === "UNAUTHORIZED") {
         sessionStorage.removeItem(TOKEN_KEY);
@@ -768,6 +818,163 @@ function AdminPanel() {
       </section>
 
       <section className="admin-panel">
+        <PanelHeader icon={faComments} title="Comments" count={comments?.length} />
+        <div className="admin-controls">
+          <label htmlFor="admin-comment-status">
+            Status{" "}
+            <select
+              id="admin-comment-status"
+              value={commentStatus}
+              onChange={(e) => setCommentStatus(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </label>
+        </div>
+        {comments === null && <p>Loading…</p>}
+        {comments?.length === 0 && <p>No comments.</p>}
+        {comments && comments.length > 0 && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Text</th>
+                  <th>Status</th>
+                  <th>Reports</th>
+                  <th>Sighting</th>
+                  <th>When</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comments.map((c) => (
+                  <tr key={c.id}>
+                    <td className="admin-desc">{c.text}</td>
+                    <td>
+                      <span className={`admin-status admin-status--${c.status}`}>{c.status}</span>
+                    </td>
+                    <td>{c.reports_count}</td>
+                    <td className="admin-desc">{c.sighting_id}</td>
+                    <td>{timeAgo(c.created_at)}</td>
+                    <td className="admin-actions">
+                      {c.status === "hidden" ? (
+                        <button
+                          className="btn btn-ghost"
+                          disabled={busyId === c.id}
+                          onClick={() => act("Comment unhidden.", adminUnhideComment, c.id)}
+                        >
+                          Unhide
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-ghost"
+                          disabled={busyId === c.id}
+                          onClick={() => act("Comment hidden.", adminHideComment, c.id)}
+                        >
+                          Hide
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-danger"
+                        disabled={busyId === c.id}
+                        onClick={() => setDeleteCommentConfirmId(c.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-panel">
+        <PanelHeader icon={faBan} title="Blocked tokens" count={blockedTokens?.length} />
+        {blockedTokens === null && <p>Loading…</p>}
+        {blockedTokens?.length === 0 && <p>No blocked tokens.</p>}
+        {blockedTokens && blockedTokens.length > 0 && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Token</th>
+                  <th>Reason</th>
+                  <th>When</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {blockedTokens.map((row) => (
+                  <tr key={row.token}>
+                    <td className="admin-desc">{row.token}</td>
+                    <td className="admin-desc">{row.reason || "—"}</td>
+                    <td>{timeAgo(row.created_at)}</td>
+                    <td className="admin-actions">
+                      <button
+                        className="btn btn-ghost"
+                        disabled={busyId === row.token}
+                        onClick={() =>
+                          act("Token unblocked.", adminDeleteBlockedToken, row.token)
+                        }
+                      >
+                        Unblock
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-panel">
+        <PanelHeader icon={faPaperPlane} title="Push test" />
+        <p className="hint">Send a test notification to every subscription for a device token.</p>
+        <label htmlFor="admin-push-token">Device token</label>
+        <input
+          id="admin-push-token"
+          type="text"
+          value={pushDeviceToken}
+          onChange={(e) => setPushDeviceToken(e.target.value)}
+          placeholder="UUID from X-Device-Token"
+        />
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!pushDeviceToken.trim() || busyId === "push-test"}
+          onClick={async () => {
+            setBusyId("push-test");
+            setPushResult(null);
+            try {
+              const result = await adminSendPushTest(token, {
+                deviceToken: pushDeviceToken.trim(),
+              });
+              setPushResult(result);
+              toast.success(
+                `Queued ${result.queued ?? 0} push(es) (${result.subscriptions_found ?? 0} subscription(s)).`
+              );
+            } catch (e) {
+              toast.error(e.message);
+            } finally {
+              setBusyId(null);
+            }
+          }}
+        >
+          Send test push
+        </button>
+        {pushResult && (
+          <p className="admin-stat-caption">
+            subscriptions_found={pushResult.subscriptions_found} queued={pushResult.queued}
+          </p>
+        )}
+      </section>
+
+      <section className="admin-panel">
         <PanelHeader icon={faClipboardList} title="Recent moderation actions" />
         {actions === null && <p>Loading…</p>}
         {actions?.length === 0 && <p>No moderation actions yet.</p>}
@@ -825,6 +1032,20 @@ function AdminPanel() {
           if (id) act("Issue report deleted.", adminDeleteIssue, id);
         }}
         onCancel={() => setDeleteIssueConfirmId(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteCommentConfirmId)}
+        title="Delete comment?"
+        message="Permanently delete this comment? This can't be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          const id = deleteCommentConfirmId;
+          setDeleteCommentConfirmId(null);
+          if (id) act("Comment deleted.", adminDeleteComment, id);
+        }}
+        onCancel={() => setDeleteCommentConfirmId(null)}
       />
     </div>
   );

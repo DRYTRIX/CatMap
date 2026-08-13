@@ -3,7 +3,8 @@ import { filtersToParams } from "./lib/filters";
 import { translateApiError } from "./lib/apiErrors";
 import { isNativePlatform } from "./lib/platform";
 
-const RENDER_API = "https://catmap-backend.onrender.com";
+const RENDER_API =
+  import.meta.env.VITE_API_BASE_NATIVE || "https://catmap-backend.onrender.com";
 
 // Abort photo uploads that stall (frozen connection) so the UI can recover
 // instead of hanging with a stuck progress bar / disabled submit button.
@@ -679,6 +680,99 @@ export async function adminDeleteIssue(id, token) {
     throw new Error(translateApiError(detail));
   }
   return true;
+}
+
+export async function fetchAdminComments({ token, status, limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (status) params.set("status", status);
+  const res = await fetch(`${API_BASE}/api/admin/comments?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminHideComment(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/comments/${id}/hide`, {
+    method: "POST",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminUnhideComment(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/comments/${id}/unhide`, {
+    method: "POST",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminDeleteComment(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/comments/${id}`, {
+    method: "DELETE",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* 204 has no body */
+    }
+    throw new Error(translateApiError(detail));
+  }
+  return true;
+}
+
+export async function fetchAdminBlockedTokens({ token, limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const res = await fetch(`${API_BASE}/api/admin/blocked-tokens?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminDeleteBlockedToken(tokenValue, adminToken) {
+  const res = await fetch(
+    `${API_BASE}/api/admin/blocked-tokens/${encodeURIComponent(tokenValue)}`,
+    {
+      method: "DELETE",
+      headers: adminHeaders(adminToken),
+    }
+  );
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body.detail) detail = body.detail;
+    } catch {
+      /* 204 has no body */
+    }
+    throw new Error(translateApiError(detail));
+  }
+  return true;
+}
+
+export async function adminSendPushTest(adminToken, { deviceToken, title, body, url } = {}) {
+  const form = new FormData();
+  form.append("device_token", deviceToken || "");
+  if (title) form.append("title", title);
+  if (body) form.append("body", body);
+  if (url) form.append("url", url);
+  const res = await fetch(`${API_BASE}/api/admin/push/test`, {
+    method: "POST",
+    headers: adminHeaders(adminToken),
+    body: form,
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
 }
 
 /**
