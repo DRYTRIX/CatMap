@@ -77,13 +77,15 @@
     <main>
       <a class="back" href="/">← Back to CatMap</a>
       <h1>Privacy Policy</h1>
-      <p class="meta">Last updated: June 2026</p>
+      <p class="meta">Last updated: August 2026</p>
 
       <section>
         <h2>Summary</h2>
         <p>
-          CatMap is designed to be anonymous. You do not create an account or
-          provide personal information to use the map.
+          CatMap does not require an account or login. Your device is identified
+          by a random token stored in the browser. Some optional fields (such as
+          a contact method on a missing-cat post) are personal data if you
+          choose to provide them.
         </p>
       </section>
 
@@ -91,14 +93,44 @@
         <h2>What we store</h2>
         <ul>
           <li>
-            <strong>Device token</strong> — a random ID generated in your
-            browser's <code>localStorage</code>. It is sent as
-            <code>X-Device-Token</code> so you can confirm sightings once, report
-            content, and delete your own posts. It is not linked to your identity.
+            <strong>Device token</strong> — a random UUID generated in your
+            browser's <code>localStorage</code>. It is sent as the
+            <code>X-Device-Token</code> header so you can confirm sightings once,
+            report content, edit or delete your own posts, send private tips,
+            and manage watches. Clearing site data generates a new token and you
+            lose access to “my cats” unless you exported a backup. Anyone who
+            obtains the token (for example by scanning or screenshotting the
+            backup QR) can act as you.
           </li>
           <li>
             <strong>Sightings you submit</strong> — photo (EXIF metadata is
-            stripped before storage), optional description, and map coordinates.
+            stripped before storage), optional description, map coordinates, and
+            optional attributes (color, ear-tipped, stray).
+          </li>
+          <li>
+            <strong>Missing-cat contact</strong> — optional phone, email, or
+            handle stored with the post. It is shown publicly only if you opt in;
+            otherwise finders can send a private in-app tip to you.
+          </li>
+          <li>
+            <strong>Comments and tips</strong> — text (and optional tip location)
+            stored with the device token of the author. IP addresses are not
+            persisted with comments.
+          </li>
+          <li>
+            <strong>Watches</strong> — which sightings or cat profiles this
+            device follows, so we can send activity alerts.
+          </li>
+          <li>
+            <strong>Push subscriptions</strong> — a Web Push endpoint (and, on
+            Android, an FCM token) stored against your device token so we can
+            deliver nearby-missing and watch alerts. Unsubscribe from Settings
+            to remove it.
+          </li>
+          <li>
+            <strong>Error tracking (Sentry)</strong> — if configured by the
+            operator, crash reports may be sent to Sentry. Personal information
+            is not attached by default (<code>send_default_pii</code> is off).
           </li>
           <li>
             <strong>Anonymous analytics (optional)</strong> — if you accept the
@@ -111,8 +143,8 @@
       <section>
         <h2>What we do not collect</h2>
         <ul>
-          <li>Names, email addresses, or login credentials</li>
-          <li>Precise device identifiers beyond the anonymous token above</li>
+          <li>Names, email addresses, or login credentials as account data</li>
+          <li>Precise hardware identifiers beyond the anonymous device token</li>
           <li>Photo EXIF after upload (GPS and camera metadata are removed)</li>
         </ul>
       </section>
@@ -120,9 +152,10 @@
       <section>
         <h2>Moderation</h2>
         <p>
-          Users can report sightings. Content may be hidden automatically after
-          multiple reports. Uploaded photos are checked for cat-like content
-          before being published.
+          Users can report sightings and comments. Content may be hidden
+          automatically after multiple reports. Uploaded photos are checked for
+          cat-like content before being published. Device tokens may be blocked
+          from posting.
         </p>
       </section>
 
@@ -142,6 +175,14 @@
               rel="noopener noreferrer"
               >Google Privacy Policy</a
             >
+          </li>
+          <li>
+            <strong>Sentry</strong> — error monitoring, only when the site
+            operator has configured a DSN
+          </li>
+          <li>
+            <strong>Firebase Cloud Messaging</strong> — Android push delivery
+            when native notifications are enabled
           </li>
         </ul>
       </section>

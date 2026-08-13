@@ -48,6 +48,7 @@
     "reportIssue": "Report an issue",
     "menu": "Map menu",
     "closeMenu": "Close map menu",
+    "clusterCount": "{{count}} cats in this area",
     "emptyArea": "No cats spotted in this area yet — be the first! 🐾",
     "fetchError": "Couldn't refresh the map — showing cached data.",
     "locateError": "Couldn't get your location."
@@ -305,6 +306,8 @@
     "myData": "My data",
     "myDataHint": "Save this code to transfer your identity, favorites, and ownership to another device.",
     "qrAlt": "QR code with your device data",
+    "qrWarning": "This QR contains your full device token. Anyone who scans or screenshots it gains full access to your cats.",
+    "copyBackupCode": "Copy backup code",
     "copyData": "Copy backup data",
     "copied": "Copied!",
     "copyFailed": "Couldn't copy.",
@@ -314,6 +317,11 @@
     "importConfirmTitle": "Replace this device's identity?",
     "importConfirmMessage": "This replaces your local device token. Your sightings on this device will no longer match unless you imported the correct backup.",
     "importSuccess": "Identity imported — reloading…"
+  },
+  "identity": {
+    "bannerTitle": "Back up your cats",
+    "bannerBody": "Your posts live on this device. Export a backup so you don't lose them if site data is cleared.",
+    "bannerAction": "Back up your cats"
   },
   "offline": {
     "queued": "Saved offline — will upload when you're back online.",

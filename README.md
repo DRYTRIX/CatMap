@@ -260,4 +260,5 @@ cd ../frontend && npm run fetch-model
 
 ## Notes & future work
 
-- For very large datasets, consider marker clustering and/or PostGIS.
+- Marker clustering already ships (server-side grid at low zoom, client-side
+  clusters when zoomed in). For very large datasets, consider PostGIS.

@@ -50,7 +50,8 @@
     "closeMenu": "Fermer le menu carte",
     "emptyArea": "Aucun chat dans cette zone — soyez le premier ! 🐾",
     "fetchError": "Impossible d'actualiser la carte — affichage des données en cache.",
-    "locateError": "Impossible d'obtenir votre position."
+    "locateError": "Impossible d'obtenir votre position.",
+    "clusterCount": "{{count}} chats dans cette zone"
   },
   "connectivity": {
     "offline": "Vous êtes hors ligne — les modifications peuvent ne pas être enregistrées.",
@@ -79,7 +80,8 @@
       "sightings": "Observations",
       "missing": "Disparus",
       "reunited": "Retrouvés"
-    }
+    },
+    "loadMore": "Charger plus"
   },
   "reportIssue": {
     "title": "Signaler un problème",
@@ -158,7 +160,8 @@
       "tuxedo": "Smoking",
       "tortoiseshell": "Écaille de tortue",
       "siamese": "Siamois"
-    }
+    },
+    "contactPublic": "Afficher mon contact publiquement sur la carte"
   },
   "sighting": {
     "title": "Observation de chat",
@@ -227,7 +230,23 @@
     "shareTitle": "Chat sur CatMap : {{desc}}",
     "shareTitleGeneric": "Observation de chat sur CatMap",
     "viewFullPhoto": "Voir la photo en entier",
-    "photoOf": "Photo {{index}} sur {{total}}"
+    "photoOf": "Photo {{index}} sur {{total}}",
+    "contactPrivateHint": "Le propriétaire a gardé son contact privé. Envoyez un message privé ci-dessous.",
+    "editLocation": "Lieu",
+    "goneBadge": "Parti",
+    "goneStatus": "Vous avez marqué ce chat comme parti.",
+    "hiddenBadge": "Masqué",
+    "hiddenStatus": "Cette publication a été masquée par la modération.",
+    "pendingBadge": "En revue",
+    "pendingStatus": "Cette publication attend une revue et n’est pas encore sur la carte publique.",
+    "privateTip": "Envoyer un indice privé au propriétaire",
+    "privateTipPlaceholder": "Je pense avoir vu votre chat près de…",
+    "privateTipSend": "Envoyer l’indice",
+    "privateTipSent": "Indice privé envoyé au propriétaire.",
+    "unwatchSuccess": "Suivi arrêté.",
+    "watch": "Suivre",
+    "watchSuccess": "Vous serez alerté lorsque ce chat sera mis à jour.",
+    "watching": "Suivi"
   },
   "catProfile": {
     "title": "Profil du chat",
@@ -235,7 +254,12 @@
     "summary_other": "Vu {{count}} fois · Première fois {{first}} · Dernière fois {{last}}",
     "earTipped": "Oreille coupée : {{value}}",
     "stray": "Errant : {{value}}",
-    "empty": "Aucune observation enregistrée pour ce chat."
+    "empty": "Aucune observation enregistrée pour ce chat.",
+    "rename": "Nommer ce chat",
+    "renameSuccess": "Nom du chat mis à jour.",
+    "timelineHint": "Observations sur la carte chronologique, de la plus ancienne à la plus récente.",
+    "unlink": "Dissocier",
+    "unlinkSuccess": "Observation dissociée de ce profil."
   },
   "comments": {
     "title": "Commentaires",
@@ -249,12 +273,15 @@
     "posting": "Publication…",
     "posted": "Publié !",
     "deleted": "Supprimé.",
-    "reported": "Merci — signalé."
+    "reported": "Merci — signalé.",
+    "tipMap": "Carte de recherche",
+    "tipMapHint": "Lieux des indices et l’épingle d’origine."
   },
   "notifications": {
     "title": "Notifications",
     "empty": "Aucune notification pour l'instant.",
-    "loadError": "Impossible de charger les notifications."
+    "loadError": "Impossible de charger les notifications.",
+    "markAllRead": "Tout marquer comme lu"
   },
   "settings": {
     "title": "Paramètres",
@@ -284,12 +311,22 @@
     "importButton": "Importer les données",
     "importConfirmTitle": "Remplacer l'identité de cet appareil ?",
     "importConfirmMessage": "Cela remplace votre jeton local.",
-    "importSuccess": "Identité importée — rechargement…"
+    "importSuccess": "Identité importée — rechargement…",
+    "clearNearby": "Effacer les alertes à proximité",
+    "nearbyHint": "Utilise votre position actuelle et active les notifications si besoin.",
+    "nearbyNeedsPush": "Activez d’abord les notifications push pour enregistrer les alertes à proximité.",
+    "qrWarning": "Ce QR contient votre jeton d’appareil complet. Quiconque le scanne ou le photographie obtient un accès total à vos chats.",
+    "copyBackupCode": "Copier le code de sauvegarde"
   },
   "offline": {
     "queued": "Enregistré hors ligne — envoi à la reconnexion.",
     "sent": "Signalement hors ligne envoyé !",
-    "failed": "Une observation enregistrée n'a pas pu être envoyée et a été supprimée."
+    "failed": "Une observation enregistrée n'a pas pu être envoyée et a été supprimée.",
+    "queueEmpty": "Aucun envoi en attente.",
+    "queueHint": "Ces observations seront envoyées dès que vous serez de nouveau en ligne.",
+    "queueTitle": "Envois en attente",
+    "retryAll": "Réessayer les envois",
+    "retryDone": "File d’attente traitée."
   },
   "errorBoundary": {
     "title": "Une erreur s'est produite",
@@ -377,7 +414,18 @@
   },
   "onboarding": {
     "hint": "Touchez {{action}} pour placer votre première observation sur la carte.",
-    "dismiss": "Fermer"
+    "dismiss": "Fermer",
+    "confirmReportBody": "Appuyez sur confirmer si un chat est encore là. Signalez le spam ou les épingles erronées pour garder la carte utile.",
+    "confirmReportTitle": "Confirmer et signaler",
+    "done": "Compris",
+    "next": "Suivant",
+    "permissionsBody": "Autorisez la localisation pour centrer la carte et les alertes de proximité optionnelles. Vous pouvez changer cela à tout moment dans Réglages.",
+    "permissionsTitle": "Localisation et notifications",
+    "sightingVsMissingBody": "Utilisez {{action}} pour épingler un chat vu, ou choisissez « Mon chat a disparu » pour que les voisins puissent vous aider.",
+    "sightingVsMissingTitle": "Observation ou disparu ?",
+    "skip": "Passer",
+    "welcomeBody": "Carte de quartier anonyme pour repérer des chats et retrouver les disparus — sans compte.",
+    "welcomeTitle": "Bienvenue sur CatMap"
   },
   "install": {
     "ariaLabel": "Installer CatMap",
@@ -401,5 +449,10 @@
     "close": "Fermer l'image",
     "prev": "Photo précédente",
     "next": "Photo suivante"
+  },
+  "identity": {
+    "bannerTitle": "Sauvegardez vos chats",
+    "bannerBody": "Vos publications vivent sur cet appareil. Exportez une sauvegarde pour ne pas les perdre si les données du site sont effacées.",
+    "bannerAction": "Sauvegarder vos chats"
   }
 }

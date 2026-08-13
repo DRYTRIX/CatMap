@@ -50,7 +50,8 @@
     "closeMenu": "Kartenmenü schließen",
     "emptyArea": "Noch keine Katzen in diesem Gebiet — sei der Erste! 🐾",
     "fetchError": "Karte konnte nicht aktualisiert werden — zwischengespeicherte Daten werden angezeigt.",
-    "locateError": "Standort konnte nicht ermittelt werden."
+    "locateError": "Standort konnte nicht ermittelt werden.",
+    "clusterCount": "{{count}} Katzen in diesem Gebiet"
   },
   "connectivity": {
     "offline": "Du bist offline — Änderungen werden möglicherweise nicht gespeichert.",
@@ -79,7 +80,8 @@
       "sightings": "Sichtungen",
       "missing": "Vermisst",
       "reunited": "Wieder vereint"
-    }
+    },
+    "loadMore": "Mehr laden"
   },
   "reportIssue": {
     "title": "Problem melden",
@@ -158,7 +160,8 @@
       "tuxedo": "Smoking",
       "tortoiseshell": "Schildpatt",
       "siamese": "Siam"
-    }
+    },
+    "contactPublic": "Meinen Kontakt öffentlich auf der Karte zeigen"
   },
   "sighting": {
     "title": "Katzensichtung",
@@ -227,7 +230,23 @@
     "shareTitle": "Katze auf CatMap: {{desc}}",
     "shareTitleGeneric": "Katzensichtung auf CatMap",
     "viewFullPhoto": "Vollständiges Foto ansehen",
-    "photoOf": "Foto {{index}} von {{total}}"
+    "photoOf": "Foto {{index}} von {{total}}",
+    "contactPrivateHint": "Der Besitzer hat den Kontakt privat gehalten. Sende unten einen privaten Tipp.",
+    "editLocation": "Standort",
+    "goneBadge": "Weg",
+    "goneStatus": "Du hast diese Katze als weg markiert.",
+    "hiddenBadge": "Verborgen",
+    "hiddenStatus": "Dieser Beitrag wurde von der Moderation ausgeblendet.",
+    "pendingBadge": "In Prüfung",
+    "pendingStatus": "Dieser Beitrag wartet auf Prüfung und ist noch nicht auf der öffentlichen Karte.",
+    "privateTip": "Privaten Tipp an den Besitzer senden",
+    "privateTipPlaceholder": "Ich glaube, ich habe deine Katze gesehen bei…",
+    "privateTipSend": "Tipp senden",
+    "privateTipSent": "Privater Tipp an den Besitzer gesendet.",
+    "unwatchSuccess": "Nicht mehr beobachtet.",
+    "watch": "Beobachten",
+    "watchSuccess": "Du erhältst Hinweise, wenn diese Katze aktualisiert wird.",
+    "watching": "Wird beobachtet"
   },
   "catProfile": {
     "title": "Katzenprofil",
@@ -235,7 +254,12 @@
     "summary_other": "{{count}} Mal gesichtet · Zuerst gesehen {{first}} · Zuletzt gesehen {{last}}",
     "earTipped": "Ohrmarkierung: {{value}}",
     "stray": "Streuner: {{value}}",
-    "empty": "Noch keine Sichtungen für diese Katze."
+    "empty": "Noch keine Sichtungen für diese Katze.",
+    "rename": "Diese Katze benennen",
+    "renameSuccess": "Katzenname aktualisiert.",
+    "timelineHint": "Sichtungen auf der Zeitkarte, von alt nach neu.",
+    "unlink": "Verknüpfung lösen",
+    "unlinkSuccess": "Sichtung von diesem Profil getrennt."
   },
   "comments": {
     "title": "Kommentare",
@@ -249,12 +273,15 @@
     "posting": "Wird gepostet…",
     "posted": "Gepostet!",
     "deleted": "Entfernt.",
-    "reported": "Danke — gemeldet."
+    "reported": "Danke — gemeldet.",
+    "tipMap": "Suchtrupp-Karte",
+    "tipMapHint": "Tipp-Standorte und die ursprüngliche Stecknadel."
   },
   "notifications": {
     "title": "Benachrichtigungen",
     "empty": "Noch keine Benachrichtigungen.",
-    "loadError": "Benachrichtigungen konnten nicht geladen werden."
+    "loadError": "Benachrichtigungen konnten nicht geladen werden.",
+    "markAllRead": "Alle als gelesen markieren"
   },
   "settings": {
     "title": "Einstellungen",
@@ -284,12 +311,22 @@
     "importButton": "Daten importieren",
     "importConfirmTitle": "Geräte-Identität ersetzen?",
     "importConfirmMessage": "Dies ersetzt dein lokales Geräte-Token.",
-    "importSuccess": "Identität importiert — wird neu geladen…"
+    "importSuccess": "Identität importiert — wird neu geladen…",
+    "clearNearby": "Hinweise in der Nähe löschen",
+    "nearbyHint": "Nutzt deinen aktuellen Standort und aktiviert Push bei Bedarf.",
+    "nearbyNeedsPush": "Aktiviere zuerst Push-Benachrichtigungen, um Hinweise in der Nähe zu speichern.",
+    "qrWarning": "Dieser QR-Code enthält dein vollständiges Geräte-Token. Wer ihn scannt oder fotografiert, erhält vollen Zugriff auf deine Katzen.",
+    "copyBackupCode": "Backup-Code kopieren"
   },
   "offline": {
     "queued": "Offline gespeichert — wird hochgeladen, sobald du online bist.",
     "sent": "Offline-Sichtung hochgeladen!",
-    "failed": "Eine gespeicherte Sichtung konnte nicht hochgeladen werden und wurde verworfen."
+    "failed": "Eine gespeicherte Sichtung konnte nicht hochgeladen werden und wurde verworfen.",
+    "queueEmpty": "Keine ausstehenden Uploads.",
+    "queueHint": "Diese Sichtungen werden hochgeladen, sobald du wieder online bist.",
+    "queueTitle": "Ausstehende Uploads",
+    "retryAll": "Uploads erneut versuchen",
+    "retryDone": "Warteschlange verarbeitet."
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",
@@ -377,7 +414,18 @@
   },
   "onboarding": {
     "hint": "Tippe auf {{action}}, um deine erste Sichtung auf der Karte zu markieren.",
-    "dismiss": "Schließen"
+    "dismiss": "Schließen",
+    "confirmReportBody": "Tippe auf Bestätigen, wenn eine Katze noch da ist. Melde Spam oder falsche Pins, damit die Karte nützlich bleibt.",
+    "confirmReportTitle": "Bestätigen und melden",
+    "done": "Verstanden",
+    "next": "Weiter",
+    "permissionsBody": "Erlaube den Standort, um die Karte zu zentrieren, und optionale Hinweise in der Nähe. Das kannst du jederzeit in den Einstellungen ändern.",
+    "permissionsTitle": "Standort und Benachrichtigungen",
+    "sightingVsMissingBody": "Nutze {{action}}, um eine gesehene Katze zu pinnen, oder wähle „Meine Katze ist vermisst“, damit Nachbarn Tipps schicken können.",
+    "sightingVsMissingTitle": "Sichtung oder vermisst?",
+    "skip": "Überspringen",
+    "welcomeBody": "Anonyme Nachbarschaftskarte zum Entdecken von Katzen und Finden vermisster — ohne Konto.",
+    "welcomeTitle": "Willkommen bei CatMap"
   },
   "install": {
     "ariaLabel": "CatMap installieren",
@@ -401,5 +449,10 @@
     "close": "Bild schließen",
     "prev": "Vorheriges Foto",
     "next": "Nächstes Foto"
+  },
+  "identity": {
+    "bannerTitle": "Sichere deine Katzen",
+    "bannerBody": "Deine Beiträge leben auf diesem Gerät. Exportiere ein Backup, damit sie nicht verloren gehen, wenn die Website-Daten gelöscht werden.",
+    "bannerAction": "Katzen sichern"
   }
 }

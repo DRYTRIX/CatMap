@@ -50,7 +50,8 @@
     "closeMenu": "Kaartmenu sluiten",
     "emptyArea": "Nog geen katten in dit gebied — wees de eerste! 🐾",
     "fetchError": "Kaart kon niet vernieuwd worden — gecachte data wordt getoond.",
-    "locateError": "Kon je locatie niet ophalen."
+    "locateError": "Kon je locatie niet ophalen.",
+    "clusterCount": "{{count}} katten in dit gebied"
   },
   "connectivity": {
     "offline": "Je bent offline — wijzigingen worden mogelijk niet opgeslagen.",
@@ -79,7 +80,8 @@
       "sightings": "Meldingen",
       "missing": "Vermist",
       "reunited": "Teruggevonden"
-    }
+    },
+    "loadMore": "Meer laden"
   },
   "reportIssue": {
     "title": "Probleem melden",
@@ -158,7 +160,8 @@
       "tuxedo": "Tuxedo",
       "tortoiseshell": "Schildpad",
       "siamese": "Siamees"
-    }
+    },
+    "contactPublic": "Toon mijn contact publiek op de kaart"
   },
   "sighting": {
     "title": "Katwaarneming",
@@ -227,7 +230,23 @@
     "shareTitle": "Kat op CatMap: {{desc}}",
     "shareTitleGeneric": "Kattenwaarneming op CatMap",
     "viewFullPhoto": "Bekijk volledige foto",
-    "photoOf": "Foto {{index}} van {{total}}"
+    "photoOf": "Foto {{index}} van {{total}}",
+    "contactPrivateHint": "De eigenaar hield het contact privé. Stuur hieronder een privé-tip.",
+    "editLocation": "Locatie",
+    "goneBadge": "Weg",
+    "goneStatus": "Je hebt deze kat als weg gemarkeerd.",
+    "hiddenBadge": "Verborgen",
+    "hiddenStatus": "Dit bericht is verborgen door moderatie.",
+    "pendingBadge": "In beoordeling",
+    "pendingStatus": "Dit bericht wacht op beoordeling en staat nog niet op de openbare kaart.",
+    "privateTip": "Privé-tip naar eigenaar sturen",
+    "privateTipPlaceholder": "Ik denk dat ik je kat zag bij…",
+    "privateTipSend": "Tip versturen",
+    "privateTipSent": "Privé-tip naar de eigenaar verstuurd.",
+    "unwatchSuccess": "Niet meer gevolgd.",
+    "watch": "Volgen",
+    "watchSuccess": "Je krijgt meldingen wanneer deze kat wordt bijgewerkt.",
+    "watching": "Volgend"
   },
   "catProfile": {
     "title": "Kattenprofiel",
@@ -235,7 +254,12 @@
     "summary_other": "{{count}} keer gezien · Eerst gezien {{first}} · Laatst gezien {{last}}",
     "earTipped": "Oortip: {{value}}",
     "stray": "Zwerfkat: {{value}}",
-    "empty": "Nog geen waarnemingen voor deze kat."
+    "empty": "Nog geen waarnemingen voor deze kat.",
+    "rename": "Geef deze kat een naam",
+    "renameSuccess": "Katnaam bijgewerkt.",
+    "timelineHint": "Waarnemingen op de tijdlijnkaart, van oud naar nieuw.",
+    "unlink": "Ontkoppelen",
+    "unlinkSuccess": "Waarneming ontkoppeld van dit profiel."
   },
   "comments": {
     "title": "Reacties",
@@ -249,12 +273,15 @@
     "posting": "Plaatsen…",
     "posted": "Geplaatst!",
     "deleted": "Verwijderd.",
-    "reported": "Bedankt — gemeld."
+    "reported": "Bedankt — gemeld.",
+    "tipMap": "Zoektochtkaart",
+    "tipMapHint": "Tip-locaties en de oorspronkelijke pin."
   },
   "notifications": {
     "title": "Meldingen",
     "empty": "Nog geen meldingen.",
-    "loadError": "Kon meldingen niet laden."
+    "loadError": "Kon meldingen niet laden.",
+    "markAllRead": "Alles als gelezen markeren"
   },
   "settings": {
     "title": "Instellingen",
@@ -284,12 +311,22 @@
     "importButton": "Gegevens importeren",
     "importConfirmTitle": "Apparaatidentiteit vervangen?",
     "importConfirmMessage": "Dit vervangt je lokale apparaattoken.",
-    "importSuccess": "Identiteit geïmporteerd — herladen…"
+    "importSuccess": "Identiteit geïmporteerd — herladen…",
+    "clearNearby": "Meldingen in de buurt wissen",
+    "nearbyHint": "Gebruikt je huidige locatie en schakelt push in indien nodig.",
+    "nearbyNeedsPush": "Schakel eerst pushmeldingen in om meldingen in de buurt op te slaan.",
+    "qrWarning": "Deze QR bevat je volledige apparaat-token. Wie hem scant of fotografeert, krijgt volledige toegang tot jouw katten.",
+    "copyBackupCode": "Back-upcode kopiëren"
   },
   "offline": {
     "queued": "Offline opgeslagen — upload bij verbinding.",
     "sent": "Offline melding geüpload!",
-    "failed": "Een opgeslagen waarneming kon niet worden geüpload en is verwijderd."
+    "failed": "Een opgeslagen waarneming kon niet worden geüpload en is verwijderd.",
+    "queueEmpty": "Geen wachtende uploads.",
+    "queueHint": "Deze waarnemingen worden geüpload zodra je weer online bent.",
+    "queueTitle": "Wachtende uploads",
+    "retryAll": "Uploads opnieuw proberen",
+    "retryDone": "Wachtrij verwerkt."
   },
   "errorBoundary": {
     "title": "Er ging iets mis",
@@ -377,7 +414,18 @@
   },
   "onboarding": {
     "hint": "Tik op {{action}} om je eerste waarneming op de kaart te plaatsen.",
-    "dismiss": "Sluiten"
+    "dismiss": "Sluiten",
+    "confirmReportBody": "Tik op bevestigen als een kat er nog is. Meld spam of verkeerde pins zodat de kaart nuttig blijft.",
+    "confirmReportTitle": "Bevestigen en melden",
+    "done": "Begrepen",
+    "next": "Volgende",
+    "permissionsBody": "Sta locatie toe om de kaart te centreren en optionele meldingen in de buurt. Je kunt dit altijd wijzigen in Instellingen.",
+    "permissionsTitle": "Locatie en meldingen",
+    "sightingVsMissingBody": "Gebruik {{action}} om een kat te pinnen die je zag, of kies “Mijn kat is vermist” zodat buren je tips kunnen sturen.",
+    "sightingVsMissingTitle": "Waarneming of vermist?",
+    "skip": "Overslaan",
+    "welcomeBody": "Anonieme buurtkaart om katten te spotten en vermiste te vinden — zonder account.",
+    "welcomeTitle": "Welkom bij CatMap"
   },
   "install": {
     "ariaLabel": "CatMap installeren",
@@ -401,5 +449,10 @@
     "close": "Afbeelding sluiten",
     "prev": "Vorige foto",
     "next": "Volgende foto"
+  },
+  "identity": {
+    "bannerTitle": "Maak een back-up van je katten",
+    "bannerBody": "Je berichten staan op dit apparaat. Exporteer een back-up zodat je ze niet verliest als sitegegevens worden gewist.",
+    "bannerAction": "Katten back-uppen"
   }
 }
