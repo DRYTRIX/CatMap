@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from .cat_detection import get_detection_status
 from .config import get_settings
@@ -38,6 +39,11 @@ async def lifespan(app: FastAPI):
     if settings.cors_origins.strip() == "*":
         logger.warning(
             "CORS_ORIGINS is '*' — set explicit origins before a public launch."
+        )
+    if settings.cors_origin_regex:
+        logger.warning(
+            "CORS origin regex is set (%s) — prefer explicit CORS_ORIGINS in production.",
+            settings.cors_origin_regex,
         )
     if not settings.admin_token:
         logger.warning("ADMIN_TOKEN is unset — /api/admin moderation is disabled.")
@@ -96,6 +102,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Honor X-Forwarded-For from the reverse proxy so IP rate limits key on the
+# client, not nginx. Last-added middleware runs first.
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # Versioned API: /api/v1/... is the canonical form. /api/... is kept as an
 # unversioned alias for backward compatibility with existing clients.

@@ -1,15 +1,18 @@
 """Cat profiles — group multiple sightings of the same individual cat."""
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from ..config import get_settings
 from ..database import get_db
 from ..deps import optional_device_token, writable_device_token
 from ..models import Cat, Sighting, Watch
+from ..ratelimit import limiter
 from ..schemas import CatProfile, CatProfileSighting
 
 router = APIRouter(prefix="/cats", tags=["cats"])
+settings = get_settings()
 
 MAX_CAT_NAME = 50
 
@@ -111,7 +114,9 @@ def _active_sightings(db: Session, cat_id: str) -> list[Sighting]:
 
 
 @router.post("", response_model=CatProfile, status_code=201)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def create_cat(
+    request: Request,
     sighting_ids: str = Form(...),
     name: str | None = Form(None),
     token: str = Depends(writable_device_token),
@@ -159,7 +164,9 @@ def get_cat(
 
 
 @router.patch("/{cat_id}", response_model=CatProfile)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def rename_cat(
+    request: Request,
     cat_id: str,
     name: str = Form(""),
     token: str = Depends(writable_device_token),
@@ -175,7 +182,9 @@ def rename_cat(
 
 
 @router.post("/{cat_id}/link", response_model=CatProfile)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def link_sighting(
+    request: Request,
     cat_id: str,
     sighting_id: str = Form(...),
     token: str = Depends(writable_device_token),
@@ -195,7 +204,9 @@ def link_sighting(
 
 
 @router.post("/{cat_id}/unlink", response_model=CatProfile)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def unlink_sighting(
+    request: Request,
     cat_id: str,
     sighting_id: str = Form(...),
     token: str = Depends(writable_device_token),

@@ -178,9 +178,18 @@ def _bbox_filter_conditions(
         Sighting.status == "active",
         Sighting.lat >= min_lat,
         Sighting.lat <= max_lat,
-        Sighting.lng >= min_lng,
-        Sighting.lng <= max_lng,
     ]
+    if min_lng <= max_lng:
+        conditions.extend(
+            [
+                Sighting.lng >= min_lng,
+                Sighting.lng <= max_lng,
+            ]
+        )
+    else:
+        # View crosses the antimeridian (e.g. Fiji / Pacific): lng is in
+        # [min_lng, 180] ∪ [-180, max_lng].
+        conditions.append(or_(Sighting.lng >= min_lng, Sighting.lng <= max_lng))
     if since is not None:
         conditions.append(Sighting.created_at >= since)
     if until is not None:
@@ -245,7 +254,7 @@ def list_sightings(
     _: None = Depends(no_cache),
 ) -> list[SightingDot]:
     """Return lightweight dots within the given bounding box."""
-    if min_lat > max_lat or min_lng > max_lng:
+    if min_lat > max_lat:
         raise HTTPException(status_code=400, detail="Invalid bounding box.")
     if offset < 0:
         raise HTTPException(status_code=400, detail="offset must be >= 0.")
@@ -324,7 +333,7 @@ def cluster_sightings(
     the same discovery filters as ``list_sightings`` so filtering works at every
     zoom level.
     """
-    if min_lat > max_lat or min_lng > max_lng:
+    if min_lat > max_lat:
         raise HTTPException(status_code=400, detail="Invalid bounding box.")
     if kind is not None and kind not in ALLOWED_KINDS:
         raise HTTPException(

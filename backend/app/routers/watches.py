@@ -1,15 +1,18 @@
 """Watch / follow sightings and cat profiles for activity alerts."""
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..database import get_db
 from ..deps import device_token, no_cache, writable_device_token
 from ..models import Cat, Sighting, Watch
+from ..ratelimit import limiter
 from ..schemas import WatchOut, WatchResult
 
 router = APIRouter(tags=["watches"])
+settings = get_settings()
 
 ALLOWED_TYPES = {"sighting", "cat"}
 
@@ -51,7 +54,9 @@ def list_watches(
 
 
 @router.post("/watches", response_model=WatchResult, status_code=201)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def create_watch(
+    request: Request,
     target_type: str = Form(...),
     target_id: str = Form(...),
     token: str = Depends(writable_device_token),
@@ -79,7 +84,9 @@ def create_watch(
 
 
 @router.delete("/watches", response_model=WatchResult)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def delete_watch(
+    request: Request,
     target_type: str = Query(...),
     target_id: str = Query(...),
     token: str = Depends(writable_device_token),

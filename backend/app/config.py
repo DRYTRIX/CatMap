@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins, or "*" for any.
     cors_origins: str = "*"
 
+    # Optional extra origin regex (e.g. a preview-host pattern). Empty = none.
+    # Do not set this to a wildcard like *.onrender.com in production — list
+    # real origins in CORS_ORIGINS instead.
+    cors_origin_regex_pattern: str = ""
+
     # Public site URL used for share-page Open Graph tags (no trailing slash).
     public_site_url: str = "https://catmap.drytrix.com"
 
@@ -98,10 +103,11 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_regex(self) -> str | None:
-        """Match any Render web service URL when using explicit origin allowlists."""
+        """Optional extra origin regex. Empty unless CORS_ORIGIN_REGEX_PATTERN is set."""
         if self.cors_origins.strip() == "*":
             return None
-        return r"https://[\w-]+\.onrender\.com"
+        pattern = (self.cors_origin_regex_pattern or "").strip()
+        return pattern or None
 
     @property
     def max_upload_bytes(self) -> int:
