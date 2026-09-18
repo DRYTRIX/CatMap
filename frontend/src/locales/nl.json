@@ -28,6 +28,7 @@
   },
   "footer": {
     "by": "CatMap door",
+    "about": "Over ons",
     "github": "GitHub",
     "privacy": "Privacy",
     "analytics": "Anonieme gebruiksstatistieken met jouw toestemming — geen persoonsgegevens verzameld.",
@@ -58,8 +59,8 @@
     "online": "Weer online."
   },
   "favorites": {
-    "title": "Favorieten",
-    "empty": "Nog geen favorieten — tik op \"Opslaan\" bij een waarneming."
+    "title": "Geliefde katten",
+    "empty": "Nog geen geliefde katten — tik op het hart bij een spotting om hier op te slaan."
   },
   "mySightings": {
     "title": "Mijn katten",
@@ -316,7 +317,14 @@
     "nearbyHint": "Gebruikt je huidige locatie en schakelt push in indien nodig.",
     "nearbyNeedsPush": "Schakel eerst pushmeldingen in om meldingen in de buurt op te slaan.",
     "qrWarning": "Deze QR bevat je volledige apparaat-token. Wie hem scant of fotografeert, krijgt volledige toegang tot jouw katten.",
-    "copyBackupCode": "Back-upcode kopiëren"
+    "copyBackupCode": "Back-upcode kopiëren",
+    "account": "Account",
+    "accountHint": "Optioneel — koppel e-mail of Google om harten en katten te synchroniseren en e-mailmeldingen te krijgen.",
+    "accountSignedInHint": "Beheer je e-mail, wachtwoord en meldingsvoorkeuren.",
+    "signIn": "Inloggen of account maken",
+    "manageAccountShort": "Account beheren",
+    "myDataSignedInHint": "Je bent ingelogd, dus je katten synchroniseren via je account. Apparaatbackup hieronder blijft beschikbaar.",
+    "importData": "Gegevens importeren"
   },
   "offline": {
     "queued": "Offline opgeslagen — upload bij verbinding.",
@@ -454,5 +462,57 @@
     "bannerTitle": "Maak een back-up van je katten",
     "bannerBody": "Je berichten staan op dit apparaat. Exporteer een back-up zodat je ze niet verliest als sitegegevens worden gewist.",
     "bannerAction": "Katten back-uppen"
+  },
+  "account": {
+    "title": "Account",
+    "signIn": "Inloggen",
+    "signUp": "Account maken",
+    "createAccount": "Account maken",
+    "signedIn": "Ingelogd",
+    "signedUp": "Account aangemaakt — controleer je e-mail om te bevestigen",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "nameOptional": "Naam (optioneel)",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "resetSent": "Als dat e-mailadres bestaat, sturen we een resetlink",
+    "resetHint": "Kies een nieuw wachtwoord voor je CatMap-account.",
+    "newPassword": "Nieuw wachtwoord",
+    "currentPassword": "Huidig wachtwoord",
+    "setPassword": "Wachtwoord instellen",
+    "changePassword": "Wachtwoord wijzigen",
+    "passwordChanged": "Wachtwoord bijgewerkt",
+    "passwordSection": "Wachtwoord",
+    "passwordHint": "Minstens 8 tekens",
+    "showPassword": "Wachtwoord tonen",
+    "hidePassword": "Wachtwoord verbergen",
+    "verifying": "E-mail wordt bevestigd…",
+    "or": "of",
+    "continueGoogle": "Doorgaan met Google",
+    "googleFailed": "Google-aanmelding mislukt",
+    "optionalHint": "Accounts zijn optioneel — je kunt CatMap op dit apparaat blijven gebruiken zonder account.",
+    "emailVerified": "E-mail bevestigd",
+    "unverified": "niet bevestigd",
+    "resendVerify": "Bevestiging opnieuw sturen",
+    "verifySent": "Bevestigingsmail verzonden",
+    "linked": "Gekoppeld",
+    "emailPrefs": "E-mailmeldingen",
+    "prefEnabled": "Stuur me e-mailmeldingen",
+    "prefActivity": "Activiteit op mijn posts",
+    "prefFollowing": "Katten die ik volg",
+    "prefNearby": "Meldingen in de buurt",
+    "prefModeration": "Moderatie-updates",
+    "data": "Jouw gegevens",
+    "export": "Mijn gegevens downloaden",
+    "exported": "Export gedownload",
+    "signOut": "Uitloggen",
+    "dangerZone": "Gevarenzone",
+    "deleteHint": "Verwijdert je account permanent. Dit kan niet ongedaan worden gemaakt.",
+    "delete": "Account verwijderen",
+    "deleteTitle": "Account verwijderen?",
+    "deleteBody": "Je account wordt verwijderd. Sightings blijven bij de identiteit van dit apparaat.",
+    "deleteBodyWithContent": "Je account en alle sightings/katten/reacties van gekoppelde apparaten worden permanent verwijderd.",
+    "deleteContentToo": "Verwijder ook mijn sightings, katten en reacties",
+    "deleted": "Account verwijderd",
+    "emailRequired": "Vul eerst je e-mail in"
   }
 }

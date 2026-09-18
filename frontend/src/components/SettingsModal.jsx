@@ -19,8 +19,13 @@ import { registerNativePush } from "../lib/pushNotifications";
 import Modal from "./Modal";
 import ConfirmDialog from "./ConfirmDialog";
 import { useToast } from "./Toast";
+import { useAuth } from "../context/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faXmark,
+  faUserCircle,
+  faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
 
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -29,9 +34,11 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export default function SettingsModal({ onClose, onReportIssue }) {
+export default function SettingsModal({ onClose, onReportIssue, onOpenAccount }) {
   const { t } = useTranslation();
   const toast = useToast();
+  const { signedIn, user } = useAuth();
+  const accountLabel = signedIn ? t("settings.manageAccountShort") : t("settings.signIn");
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [nearbyEnabled, setNearbyEnabled] = useState(false);
@@ -237,11 +244,35 @@ export default function SettingsModal({ onClose, onReportIssue }) {
       </div>
 
       <section className="settings-section">
+        <h3>{t("settings.account")}</h3>
+        {signedIn ? (
+          <>
+            <div className="account-identity">
+              <span className="account-identity-icon" aria-hidden="true">
+                <FontAwesomeIcon icon={faUserCircle} />
+              </span>
+              <span className="account-identity-email">{user?.email}</span>
+            </div>
+            <p className="hint">{t("settings.accountSignedInHint")}</p>
+          </>
+        ) : (
+          <p className="hint">{t("settings.accountHint")}</p>
+        )}
+        <button
+          type="button"
+          className={`btn btn-block ${signedIn ? "btn-ghost" : "btn-primary"}`}
+          onClick={() => onOpenAccount?.()}
+        >
+          {accountLabel}
+        </button>
+      </section>
+
+      <section className="settings-section">
         <h3>{t("settings.notifications")}</h3>
         {!isNativePlatform() && (
           <button
             type="button"
-            className="btn btn-primary btn-block"
+            className={`btn btn-block ${pushEnabled ? "btn-ghost" : "btn-primary"}`}
             onClick={pushEnabled ? disableWebPush : enableWebPush}
             disabled={pushBusy}
           >
@@ -259,18 +290,20 @@ export default function SettingsModal({ onClose, onReportIssue }) {
         {nearbyEnabled && (
           <>
             <p className="hint">{t("settings.nearbyHint")}</p>
-            <label htmlFor="radius-km">{t("settings.radiusKm")}</label>
-            <input
-              id="radius-km"
-              type="number"
-              min={1}
-              max={100}
-              value={radiusKm}
-              onChange={(e) =>
-                setRadiusKm(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              onBlur={() => setRadiusKm(clampRadius())}
-            />
+            <div className="field">
+              <label htmlFor="radius-km">{t("settings.radiusKm")}</label>
+              <input
+                id="radius-km"
+                type="number"
+                min={1}
+                max={100}
+                value={radiusKm}
+                onChange={(e) =>
+                  setRadiusKm(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                onBlur={() => setRadiusKm(clampRadius())}
+              />
+            </div>
             <button type="button" className="btn btn-ghost btn-block" onClick={saveNearbyAlerts}>
               {t("settings.saveNearby")}
             </button>
@@ -300,11 +333,20 @@ export default function SettingsModal({ onClose, onReportIssue }) {
 
       <section className="settings-section" id="settings-my-data">
         <h3>{t("settings.myData")}</h3>
-        <p className="hint">{t("settings.myDataHint")}</p>
-        <p className="hint settings-qr-warning" role="alert">
-          {t("settings.qrWarning")}
-        </p>
-        {qrUrl && <img src={qrUrl} alt={t("settings.qrAlt")} className="settings-qr" />}
+        {signedIn ? (
+          <p className="hint">{t("settings.myDataSignedInHint")}</p>
+        ) : (
+          <p className="hint">{t("settings.myDataHint")}</p>
+        )}
+        {!signedIn && (
+          <div className="notice-warning" role="alert">
+            <FontAwesomeIcon icon={faTriangleExclamation} />
+            <span>{t("settings.qrWarning")}</span>
+          </div>
+        )}
+        {qrUrl && !signedIn && (
+          <img src={qrUrl} alt={t("settings.qrAlt")} className="settings-qr" />
+        )}
         <textarea readOnly value={exportJson} rows={4} />
         <button type="button" className="btn btn-ghost btn-block" onClick={copyBackupCode}>
           {t("settings.copyBackupCode")}
@@ -312,22 +354,27 @@ export default function SettingsModal({ onClose, onReportIssue }) {
         <button type="button" className="btn btn-ghost btn-block" onClick={copyExport}>
           {t("settings.copyData")}
         </button>
-        <label htmlFor="import-data">{t("settings.importLabel")}</label>
-        <textarea
-          id="import-data"
-          value={importJson}
-          onChange={(e) => setImportJson(e.target.value)}
-          rows={4}
-          placeholder={t("settings.importPlaceholder")}
-        />
-        <button
-          type="button"
-          className="btn btn-danger btn-block"
-          disabled={!importJson.trim()}
-          onClick={() => setConfirmImport(true)}
-        >
-          {t("settings.importButton")}
-        </button>
+
+        <div className="settings-subsection">
+          <div className="field">
+            <label htmlFor="import-data">{t("settings.importLabel")}</label>
+            <textarea
+              id="import-data"
+              value={importJson}
+              onChange={(e) => setImportJson(e.target.value)}
+              rows={3}
+              placeholder={t("settings.importPlaceholder")}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => setConfirmImport(true)}
+            disabled={!importJson.trim()}
+          >
+            {t("settings.importData")}
+          </button>
+        </div>
       </section>
 
       <ConfirmDialog

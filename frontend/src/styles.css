@@ -1010,7 +1010,9 @@ textarea:focus {
 select,
 input[type="date"],
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="email"],
+input[type="password"] {
   width: 100%;
   font-family: inherit;
   font-size: 15px;
@@ -1024,7 +1026,9 @@ input[type="number"] {
 select:focus,
 input[type="date"]:focus,
 input[type="text"]:focus,
-input[type="number"]:focus {
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
   border-color: var(--amber-500);
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
@@ -1493,11 +1497,6 @@ input[type="range"] {
   padding: 12px 14px;
   box-shadow: var(--sh-3);
   animation: rise 0.4s var(--ease) both;
-}
-
-.settings-qr-warning {
-  color: #b45309;
-  font-weight: 600;
 }
 
 .skip-link {
@@ -2391,6 +2390,12 @@ input[type="range"] {
   margin: 0 0 8px;
   font-size: 15px;
 }
+/* Consistent vertical rhythm between a section's direct children (hint,
+   button, field, checkbox row, …) instead of relying on each element's own
+   margins, which vary and left some sections looking cramped. */
+.settings-section > * + * {
+  margin-top: 10px;
+}
 .settings-qr {
   display: block;
   margin: 8px auto;
@@ -2482,4 +2487,146 @@ input[type="range"] {
 }
 .status-pending {
   color: #b45309;
+}
+
+/* ---------- Account modal ---------- */
+/* Sign in/up form fields share .field + .btn with the rest of the app;
+   these rules only cover pieces unique to the account flow. */
+.account-form-fields {
+  display: flex;
+  flex-direction: column;
+}
+.btn-spinner {
+  margin-right: 7px;
+}
+.password-field-wrap {
+  position: relative;
+}
+.password-field-wrap input {
+  padding-right: 40px;
+}
+.password-toggle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 2px;
+  border: none;
+  background: none;
+  color: var(--ink-400);
+  width: 36px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+}
+.password-toggle:hover {
+  color: var(--ink-700);
+}
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-400);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 6px 0;
+}
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.google-btn-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--amber-600);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0;
+  margin-top: -2px;
+  align-self: flex-start;
+}
+[data-theme="dark"] .link-btn {
+  color: var(--amber-400);
+}
+.account-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.account-identity-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--ink-400);
+  font-size: 17px;
+}
+.account-identity-email {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink-900);
+  overflow-wrap: anywhere;
+}
+.notice-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #b45309;
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  font-size: 13px;
+  margin-top: 10px;
+}
+[data-theme="dark"] .notice-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: var(--amber-400);
+}
+.notice-warning-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.checkbox-row--sub {
+  margin-left: 26px;
+}
+.checkbox-row--disabled {
+  opacity: 0.5;
+}
+/* Visually separates a cluster of controls within one .settings-section
+   (e.g. the danger zone, or "restore from backup" under "back up"). */
+.settings-subsection {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.account-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0 12px;
+  color: var(--ink-500);
+  font-size: 14px;
+  text-align: center;
+}
+.is-favorite {
+  color: #e11d48;
 }

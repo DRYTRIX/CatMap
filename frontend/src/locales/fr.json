@@ -28,6 +28,7 @@
   },
   "footer": {
     "by": "CatMap par",
+    "about": "À propos",
     "github": "GitHub",
     "privacy": "Confidentialité",
     "analytics": "Analytique anonyme avec votre consentement — aucune donnée personnelle collectée.",
@@ -58,8 +59,8 @@
     "online": "De retour en ligne."
   },
   "favorites": {
-    "title": "Favoris",
-    "empty": "Pas encore de favoris — appuyez sur « Enregistrer » sur une observation."
+    "title": "Chats aimés",
+    "empty": "Aucun chat aimé pour l’instant — touchez le cœur d’un signalement pour l’enregistrer ici."
   },
   "mySightings": {
     "title": "Mes chats",
@@ -316,7 +317,14 @@
     "nearbyHint": "Utilise votre position actuelle et active les notifications si besoin.",
     "nearbyNeedsPush": "Activez d’abord les notifications push pour enregistrer les alertes à proximité.",
     "qrWarning": "Ce QR contient votre jeton d’appareil complet. Quiconque le scanne ou le photographie obtient un accès total à vos chats.",
-    "copyBackupCode": "Copier le code de sauvegarde"
+    "copyBackupCode": "Copier le code de sauvegarde",
+    "account": "Compte",
+    "accountHint": "Facultatif — liez un e-mail ou Google pour synchroniser cœurs et chats entre appareils, et recevoir des alertes par e-mail.",
+    "accountSignedInHint": "Gérez votre e-mail, votre mot de passe et vos préférences de notification.",
+    "signIn": "Se connecter ou créer un compte",
+    "manageAccountShort": "Gérer le compte",
+    "myDataSignedInHint": "Vous êtes connecté : vos chats se synchronisent via votre compte. La sauvegarde appareil ci-dessous reste disponible.",
+    "importData": "Importer des données"
   },
   "offline": {
     "queued": "Enregistré hors ligne — envoi à la reconnexion.",
@@ -454,5 +462,57 @@
     "bannerTitle": "Sauvegardez vos chats",
     "bannerBody": "Vos publications vivent sur cet appareil. Exportez une sauvegarde pour ne pas les perdre si les données du site sont effacées.",
     "bannerAction": "Sauvegarder vos chats"
+  },
+  "account": {
+    "title": "Compte",
+    "signIn": "Connexion",
+    "signUp": "Créer un compte",
+    "createAccount": "Créer un compte",
+    "signedIn": "Connecté",
+    "signedUp": "Compte créé — vérifiez votre e-mail pour confirmer",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "nameOptional": "Nom (facultatif)",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetSent": "Si cet e-mail est enregistré, un lien de réinitialisation a été envoyé",
+    "resetHint": "Choisissez un nouveau mot de passe pour votre compte CatMap.",
+    "newPassword": "Nouveau mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "setPassword": "Définir le mot de passe",
+    "changePassword": "Changer le mot de passe",
+    "passwordChanged": "Mot de passe mis à jour",
+    "passwordSection": "Mot de passe",
+    "passwordHint": "Au moins 8 caractères",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "verifying": "Vérification de votre e-mail…",
+    "or": "ou",
+    "continueGoogle": "Continuer avec Google",
+    "googleFailed": "Échec de la connexion Google",
+    "optionalHint": "Les comptes sont facultatifs — vous pouvez continuer à utiliser CatMap sur cet appareil sans compte.",
+    "emailVerified": "E-mail vérifié",
+    "unverified": "non vérifié",
+    "resendVerify": "Renvoyer la vérification",
+    "verifySent": "E-mail de vérification envoyé",
+    "linked": "Lié",
+    "emailPrefs": "Notifications par e-mail",
+    "prefEnabled": "M’envoyer des notifications par e-mail",
+    "prefActivity": "Activité sur mes publications",
+    "prefFollowing": "Chats que je suis",
+    "prefNearby": "Alertes à proximité",
+    "prefModeration": "Mises à jour de modération",
+    "data": "Vos données",
+    "export": "Télécharger mes données",
+    "exported": "Export téléchargé",
+    "signOut": "Déconnexion",
+    "dangerZone": "Zone de danger",
+    "deleteHint": "Supprime définitivement votre compte. Cette action est irréversible.",
+    "delete": "Supprimer le compte",
+    "deleteTitle": "Supprimer votre compte ?",
+    "deleteBody": "Votre compte sera supprimé. Les signalements restent liés à l’identité de cet appareil.",
+    "deleteBodyWithContent": "Votre compte et tous les signalements/chats/commentaires des appareils liés seront définitivement supprimés.",
+    "deleteContentToo": "Supprimer aussi mes signalements, chats et commentaires",
+    "deleted": "Compte supprimé",
+    "emailRequired": "Entrez d’abord votre e-mail"
   }
 }

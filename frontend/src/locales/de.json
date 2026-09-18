@@ -28,6 +28,7 @@
   },
   "footer": {
     "by": "CatMap von",
+    "about": "Über uns",
     "github": "GitHub",
     "privacy": "Datenschutz",
     "analytics": "Anonyme Nutzungsanalyse mit Ihrer Zustimmung — keine personenbezogenen Daten.",
@@ -58,8 +59,8 @@
     "online": "Wieder online."
   },
   "favorites": {
-    "title": "Favoriten",
-    "empty": "Noch keine Favoriten — tippe auf „Speichern“ bei einer Sichtung."
+    "title": "Geliebte Katzen",
+    "empty": "Noch keine geliebten Katzen — tippe auf das Herz einer Sichtung, um sie hier zu speichern."
   },
   "mySightings": {
     "title": "Meine Katzen",
@@ -316,7 +317,14 @@
     "nearbyHint": "Nutzt deinen aktuellen Standort und aktiviert Push bei Bedarf.",
     "nearbyNeedsPush": "Aktiviere zuerst Push-Benachrichtigungen, um Hinweise in der Nähe zu speichern.",
     "qrWarning": "Dieser QR-Code enthält dein vollständiges Geräte-Token. Wer ihn scannt oder fotografiert, erhält vollen Zugriff auf deine Katzen.",
-    "copyBackupCode": "Backup-Code kopieren"
+    "copyBackupCode": "Backup-Code kopieren",
+    "account": "Konto",
+    "accountHint": "Optional — E-Mail oder Google verknüpfen, um Herzen und Katzen geräteübergreifend zu synchronisieren und E-Mail-Hinweise zu erhalten.",
+    "accountSignedInHint": "Verwalte deine E-Mail, dein Passwort und deine Benachrichtigungseinstellungen.",
+    "signIn": "Anmelden oder Konto erstellen",
+    "manageAccountShort": "Konto verwalten",
+    "myDataSignedInHint": "Du bist angemeldet — deine Katzen synchronisieren sich über dein Konto. Die Geräte-Sicherung unten bleibt verfügbar.",
+    "importData": "Daten importieren"
   },
   "offline": {
     "queued": "Offline gespeichert — wird hochgeladen, sobald du online bist.",
@@ -454,5 +462,57 @@
     "bannerTitle": "Sichere deine Katzen",
     "bannerBody": "Deine Beiträge leben auf diesem Gerät. Exportiere ein Backup, damit sie nicht verloren gehen, wenn die Website-Daten gelöscht werden.",
     "bannerAction": "Katzen sichern"
+  },
+  "account": {
+    "title": "Konto",
+    "signIn": "Anmelden",
+    "signUp": "Konto erstellen",
+    "createAccount": "Konto erstellen",
+    "signedIn": "Angemeldet",
+    "signedUp": "Konto erstellt — bitte E-Mail zur Bestätigung prüfen",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "nameOptional": "Name (optional)",
+    "forgotPassword": "Passwort vergessen?",
+    "resetSent": "Falls diese E-Mail registriert ist, wurde ein Reset-Link gesendet",
+    "resetHint": "Wähle ein neues Passwort für dein CatMap-Konto.",
+    "newPassword": "Neues Passwort",
+    "currentPassword": "Aktuelles Passwort",
+    "setPassword": "Passwort festlegen",
+    "changePassword": "Passwort ändern",
+    "passwordChanged": "Passwort aktualisiert",
+    "passwordSection": "Passwort",
+    "passwordHint": "Mindestens 8 Zeichen",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "verifying": "E-Mail wird bestätigt …",
+    "or": "oder",
+    "continueGoogle": "Mit Google fortfahren",
+    "googleFailed": "Google-Anmeldung fehlgeschlagen",
+    "optionalHint": "Konten sind optional — du kannst CatMap auf diesem Gerät auch ohne Konto nutzen.",
+    "emailVerified": "E-Mail bestätigt",
+    "unverified": "unbestätigt",
+    "resendVerify": "Bestätigung erneut senden",
+    "verifySent": "Bestätigungs-E-Mail gesendet",
+    "linked": "Verknüpft",
+    "emailPrefs": "E-Mail-Benachrichtigungen",
+    "prefEnabled": "E-Mail-Benachrichtigungen senden",
+    "prefActivity": "Aktivität zu meinen Beiträgen",
+    "prefFollowing": "Katzen, denen ich folge",
+    "prefNearby": "Hinweise in der Nähe",
+    "prefModeration": "Moderations-Updates",
+    "data": "Deine Daten",
+    "export": "Meine Daten herunterladen",
+    "exported": "Export heruntergeladen",
+    "signOut": "Abmelden",
+    "dangerZone": "Gefahrenzone",
+    "deleteHint": "Löscht dein Konto endgültig. Das kann nicht rückgängig gemacht werden.",
+    "delete": "Konto löschen",
+    "deleteTitle": "Konto löschen?",
+    "deleteBody": "Dein Konto wird entfernt. Sichtungen bleiben bei der Identität dieses Geräts.",
+    "deleteBodyWithContent": "Dein Konto und alle Sichtungen/Katzen/Kommentare verknüpfter Geräte werden dauerhaft gelöscht.",
+    "deleteContentToo": "Auch meine Sichtungen, Katzen und Kommentare löschen",
+    "deleted": "Konto gelöscht",
+    "emailRequired": "Zuerst E-Mail eingeben"
   }
 }

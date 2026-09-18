@@ -4,8 +4,10 @@ import Modal from "./Modal";
 /**
  * Accessible confirmation dialog built on Modal.
  *
- * Props: open, title, message, confirmLabel, cancelLabel, danger, onConfirm, onCancel
- * Labels default to the localized common strings when not provided.
+ * Props: open, title, message, confirmLabel, cancelLabel, danger, onConfirm, onCancel, children
+ * Labels default to the localized common strings when not provided. `children`,
+ * when given, renders between the message and the action buttons (e.g. an
+ * extra opt-in checkbox for a destructive confirmation).
  */
 export default function ConfirmDialog({
   open,
@@ -16,6 +18,7 @@ export default function ConfirmDialog({
   danger = false,
   onConfirm,
   onCancel,
+  children,
 }) {
   const { t } = useTranslation();
   if (!open) return null;
@@ -25,6 +28,7 @@ export default function ConfirmDialog({
       <div className="sheet-handle" aria-hidden="true" />
       <h2 id="confirm-title">{title}</h2>
       <p className="hint">{message}</p>
+      {children}
       <div className="row wizard-nav">
         <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>
           {cancelLabel ?? t("common.cancel")}

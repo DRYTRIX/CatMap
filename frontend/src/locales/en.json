@@ -28,6 +28,7 @@
   },
   "footer": {
     "by": "CatMap by",
+    "about": "About",
     "github": "GitHub",
     "privacy": "Privacy",
     "analytics": "Anonymous usage analytics with your consent — no personal data collected.",
@@ -58,8 +59,8 @@
     "online": "Back online."
   },
   "favorites": {
-    "title": "Favorites",
-    "empty": "No favorites yet — tap \"Save\" on a sighting to keep it here."
+    "title": "Hearted cats",
+    "empty": "No hearted cats yet — tap the heart on a sighting to save it here."
   },
   "mySightings": {
     "title": "My cats",
@@ -316,7 +317,14 @@
     "importButton": "Import data",
     "importConfirmTitle": "Replace this device's identity?",
     "importConfirmMessage": "This replaces your local device token. Your sightings on this device will no longer match unless you imported the correct backup.",
-    "importSuccess": "Identity imported — reloading…"
+    "importSuccess": "Identity imported — reloading…",
+    "account": "Account",
+    "accountHint": "Optional — link an email or Google account to sync hearts and cats across devices, and get email alerts.",
+    "accountSignedInHint": "Manage your email, password, and notification preferences.",
+    "signIn": "Sign in or create account",
+    "manageAccountShort": "Manage account",
+    "myDataSignedInHint": "You’re signed in, so your cats sync via your account. Device backup below is still available as a fallback.",
+    "importData": "Import data"
   },
   "identity": {
     "bannerTitle": "Back up your cats",
@@ -454,5 +462,57 @@
     "close": "Close image",
     "prev": "Previous photo",
     "next": "Next photo"
+  },
+  "account": {
+    "title": "Account",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "createAccount": "Create account",
+    "signedIn": "Signed in",
+    "signedUp": "Account created — check your email to verify",
+    "email": "Email",
+    "password": "Password",
+    "nameOptional": "Name (optional)",
+    "forgotPassword": "Forgot password?",
+    "resetSent": "If that email is registered, a reset link is on its way",
+    "resetHint": "Choose a new password for your CatMap account.",
+    "newPassword": "New password",
+    "currentPassword": "Current password",
+    "setPassword": "Set password",
+    "changePassword": "Change password",
+    "passwordChanged": "Password updated",
+    "passwordSection": "Password",
+    "passwordHint": "At least 8 characters",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "verifying": "Verifying your email…",
+    "or": "or",
+    "continueGoogle": "Continue with Google",
+    "googleFailed": "Google sign-in failed",
+    "optionalHint": "Accounts are optional — you can keep using CatMap on this device without one.",
+    "emailVerified": "Email verified",
+    "unverified": "unverified",
+    "resendVerify": "Resend verification",
+    "verifySent": "Verification email sent",
+    "linked": "Linked",
+    "emailPrefs": "Email notifications",
+    "prefEnabled": "Send me email notifications",
+    "prefActivity": "Activity on my posts",
+    "prefFollowing": "Cats I follow",
+    "prefNearby": "Nearby alerts",
+    "prefModeration": "Moderation updates",
+    "data": "Your data",
+    "export": "Download my data",
+    "exported": "Export downloaded",
+    "signOut": "Sign out",
+    "dangerZone": "Danger zone",
+    "deleteHint": "Permanently delete your account. This can't be undone.",
+    "delete": "Delete account",
+    "deleteTitle": "Delete your account?",
+    "deleteBody": "Your account will be removed. Sightings stay on this device’s identity.",
+    "deleteBodyWithContent": "Your account and all sightings/cats/comments from linked devices will be permanently deleted.",
+    "deleteContentToo": "Also delete my sightings, cats, and comments",
+    "deleted": "Account deleted",
+    "emailRequired": "Enter your email first"
   }
 }
