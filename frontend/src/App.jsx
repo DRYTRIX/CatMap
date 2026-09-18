@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import LoadingFallback from "./components/LoadingFallback";
 import BottomNav from "./components/BottomNav";
 import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
@@ -387,7 +388,7 @@ function AppShell() {
 
       <Footer />
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingFallback />}>
       {adding && (
         <AddSightingModal onClose={closeAdd} onCreated={handleCreated} />
       )}

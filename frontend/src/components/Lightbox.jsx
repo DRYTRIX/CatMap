@@ -75,7 +75,7 @@ export default function Lightbox({ src, images, index = 0, alt = "", onClose, on
           >
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
-          <div className="lightbox-counter" aria-hidden="true">
+          <div className="lightbox-counter" role="status" aria-live="polite">
             {index + 1} / {images.length}
           </div>
         </>

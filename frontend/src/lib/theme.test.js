@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyTheme, getTheme, setTheme } from "./theme";
+import { applyTheme, getTheme, setTheme, watchSystemTheme } from "./theme";
 
 describe("theme", () => {
   beforeEach(() => {
@@ -36,5 +36,40 @@ describe("theme", () => {
     applyTheme("dark");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
     expect(localStorage.getItem("catmap_theme")).toBeNull();
+  });
+});
+
+describe("watchSystemTheme", () => {
+  function mockMq(matches) {
+    const listeners = [];
+    const mq = {
+      matches,
+      addEventListener: (_, fn) => listeners.push(fn),
+      removeEventListener: vi.fn(),
+    };
+    window.matchMedia = vi.fn().mockReturnValue(mq);
+    return { mq, fire: () => listeners.forEach((fn) => fn()) };
+  }
+
+  beforeEach(() => localStorage.clear());
+
+  it("applies OS changes while no explicit choice is stored", () => {
+    const { mq, fire } = mockMq(false);
+    const onChange = vi.fn();
+    watchSystemTheme(onChange);
+    mq.matches = true;
+    fire();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(onChange).toHaveBeenCalledWith("dark");
+  });
+
+  it("ignores OS changes once the user chose a theme", () => {
+    const { mq, fire } = mockMq(false);
+    const onChange = vi.fn();
+    localStorage.setItem("catmap_theme", "light");
+    watchSystemTheme(onChange);
+    mq.matches = true;
+    fire();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

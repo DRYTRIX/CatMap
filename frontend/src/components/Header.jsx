@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import SearchBar from "./SearchBar";
 import { fetchStats } from "../api";
 import { track } from "../analytics";
-import { getTheme, setTheme } from "../lib/theme";
+import { getTheme, setTheme, watchSystemTheme } from "../lib/theme";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faPiggyBank, faSun, faMoon, faBell, faGear } from "@fortawesome/free-solid-svg-icons";
@@ -41,6 +41,8 @@ export default function Header({
       active = false;
     };
   }, [refreshKey]);
+
+  useEffect(() => watchSystemTheme(setThemeState), []);
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
