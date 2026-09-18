@@ -86,6 +86,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   const [editing, setEditing] = useState(false);
   const [addingPhotos, setAddingPhotos] = useState(false);
   const [favorite, setFavorite] = useState(() => isFavorite(id));
+  const [heartsCount, setHeartsCount] = useState(0);
   const [watching, setWatching] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -108,6 +109,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     setError(null);
     setActivePhoto(0);
     setFavorite(isFavorite(id));
+    setHeartsCount(0);
     setWatching(false);
     setConfirmed(getConfirmedSet().has(id));
     fetchSighting(id)
@@ -115,6 +117,8 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
         if (!active) return;
         setData(d);
         setWatching(Boolean(d.watching));
+        setFavorite(Boolean(d.hearted) || isFavorite(id));
+        setHeartsCount(Number(d.hearts_count) || 0);
         if (d.is_mine) markCreated(id);
       })
       .catch((e) => active && setError(e.message));
@@ -242,20 +246,25 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     }
   }
 
-  function onToggleFavorite() {
-    const nowFavorite = toggleFavorite(id);
-    setFavorite(nowFavorite);
-    track("sighting_favorite", { favorite: nowFavorite });
-    toast.success(nowFavorite ? t("sighting.favoriteAdded") : t("sighting.favoriteRemoved"));
-    // Favorites also follow the pin so reconfirmations can notify.
-    if (nowFavorite) {
-      watchTarget("sighting", id)
-        .then(() => setWatching(true))
-        .catch(() => {});
-    } else if (watching) {
-      unwatchTarget("sighting", id)
-        .then(() => setWatching(false))
-        .catch(() => {});
+  async function onToggleFavorite() {
+    try {
+      const nowFavorite = await toggleFavorite(id);
+      setFavorite(nowFavorite);
+      setHeartsCount((c) => Math.max(0, c + (nowFavorite ? 1 : -1)));
+      track("sighting_favorite", { favorite: nowFavorite });
+      toast.success(nowFavorite ? t("sighting.favoriteAdded") : t("sighting.favoriteRemoved"));
+      // Favorites also follow the pin so reconfirmations can notify.
+      if (nowFavorite) {
+        watchTarget("sighting", id)
+          .then(() => setWatching(true))
+          .catch(() => {});
+      } else if (watching) {
+        unwatchTarget("sighting", id)
+          .then(() => setWatching(false))
+          .catch(() => {});
+      }
+    } catch (e) {
+      toast.error(e.message);
     }
   }
 
@@ -589,6 +598,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
             >
               <FontAwesomeIcon icon={favorite ? faHeartSolid : faHeartRegular} />{" "}
               {favorite ? t("sighting.saved") : t("sighting.save")}
+              {heartsCount > 0 ? ` · ${heartsCount}` : ""}
             </button>
             {!mine && !isFound && data.status === "active" && (
               <button

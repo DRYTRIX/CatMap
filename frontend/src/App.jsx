@@ -23,12 +23,15 @@ const CatProfileSheet = lazy(() => import("./components/CatProfileSheet"));
 const OfflineQueueModal = lazy(() => import("./components/OfflineQueueModal"));
 const NotificationsModal = lazy(() => import("./components/NotificationsModal"));
 const SettingsModal = lazy(() => import("./components/SettingsModal"));
+const AccountModal = lazy(() => import("./components/AccountModal"));
 import { markCreated } from "./deviceToken";
 import { flushQueue, pendingCount } from "./lib/offlineQueue";
 import { getPosition } from "./lib/geolocate";
 import { initNativeApp } from "./lib/nativeInit";
 import { track } from "./analytics";
 import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
+import { AuthProvider } from "./context/AuthContext";
+import { migrateFavoritesToHearts } from "./lib/hearts";
 
 function AppShell() {
   const { t } = useTranslation();
@@ -47,6 +50,9 @@ function AppShell() {
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [accountVerifyToken, setAccountVerifyToken] = useState(null);
+  const [accountResetToken, setAccountResetToken] = useState(null);
   const [showOfflineQueue, setShowOfflineQueue] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [queueCount, setQueueCount] = useState(0);
@@ -95,6 +101,10 @@ function AppShell() {
       setShowSettings(false);
       return true;
     }
+    if (showAccount) {
+      setShowAccount(false);
+      return true;
+    }
     if (showOfflineQueue) {
       setShowOfflineQueue(false);
       return true;
@@ -139,6 +149,25 @@ function AppShell() {
     if (catId) {
       setSelectedCatId(catId);
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const verify = params.get("verify");
+    const reset = params.get("reset");
+    if (verify) {
+      setAccountVerifyToken(verify);
+      setShowAccount(true);
+      params.delete("verify");
+      const qs = params.toString();
+      window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
+    } else if (reset) {
+      setAccountResetToken(reset);
+      setShowAccount(true);
+      params.delete("reset");
+      const qs = params.toString();
+      window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
+    }
+
+    migrateFavoritesToHearts().catch(() => {});
   }, []);
 
   // Online/offline feedback.
@@ -347,6 +376,22 @@ function AppShell() {
             setShowSettings(false);
             setShowReportIssue(true);
           }}
+          onOpenAccount={() => {
+            setShowSettings(false);
+            setShowAccount(true);
+          }}
+        />
+      )}
+
+      {showAccount && (
+        <AccountModal
+          onClose={() => {
+            setShowAccount(false);
+            setAccountVerifyToken(null);
+            setAccountResetToken(null);
+          }}
+          verifyToken={accountVerifyToken}
+          resetToken={accountResetToken}
         />
       )}
 
@@ -371,7 +416,9 @@ function AppShell() {
 export default function App() {
   return (
     <ToastProvider>
-      <AppShell />
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
     </ToastProvider>
   );
 }

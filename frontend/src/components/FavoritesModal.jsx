@@ -21,7 +21,7 @@ export default function FavoritesModal({ onClose, onSelect }) {
     let active = true;
 
     async function load() {
-      const ids = [...getFavorites()];
+      const ids = [...getFavorites()].filter((id) => !String(id).startsWith("cat:"));
       const results = await Promise.all(
         ids.map(async (id) => {
           try {

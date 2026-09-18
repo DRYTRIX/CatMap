@@ -3,11 +3,13 @@ import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { getCreatedSet, hasBackedUp } from "../deviceToken";
+import { getSessionToken } from "../lib/session";
 
 const SESSION_DISMISS_KEY = "catmap_backup_banner_dismissed";
 
 function shouldShow() {
   try {
+    if (getSessionToken()) return false;
     if (hasBackedUp()) return false;
     if (sessionStorage.getItem(SESSION_DISMISS_KEY)) return false;
     return getCreatedSet().size >= 1;

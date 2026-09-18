@@ -2,6 +2,7 @@ import { getDeviceToken } from "./deviceToken";
 import { filtersToParams } from "./lib/filters";
 import { translateApiError } from "./lib/apiErrors";
 import { isNativePlatform } from "./lib/platform";
+import { clearSessionToken, getSessionToken } from "./lib/session";
 
 const RENDER_API =
   import.meta.env.VITE_API_BASE_NATIVE || "https://catmap-backend.onrender.com";
@@ -22,11 +23,26 @@ export function assetUrl(path) {
   return `${API_BASE}${path}`;
 }
 
-function authHeaders() {
-  return { "X-Device-Token": getDeviceToken() };
+let onUnauthorized = null;
+
+/** Register a callback invoked when the API returns 401 (expired session). */
+export function clearSessionOnUnauthorized(handler) {
+  onUnauthorized = handler;
+}
+
+export function authHeaders() {
+  const session = getSessionToken();
+  return {
+    "X-Device-Token": getDeviceToken(),
+    ...(session ? { Authorization: `Bearer ${session}` } : {}),
+  };
 }
 
 async function handle(res) {
+  if (res.status === 401 && getSessionToken()) {
+    clearSessionToken();
+    if (onUnauthorized) onUnauthorized();
+  }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
     try {
@@ -240,7 +256,10 @@ export function createSighting({
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/api/sightings`);
-    xhr.setRequestHeader("X-Device-Token", getDeviceToken());
+    const headers = authHeaders();
+    for (const [k, v] of Object.entries(headers)) {
+      xhr.setRequestHeader(k, v);
+    }
     xhr.timeout = UPLOAD_TIMEOUT_MS;
 
     if (onProgress) {
@@ -284,7 +303,10 @@ export function addSightingPhotos(id, files, onProgress) {
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}/api/sightings/${id}/photos`);
-    xhr.setRequestHeader("X-Device-Token", getDeviceToken());
+    const headers = authHeaders();
+    for (const [k, v] of Object.entries(headers)) {
+      xhr.setRequestHeader(k, v);
+    }
     xhr.timeout = UPLOAD_TIMEOUT_MS;
 
     if (onProgress) {
@@ -833,4 +855,182 @@ export async function adminImageObjectUrl(path, token) {
   });
   if (!res.ok) throw new Error(`Image failed (${res.status})`);
   return URL.createObjectURL(await res.blob());
+}
+
+// ---- Auth ----
+
+function formBody(fields) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) {
+    if (v === undefined || v === null) continue;
+    form.append(k, String(v));
+  }
+  return form;
+}
+
+export async function authSignup({ email, password, name }) {
+  const res = await fetch(`${API_BASE}/api/auth/signup`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ email, password, name: name || "" }),
+  });
+  return handle(res);
+}
+
+export async function authLogin({ email, password }) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ email, password }),
+  });
+  return handle(res);
+}
+
+export async function authGoogle({ idToken }) {
+  const res = await fetch(`${API_BASE}/api/auth/google`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ id_token: idToken }),
+  });
+  return handle(res);
+}
+
+export async function authLogout() {
+  const res = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  return handle(res);
+}
+
+export async function authMe() {
+  const res = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: authHeaders(),
+  });
+  return handle(res);
+}
+
+export async function authVerifyEmail(token) {
+  const res = await fetch(`${API_BASE}/api/auth/verify-email`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ token }),
+  });
+  return handle(res);
+}
+
+export async function authResendVerification() {
+  const res = await fetch(`${API_BASE}/api/auth/resend-verification`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  return handle(res);
+}
+
+export async function authForgotPassword(email) {
+  const res = await fetch(`${API_BASE}/api/auth/password/forgot`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ email }),
+  });
+  if (res.status === 204) return null;
+  return handle(res);
+}
+
+export async function authResetPassword({ token, password }) {
+  const res = await fetch(`${API_BASE}/api/auth/password/reset`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ token, password }),
+  });
+  return handle(res);
+}
+
+export async function authChangePassword({ currentPassword, newPassword }) {
+  const res = await fetch(`${API_BASE}/api/auth/password/change`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({
+      current_password: currentPassword || "",
+      new_password: newPassword,
+    }),
+  });
+  return handle(res);
+}
+
+export async function authSetPassword(password) {
+  const res = await fetch(`${API_BASE}/api/auth/email/set-password`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ password }),
+  });
+  return handle(res);
+}
+
+export async function authUpdateEmailPrefs(prefs) {
+  const res = await fetch(`${API_BASE}/api/auth/email-prefs`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: formBody(prefs),
+  });
+  return handle(res);
+}
+
+export async function authExport() {
+  const res = await fetch(`${API_BASE}/api/auth/export`, {
+    headers: authHeaders(),
+  });
+  return handle(res);
+}
+
+export async function authDeleteAccount({ deleteContent = false } = {}) {
+  const res = await fetch(`${API_BASE}/api/auth/account`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    body: formBody({ delete_content: deleteContent ? "true" : "false" }),
+  });
+  return handle(res);
+}
+
+// ---- Hearts ----
+
+export async function fetchHearts(signal) {
+  const res = await fetch(`${API_BASE}/api/hearts`, {
+    headers: authHeaders(),
+    signal,
+  });
+  return handle(res);
+}
+
+export async function addHeart(targetType, targetId) {
+  const res = await fetch(`${API_BASE}/api/hearts`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({ target_type: targetType, target_id: targetId }),
+  });
+  return handle(res);
+}
+
+export async function removeHeart(targetType, targetId) {
+  const params = new URLSearchParams({
+    target_type: targetType,
+    target_id: targetId,
+  });
+  const res = await fetch(`${API_BASE}/api/hearts?${params}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  return handle(res);
+}
+
+export async function importHearts({ sightingIds = [], catIds = [] } = {}) {
+  const res = await fetch(`${API_BASE}/api/hearts/import`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formBody({
+      sighting_ids: sightingIds.join(","),
+      cat_ids: catIds.join(","),
+    }),
+  });
+  return handle(res);
 }

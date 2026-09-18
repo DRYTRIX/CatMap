@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBell, faBellSlash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faBell, faBellSlash, faHeart as faHeartSolid, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
 import {
   assetUrl,
   fetchCatProfile,
@@ -11,6 +12,7 @@ import {
   unwatchTarget,
   watchTarget,
 } from "../api";
+import { isFavorite, toggleFavorite } from "../lib/favorites";
 import { timeAgo } from "../lib/time";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import { catIcon } from "../lib/markers";
@@ -30,12 +32,16 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
   const [nameDraft, setNameDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [watching, setWatching] = useState(false);
+  const [hearted, setHearted] = useState(() => isFavorite(`cat:${id}`) || isFavorite(id));
+  const [heartsCount, setHeartsCount] = useState(0);
 
   function load(signal) {
     return fetchCatProfile(id, signal).then((d) => {
       setData(d);
       setNameDraft(d.name || "");
       setWatching(Boolean(d.watching));
+      setHearted(Boolean(d.hearted) || isFavorite(`cat:${id}`));
+      setHeartsCount(Number(d.hearts_count) || 0);
     });
   }
 
@@ -107,6 +113,22 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
       toast.error(e.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onToggleHeart() {
+    try {
+      const now = await toggleFavorite(id, { targetType: "cat" });
+      setHearted(now);
+      setHeartsCount((c) => Math.max(0, c + (now ? 1 : -1)));
+      toast.success(now ? t("sighting.favoriteAdded") : t("sighting.favoriteRemoved"));
+      if (now) {
+        watchTarget("cat", id)
+          .then(() => setWatching(true))
+          .catch(() => {});
+      }
+    } catch (e) {
+      toast.error(e.message);
     }
   }
 
@@ -183,16 +205,28 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              className="btn btn-ghost btn-block"
-              onClick={onToggleWatch}
-              disabled={busy}
-              aria-pressed={watching}
-            >
-              <FontAwesomeIcon icon={watching ? faBellSlash : faBell} />{" "}
-              {watching ? t("sighting.watching") : t("sighting.watch")}
-            </button>
+            <div className="row" style={{ gap: 8 }}>
+              <button
+                type="button"
+                className={`btn btn-ghost ${hearted ? "is-favorite" : ""}`}
+                onClick={onToggleHeart}
+                aria-pressed={hearted}
+              >
+                <FontAwesomeIcon icon={hearted ? faHeartSolid : faHeartRegular} />{" "}
+                {hearted ? t("sighting.saved") : t("sighting.save")}
+                {heartsCount > 0 ? ` · ${heartsCount}` : ""}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={onToggleWatch}
+                disabled={busy}
+                aria-pressed={watching}
+              >
+                <FontAwesomeIcon icon={watching ? faBellSlash : faBell} />{" "}
+                {watching ? t("sighting.watching") : t("sighting.watch")}
+              </button>
+            </div>
           )}
 
           {data.sightings.length > 0 && (

@@ -40,6 +40,7 @@ export default function SightingList({ dots, loadedOnce, onSelect }) {
             </p>
             <p className="sighting-list-meta">
               🐱 {timeAgo(d.created_at)} · {t("common.confirmations", { count: d.confirmations_count })}
+              {d.hearts_count > 0 ? ` · ♥ ${d.hearts_count}` : ""}
             </p>
           </div>
         </button>

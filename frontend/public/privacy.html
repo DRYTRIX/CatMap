@@ -82,10 +82,12 @@
       <section>
         <h2>Summary</h2>
         <p>
-          CatMap does not require an account or login. Your device is identified
-          by a random token stored in the browser. Some optional fields (such as
-          a contact method on a missing-cat post) are personal data if you
-          choose to provide them.
+          CatMap does not require an account. Your device is identified by a
+          random token stored in the browser. You may optionally create an
+          account (email/password or Google) to sync your cats and hearts across
+          devices and to receive email notifications. Some optional fields
+          (such as a contact method on a missing-cat post, or your account
+          email) are personal data if you choose to provide them.
         </p>
       </section>
 
@@ -97,10 +99,21 @@
             browser's <code>localStorage</code>. It is sent as the
             <code>X-Device-Token</code> header so you can confirm sightings once,
             report content, edit or delete your own posts, send private tips,
-            and manage watches. Clearing site data generates a new token and you
-            lose access to “my cats” unless you exported a backup. Anyone who
-            obtains the token (for example by scanning or screenshotting the
-            backup QR) can act as you.
+            heart cats, and manage watches. Clearing site data generates a new
+            token and you lose access to “my cats” unless you exported a backup
+            or linked an account. Anyone who obtains the token (for example by
+            scanning or screenshotting the backup QR) can act as you.
+          </li>
+          <li>
+            <strong>Optional account</strong> — email address (lowercased),
+            password hash (argon2id) when you set a password, linked Google
+            subject id, private display name used only in emails/settings,
+            email notification preferences, and opaque session tokens. Accounts
+            do not publish a public author name on the map.
+          </li>
+          <li>
+            <strong>Hearts</strong> — which sightings or cat profiles you have
+            hearted (server-side), so they sync when you are signed in.
           </li>
           <li>
             <strong>Sightings you submit</strong> — photo (EXIF metadata is
@@ -126,6 +139,12 @@
             Android, an FCM token) stored against your device token so we can
             deliver nearby-missing and watch alerts. Unsubscribe from Settings
             to remove it.
+          </li>
+          <li>
+            <strong>Email notifications</strong> — if you verify an email on
+            your account and leave email alerts enabled, we may email you about
+            activity on your posts, cats you follow, nearby alerts, and
+            moderation. Every email includes an unsubscribe link.
           </li>
           <li>
             <strong>Error tracking (Sentry)</strong> — if configured by the
