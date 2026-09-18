@@ -57,6 +57,7 @@
     "closeMenu": "Fermer le menu carte",
     "emptyArea": "Aucun chat dans cette zone — soyez le premier ! 🐾",
     "fetchError": "Impossible d'actualiser la carte — affichage des données en cache.",
+    "retryLoad": "Réessayer",
     "locateError": "Impossible d'obtenir votre position.",
     "clusterCount": "{{count}} chats dans cette zone"
   },

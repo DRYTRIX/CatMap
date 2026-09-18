@@ -58,6 +58,7 @@
     "clusterCount": "{{count}} cats in this area",
     "emptyArea": "No cats spotted in this area yet — be the first! 🐾",
     "fetchError": "Couldn't refresh the map — showing cached data.",
+    "retryLoad": "Retry",
     "locateError": "Couldn't get your location."
   },
   "connectivity": {

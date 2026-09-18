@@ -12,6 +12,9 @@ export default function OfflineQueueModal({ onClose, onFlushed }) {
   const toast = useToast();
   const [items, setItems] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [activeId, setActiveId] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [failures, setFailures] = useState({});
 
   function reload() {
     listPending()
@@ -25,10 +28,21 @@ export default function OfflineQueueModal({ onClose, onFlushed }) {
 
   async function onRetry() {
     setBusy(true);
+    setFailures({});
     try {
       await flushQueue({
+        onItemStart: (item) => {
+          setActiveId(item.id);
+          setProgress(0);
+        },
+        // flushQueue processes one item at a time, so any progress event
+        // during this call always belongs to the item onItemStart just set.
+        onProgress: (_id, pct) => setProgress(pct),
         onItemDone: () => onFlushed?.(),
-        onItemFailed: (err) => toast.error(err.message),
+        onItemFailed: (err, item) => {
+          setFailures((f) => ({ ...f, [item.id]: err.message }));
+          toast.error(err.message);
+        },
       });
       reload();
       toast.success(t("offline.retryDone"));
@@ -36,6 +50,8 @@ export default function OfflineQueueModal({ onClose, onFlushed }) {
     } catch (e) {
       toast.error(e.message);
     } finally {
+      setActiveId(null);
+      setProgress(0);
       setBusy(false);
     }
   }
@@ -44,6 +60,12 @@ export default function OfflineQueueModal({ onClose, onFlushed }) {
     setBusy(true);
     try {
       await removePending(id);
+      setFailures((f) => {
+        if (!(id in f)) return f;
+        const next = { ...f };
+        delete next[id];
+        return next;
+      });
       reload();
       onFlushed?.();
     } catch (e) {
@@ -83,6 +105,18 @@ export default function OfflineQueueModal({ onClose, onFlushed }) {
                   {item.kind === "missing" ? t("sighting.missingBadge") : t("common.catSighting")}
                   {item.queuedAt ? ` · ${new Date(item.queuedAt).toLocaleString()}` : ""}
                 </p>
+
+                {item.id === activeId && (
+                  <div className="progress" aria-label={t("addSighting.uploadProgress")}>
+                    <div className="progress-bar" style={{ width: `${progress}%` }} />
+                    <span className="progress-label">{progress}%</span>
+                  </div>
+                )}
+
+                {failures[item.id] && (
+                  <p className="comment-meta offline-item-error">{failures[item.id]}</p>
+                )}
+
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"

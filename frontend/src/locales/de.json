@@ -57,6 +57,7 @@
     "closeMenu": "Kartenmenü schließen",
     "emptyArea": "Noch keine Katzen in diesem Gebiet — sei der Erste! 🐾",
     "fetchError": "Karte konnte nicht aktualisiert werden — zwischengespeicherte Daten werden angezeigt.",
+    "retryLoad": "Erneut versuchen",
     "locateError": "Standort konnte nicht ermittelt werden.",
     "clusterCount": "{{count}} Katzen in diesem Gebiet"
   },

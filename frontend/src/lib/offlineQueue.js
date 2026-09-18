@@ -91,7 +91,7 @@ export async function removePending(id) {
   });
 }
 
-export async function flushQueue({ onProgress, onItemDone, onItemFailed } = {}) {
+export async function flushQueue({ onProgress, onItemStart, onItemDone, onItemFailed } = {}) {
   await purgeExpired().catch(() => {});
   const db = await openDb();
   const items = await new Promise((resolve, reject) => {
@@ -102,6 +102,7 @@ export async function flushQueue({ onProgress, onItemDone, onItemFailed } = {}) 
   });
 
   for (const item of items) {
+    onItemStart?.(item);
     const files = item.files.map((blob, i) => new File([blob], `photo-${i}.jpg`, { type: blob.type }));
     try {
       const created = await createSighting({
@@ -116,7 +117,7 @@ export async function flushQueue({ onProgress, onItemDone, onItemFailed } = {}) 
         catName: item.catName,
         contact: item.contact,
         contactPublic: item.contactPublic,
-        onProgress,
+        onProgress: onProgress ? (pct) => onProgress(item.id, pct) : undefined,
       });
       await new Promise((resolve, reject) => {
         const tx = db.transaction(STORE, "readwrite");

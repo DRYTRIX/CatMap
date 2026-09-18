@@ -57,6 +57,7 @@
     "closeMenu": "Kaartmenu sluiten",
     "emptyArea": "Nog geen katten in dit gebied — wees de eerste! 🐾",
     "fetchError": "Kaart kon niet vernieuwd worden — gecachte data wordt getoond.",
+    "retryLoad": "Opnieuw proberen",
     "locateError": "Kon je locatie niet ophalen.",
     "clusterCount": "{{count}} katten in dit gebied"
   },

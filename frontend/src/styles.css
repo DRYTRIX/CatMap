@@ -680,6 +680,37 @@ summary:focus-visible {
   animation: fade-up 0.4s var(--ease) both;
 }
 
+/* ---------- Map load error banner ---------- */
+/* Persistent (not just a toast) retry affordance for a failed sightings
+   fetch, so stale pins aren't the only feedback the user gets. */
+.map-error-banner {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink-900);
+  color: #fff;
+  padding: 8px 10px 8px 16px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  box-shadow: var(--sh-2);
+  animation: fade-up 0.4s var(--ease) both;
+  max-width: calc(100vw - 32px);
+}
+.map-error-banner .btn {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.map-error-banner .btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
 /* ---------- Sighting list (feed) view ---------- */
 .sighting-list {
   position: absolute;
@@ -2386,6 +2417,10 @@ input[type="range"] {
   margin: 0;
   font-size: 12px;
   color: var(--ink-500);
+}
+.offline-item-error {
+  color: var(--danger);
+  margin-top: 4px;
 }
 .comment-form textarea {
   width: 100%;

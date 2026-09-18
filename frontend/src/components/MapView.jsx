@@ -68,6 +68,7 @@ export default function MapView({
   const [dots, setDots] = useState([]);
   const [clusters, setClusters] = useState([]);
   const [loadedOnce, setLoadedOnce] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const viewRef = useRef(null); // { bbox, zoom }
   const abortRef = useRef(null);
   const mapRef = useRef(null);
@@ -96,10 +97,12 @@ export default function MapView({
           onCountChange?.(data.length);
         }
         setLoadedOnce(true);
+        setLoadError(false);
         loadErrorShownRef.current = false;
       } catch (err) {
         // Ignore aborts; keep existing markers on transient errors.
         if (err.name !== "AbortError") {
+          setLoadError(true);
           if (!loadErrorShownRef.current) {
             loadErrorShownRef.current = true;
             toast.error(t("map.fetchError"));
@@ -109,6 +112,10 @@ export default function MapView({
     },
     [filters, viewMode, onCountChange, toast, t]
   );
+
+  function retryLoad() {
+    if (viewRef.current) load(viewRef.current.bbox, viewRef.current.zoom);
+  }
 
   const debouncedLoad = useDebouncedCallback(load, 350);
 
@@ -215,6 +222,15 @@ export default function MapView({
           </MarkerClusterGroup>
         )}
       </MapContainer>
+
+      {loadError && (
+        <div className="map-error-banner">
+          <span>{t("map.fetchError")}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={retryLoad}>
+            {t("map.retryLoad")}
+          </button>
+        </div>
+      )}
 
       {viewMode === "list" ? (
         <SightingList dots={dots} loadedOnce={loadedOnce} onSelect={onSelect} />
