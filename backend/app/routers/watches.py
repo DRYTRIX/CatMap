@@ -33,6 +33,8 @@ def _validate_target(db: Session, target_type: str, target_id: str) -> None:
 
 @router.get("/watches", response_model=list[WatchOut])
 def list_watches(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
@@ -41,7 +43,8 @@ def list_watches(
         select(Watch)
         .where(Watch.device_token.in_(ident.tokens))
         .order_by(Watch.created_at.desc())
-        .limit(200)
+        .offset(offset)
+        .limit(limit)
     ).scalars().all()
     return [
         WatchOut(

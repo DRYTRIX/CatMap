@@ -658,6 +658,8 @@ def recent_sightings(
 
 @router.get("/mine", response_model=list[SightingDetail])
 def my_sightings(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
 ) -> list[dict]:
@@ -670,7 +672,8 @@ def my_sightings(
         )
         .options(selectinload(Sighting.photos))
         .order_by(Sighting.created_at.desc())
-        .limit(200)
+        .offset(offset)
+        .limit(limit)
     )
     return [
         _detail(

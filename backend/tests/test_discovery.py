@@ -45,6 +45,24 @@ def test_mine_filters_by_device_token(client):
     assert [s["id"] for s in mine] == [a]
 
 
+def test_mine_paginates_newest_first(client):
+    ids = [create_sighting(client, "owner-page").json()["id"] for _ in range(3)]
+
+    page1 = client.get(
+        "/api/sightings/mine",
+        params={"limit": 2, "offset": 0},
+        headers={"X-Device-Token": "owner-page"},
+    ).json()
+    assert [s["id"] for s in page1] == [ids[2], ids[1]]
+
+    page2 = client.get(
+        "/api/sightings/mine",
+        params={"limit": 2, "offset": 2},
+        headers={"X-Device-Token": "owner-page"},
+    ).json()
+    assert [s["id"] for s in page2] == [ids[0]]
+
+
 def test_mine_requires_token(client):
     assert client.get("/api/sightings/mine").status_code == 400
 

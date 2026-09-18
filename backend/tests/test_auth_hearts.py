@@ -224,6 +224,34 @@ def test_hearts_toggle_and_import(client):
     assert imp.json()["skipped"] >= 1
 
 
+def test_hearts_pagination(client):
+    token = "heart-page-dev"
+    ids = []
+    for i in range(3):
+        sid = create_sighting(client, token, lat=40.0 + i * 0.01, lng=-3.0).json()["id"]
+        client.post(
+            "/api/hearts",
+            data={"target_type": "sighting", "target_id": sid},
+            headers={"X-Device-Token": token},
+        )
+        ids.append(sid)
+
+    page1 = client.get(
+        "/api/hearts", params={"limit": 2}, headers={"X-Device-Token": token}
+    ).json()
+    assert len(page1) == 2
+    # Newest first.
+    assert [h["target_id"] for h in page1] == list(reversed(ids))[:2]
+
+    page2 = client.get(
+        "/api/hearts",
+        params={"limit": 2, "offset": 2},
+        headers={"X-Device-Token": token},
+    ).json()
+    assert len(page2) == 1
+    assert page2[0]["target_id"] == ids[0]
+
+
 def test_unsubscribe(client):
     _signup(client, email="unsub@example.com")
     with db.SessionLocal() as session_db:

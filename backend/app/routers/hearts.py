@@ -86,6 +86,8 @@ def _ensure_watch(db: Session, device_token: str, target_type: str, target_id: s
 
 @router.get("", response_model=list[HeartOut])
 def list_hearts(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> list[HeartOut]:
@@ -94,14 +96,16 @@ def list_hearts(
             select(Heart)
             .where(Heart.user_id == ident.user_id)
             .order_by(Heart.created_at.desc())
-            .limit(500)
+            .offset(offset)
+            .limit(limit)
         ).scalars().all()
     else:
         rows = db.execute(
             select(Heart)
             .where(Heart.device_token == ident.device_token)
             .order_by(Heart.created_at.desc())
-            .limit(500)
+            .offset(offset)
+            .limit(limit)
         ).scalars().all()
     return [
         HeartOut(
