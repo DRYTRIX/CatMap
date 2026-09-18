@@ -810,6 +810,21 @@ summary:focus-visible {
   text-align: center;
   padding: 0 20px;
 }
+/* `.sighting-list`/`.sighting-list-empty` were built to fill their positioned
+   ancestor edge-to-edge (originally just `.map-wrap`, in MapView's list
+   mode). Reused inside a `.sheet` modal (Watches, Favorites, My Sightings,
+   Recent, Cat Directory), `inset: 0` instead fills the whole sheet and
+   overlaps `.wizard-head`'s close button. Inside a sheet they should just
+   flow normally below the header, which `.sheet` already scrolls. */
+.sheet .sighting-list,
+.sheet .sighting-list-empty {
+  position: static;
+  inset: auto;
+  z-index: auto;
+}
+.sheet .sighting-list-empty {
+  padding: 40px 20px;
+}
 
 /* ---------- Overlay / bottom sheet ---------- */
 .overlay {
