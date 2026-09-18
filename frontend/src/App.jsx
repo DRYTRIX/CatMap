@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import BottomNav from "./components/BottomNav";
 import MapControls from "./components/MapControls";
 import InstallPrompt from "./components/InstallPrompt";
 import OnboardingHint from "./components/OnboardingHint";
@@ -24,6 +25,8 @@ const OfflineQueueModal = lazy(() => import("./components/OfflineQueueModal"));
 const NotificationsModal = lazy(() => import("./components/NotificationsModal"));
 const SettingsModal = lazy(() => import("./components/SettingsModal"));
 const AccountModal = lazy(() => import("./components/AccountModal"));
+const WatchesModal = lazy(() => import("./components/WatchesModal"));
+const CatDirectoryModal = lazy(() => import("./components/CatDirectoryModal"));
 import { markCreated } from "./deviceToken";
 import { flushQueue, pendingCount } from "./lib/offlineQueue";
 import { getPosition } from "./lib/geolocate";
@@ -54,6 +57,8 @@ function AppShell() {
   const [accountVerifyToken, setAccountVerifyToken] = useState(null);
   const [accountResetToken, setAccountResetToken] = useState(null);
   const [showOfflineQueue, setShowOfflineQueue] = useState(false);
+  const [showWatches, setShowWatches] = useState(false);
+  const [showCatDirectory, setShowCatDirectory] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [queueCount, setQueueCount] = useState(0);
   const [viewMode, setViewMode] = useState("map");
@@ -107,6 +112,14 @@ function AppShell() {
     }
     if (showOfflineQueue) {
       setShowOfflineQueue(false);
+      return true;
+    }
+    if (showWatches) {
+      setShowWatches(false);
+      return true;
+    }
+    if (showCatDirectory) {
+      setShowCatDirectory(false);
       return true;
     }
     if (mapMenuOpen) {
@@ -293,9 +306,8 @@ function AppShell() {
           map={map}
           onLocate={locateMe}
           onFilter={() => setFiltering(true)}
-          onFavorites={() => setShowFavorites(true)}
           onMySightings={() => setShowMySightings(true)}
-          onRecent={() => setShowRecent(true)}
+          onCatDirectory={() => setShowCatDirectory(true)}
           onReportIssue={() => setShowReportIssue(true)}
           activeFilterCount={countActiveFilters(filters)}
           viewMode={viewMode}
@@ -304,6 +316,12 @@ function AppShell() {
           onMenuOpenChange={setMapMenuOpen}
         />
       </main>
+
+      <BottomNav
+        onRecent={() => setShowRecent(true)}
+        onFavorites={() => setShowFavorites(true)}
+        onWatches={() => setShowWatches(true)}
+      />
 
       <Footer />
 
@@ -399,6 +417,21 @@ function AppShell() {
         <OfflineQueueModal
           onClose={() => setShowOfflineQueue(false)}
           onFlushed={() => pendingCount().then(setQueueCount)}
+        />
+      )}
+
+      {showWatches && (
+        <WatchesModal
+          onClose={() => setShowWatches(false)}
+          onSelect={setSelectedId}
+          onCatSelect={setSelectedCatId}
+        />
+      )}
+
+      {showCatDirectory && (
+        <CatDirectoryModal
+          onClose={() => setShowCatDirectory(false)}
+          onSelect={setSelectedCatId}
         />
       )}
       </Suspense>

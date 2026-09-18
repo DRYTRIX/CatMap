@@ -49,7 +49,9 @@ export function isHearted(id) {
 
 export async function syncHeartsFromServer() {
   try {
-    const rows = await fetchHearts();
+    // Matches the backend's max page size so the local cache (used for
+    // heart-state checks app-wide, not just the Favorites list) stays complete.
+    const rows = await fetchHearts({ limit: 500 });
     const set = new Set(
       rows.filter((r) => r.target_type === "sighting").map((r) => r.target_id)
     );

@@ -15,7 +15,9 @@
     "reload": "Reload",
     "remove": "Remove",
     "save": "Save changes",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "loading": "Loading…",
+    "loadMore": "Load more"
   },
   "header": {
     "brand": "CatMap",
@@ -35,6 +37,9 @@
     "mapCopyright": "Map ©",
     "language": "Language"
   },
+  "bottomNav": {
+    "label": "Main navigation"
+  },
   "map": {
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
@@ -45,6 +50,7 @@
     "mapView": "Switch to map view",
     "favorites": "Favorites",
     "myCats": "My cats",
+    "catDirectory": "Cat directory",
     "recent": "Recent sightings",
     "reportIssue": "Report an issue",
     "menu": "Map menu",
@@ -62,10 +68,24 @@
     "title": "Hearted cats",
     "empty": "No hearted cats yet — tap the heart on a sighting to save it here."
   },
+  "watches": {
+    "title": "Watching",
+    "empty": "You're not watching anything yet — tap the bell on a sighting or cat profile to follow it.",
+    "loadError": "Couldn't load what you're watching.",
+    "catProfile": "Cat profile"
+  },
   "mySightings": {
     "title": "My cats",
     "empty": "You haven't added any cats yet — tap \"Add cat\" to spot your first one!",
     "loadError": "Couldn't load your sightings."
+  },
+  "catDirectory": {
+    "title": "Cat directory",
+    "searchPlaceholder": "Search cat names…",
+    "empty": "No named cat profiles found.",
+    "loadError": "Couldn't load cat profiles.",
+    "sightingCount_one": "{{count}} sighting",
+    "sightingCount_other": "{{count}} sightings"
   },
   "recentFeed": {
     "title": "Recent sightings",

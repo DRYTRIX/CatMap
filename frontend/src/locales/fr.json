@@ -15,7 +15,9 @@
     "reload": "Recharger",
     "remove": "Retirer",
     "save": "Enregistrer",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "loading": "Chargement…",
+    "loadMore": "Charger plus"
   },
   "header": {
     "brand": "CatMap",
@@ -35,6 +37,9 @@
     "mapCopyright": "Carte ©",
     "language": "Langue"
   },
+  "bottomNav": {
+    "label": "Navigation principale"
+  },
   "map": {
     "zoomIn": "Zoom avant",
     "zoomOut": "Zoom arrière",
@@ -45,6 +50,7 @@
     "mapView": "Passer en carte",
     "favorites": "Favoris",
     "myCats": "Mes chats",
+    "catDirectory": "Répertoire des chats",
     "recent": "Observations récentes",
     "reportIssue": "Signaler un problème",
     "menu": "Menu carte",
@@ -62,10 +68,24 @@
     "title": "Chats aimés",
     "empty": "Aucun chat aimé pour l’instant — touchez le cœur d’un signalement pour l’enregistrer ici."
   },
+  "watches": {
+    "title": "Suivis",
+    "empty": "Vous ne suivez rien pour l’instant — touchez la cloche d’un signalement ou d’un profil de chat pour le suivre.",
+    "loadError": "Impossible de charger vos suivis.",
+    "catProfile": "Profil de chat"
+  },
   "mySightings": {
     "title": "Mes chats",
     "empty": "Vous n'avez pas encore ajouté de chats — appuyez sur « Ajouter un chat » !",
     "loadError": "Impossible de charger vos observations."
+  },
+  "catDirectory": {
+    "title": "Répertoire des chats",
+    "searchPlaceholder": "Rechercher un nom de chat…",
+    "empty": "Aucun profil de chat nommé trouvé.",
+    "loadError": "Impossible de charger les profils de chat.",
+    "sightingCount_one": "{{count}} observation",
+    "sightingCount_other": "{{count}} observations"
   },
   "recentFeed": {
     "title": "Observations récentes",

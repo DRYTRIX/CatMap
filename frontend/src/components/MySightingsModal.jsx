@@ -9,18 +9,24 @@ import Modal from "./Modal";
 /**
  * Bottom sheet listing active sightings created by this device.
  */
+const PAGE_SIZE = 50;
+
 export default function MySightingsModal({ onClose, onSelect }) {
   const { t } = useTranslation();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
 
-    fetchMine(controller.signal)
+    fetchMine({ limit: PAGE_SIZE, offset: 0 }, controller.signal)
       .then((data) => {
-        if (active) setItems(data);
+        if (!active) return;
+        setItems(data);
+        setHasMore(data.length === PAGE_SIZE);
       })
       .catch((err) => {
         if (active && err.name !== "AbortError") {
@@ -34,6 +40,18 @@ export default function MySightingsModal({ onClose, onSelect }) {
       controller.abort();
     };
   }, [t]);
+
+  function loadMore() {
+    if (loadingMore || !items) return;
+    setLoadingMore(true);
+    fetchMine({ limit: PAGE_SIZE, offset: items.length })
+      .then((data) => {
+        setItems((prev) => [...prev, ...data]);
+        setHasMore(data.length === PAGE_SIZE);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  }
 
   return (
     <Modal onClose={onClose} labelledBy="my-sightings-title" className="sheet">
@@ -116,6 +134,17 @@ export default function MySightingsModal({ onClose, onSelect }) {
             </button>
           ))}
         </div>
+      )}
+
+      {hasMore && (
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          onClick={loadMore}
+          disabled={loadingMore}
+        >
+          {loadingMore ? t("common.loading") : t("common.loadMore")}
+        </button>
       )}
     </Modal>
   );

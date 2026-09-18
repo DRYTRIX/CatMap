@@ -165,8 +165,9 @@ export async function sendPrivateTip(sightingId, text) {
   return handle(res);
 }
 
-export async function fetchWatches(signal) {
-  const res = await fetch(`${API_BASE}/api/watches`, {
+export async function fetchWatches({ limit = 50, offset = 0 } = {}, signal) {
+  const params = new URLSearchParams({ limit, offset });
+  const res = await fetch(`${API_BASE}/api/watches?${params}`, {
     headers: authHeaders(),
     signal,
   });
@@ -212,11 +213,25 @@ export async function fetchRecent(
   return handle(res);
 }
 
-export async function fetchMine(signal) {
-  const res = await fetch(`${API_BASE}/api/sightings/mine`, {
+export async function fetchMine({ limit = 50, offset = 0 } = {}, signal) {
+  const params = new URLSearchParams({ limit, offset });
+  const res = await fetch(`${API_BASE}/api/sightings/mine?${params}`, {
     headers: authHeaders(),
     signal,
   });
+  return handle(res);
+}
+
+export async function fetchCats(
+  { limit = 20, offset = 0, q, near_lat, near_lng, radius_km } = {},
+  signal
+) {
+  const params = new URLSearchParams({ limit, offset });
+  if (q) params.set("q", q);
+  if (near_lat != null) params.set("near_lat", near_lat);
+  if (near_lng != null) params.set("near_lng", near_lng);
+  if (radius_km != null) params.set("radius_km", radius_km);
+  const res = await fetch(`${API_BASE}/api/cats?${params}`, { signal });
   return handle(res);
 }
 
@@ -994,8 +1009,9 @@ export async function authDeleteAccount({ deleteContent = false } = {}) {
 
 // ---- Hearts ----
 
-export async function fetchHearts(signal) {
-  const res = await fetch(`${API_BASE}/api/hearts`, {
+export async function fetchHearts({ limit = 100, offset = 0 } = {}, signal) {
+  const params = new URLSearchParams({ limit, offset });
+  const res = await fetch(`${API_BASE}/api/hearts?${params}`, {
     headers: authHeaders(),
     signal,
   });

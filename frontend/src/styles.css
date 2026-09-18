@@ -31,6 +31,7 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --footer-h: 40px;
+  --bottomnav-h: 56px;
 
   /* Fixed dark bar (footer) — stays the same in both themes. */
   --footer-bg: #0f172a;
@@ -403,7 +404,7 @@ summary:focus-visible {
 /* Fixed + raised z-index when open so the flyout isn't clipped behind the header. */
 .map-controls.is-menu-open {
   position: fixed;
-  bottom: calc(14px + var(--footer-h) + var(--safe-bottom));
+  bottom: calc(14px + var(--footer-h) + var(--bottomnav-h) + var(--safe-bottom));
   z-index: 1100;
 }
 .map-ctrl {
@@ -550,6 +551,51 @@ summary:focus-visible {
   }
 }
 
+/* ---------- Bottom nav ---------- */
+/* Persistent, always-visible entry points for the screens that used to be
+   buried one tap deep in the map's hamburger menu (favorites, recent feed,
+   watches) — in document flow, below the map and footer, so it never
+   overlaps map content. */
+.bottom-nav {
+  flex-shrink: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding: 6px 12px calc(6px + var(--safe-bottom));
+}
+.bottom-nav-item {
+  flex: 1;
+  max-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  color: var(--ink-400);
+  font-size: 18px;
+  padding: 6px 4px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.bottom-nav-item:hover {
+  background: var(--surface-2);
+  color: var(--ink-700);
+}
+.bottom-nav-item:active {
+  transform: scale(0.95);
+}
+.bottom-nav-item-label {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 /* ---------- Map markers (divIcon) ---------- */
 .cat-pin {
   position: relative;
@@ -668,6 +714,12 @@ summary:focus-visible {
   object-fit: cover;
   border-radius: var(--r-sm);
   background: var(--surface-2);
+}
+.sighting-list-thumb-icon {
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  color: var(--ink-400);
 }
 .sighting-list-body {
   flex: 1;
@@ -1400,7 +1452,7 @@ input[type="range"] {
 .toast-stack {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + var(--footer-h) + var(--safe-bottom));
+  bottom: calc(20px + var(--footer-h) + var(--bottomnav-h) + var(--safe-bottom));
   transform: translateX(-50%);
   z-index: 2500;
   display: flex;
@@ -1440,7 +1492,7 @@ input[type="range"] {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(16px + var(--footer-h) + var(--safe-bottom));
+  bottom: calc(16px + var(--footer-h) + var(--bottomnav-h) + var(--safe-bottom));
   z-index: 1800;
   max-width: 460px;
   margin: 0 auto;
@@ -1484,7 +1536,7 @@ input[type="range"] {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(16px + var(--footer-h) + var(--safe-bottom));
+  bottom: calc(16px + var(--footer-h) + var(--bottomnav-h) + var(--safe-bottom));
   z-index: 1750;
   max-width: 460px;
   margin: 0 auto;
@@ -1552,7 +1604,7 @@ input[type="range"] {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(16px + var(--footer-h) + var(--safe-bottom));
+  bottom: calc(16px + var(--footer-h) + var(--bottomnav-h) + var(--safe-bottom));
   z-index: 1900;
   max-width: 520px;
   margin: 0 auto;

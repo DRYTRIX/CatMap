@@ -6,12 +6,16 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Persistent bottom navigation (Recent, Favorites, Watching) so these no longer require opening the map's hamburger menu first.
+- "Watching" screen listing everything the current identity follows, with unwatch via the existing bell toggle.
+- Cat directory: `GET /cats` (search by name, near-me radius) and a browse UI, so named cat profiles are discoverable without first finding a linked sighting.
 - Identity backup reminder after posting, QR takeover warning, and copy-backup-code in Settings.
 - Admin UI for comment moderation, the blocked-token list, and push tests.
 - Skip link, named map markers, and focus traps on onboarding/install banners.
 - Postgres service in CI; i18n completeness test; Playwright coverage for confirm/report, missing-cat, and share pages.
 
 ### Fixed
+- `GET /sightings/mine`, `/watches`, and `/hearts` accept `limit`/`offset` instead of silently truncating at a hardcoded cap.
 - Bounding boxes that cross the antimeridian (Pacific / 180°) are accepted.
 - Cat search uses the map center for proximity ranking.
 - Rate limits on watches and cat-profile mutations; `ProxyHeadersMiddleware` so IP limits see the client.

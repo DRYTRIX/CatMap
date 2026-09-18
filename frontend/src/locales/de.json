@@ -15,7 +15,9 @@
     "reload": "Neu laden",
     "remove": "Entfernen",
     "save": "Änderungen speichern",
-    "saving": "Speichern…"
+    "saving": "Speichern…",
+    "loading": "Wird geladen…",
+    "loadMore": "Mehr laden"
   },
   "header": {
     "brand": "CatMap",
@@ -35,6 +37,9 @@
     "mapCopyright": "Karte ©",
     "language": "Sprache"
   },
+  "bottomNav": {
+    "label": "Hauptnavigation"
+  },
   "map": {
     "zoomIn": "Hineinzoomen",
     "zoomOut": "Herauszoomen",
@@ -45,6 +50,7 @@
     "mapView": "Zur Kartenansicht",
     "favorites": "Favoriten",
     "myCats": "Meine Katzen",
+    "catDirectory": "Katzenverzeichnis",
     "recent": "Neueste Sichtungen",
     "reportIssue": "Problem melden",
     "menu": "Kartenmenü",
@@ -62,10 +68,24 @@
     "title": "Geliebte Katzen",
     "empty": "Noch keine geliebten Katzen — tippe auf das Herz einer Sichtung, um sie hier zu speichern."
   },
+  "watches": {
+    "title": "Beobachtet",
+    "empty": "Du beobachtest noch nichts — tippe auf die Glocke bei einer Sichtung oder einem Katzenprofil, um ihr zu folgen.",
+    "loadError": "Deine beobachteten Einträge konnten nicht geladen werden.",
+    "catProfile": "Katzenprofil"
+  },
   "mySightings": {
     "title": "Meine Katzen",
     "empty": "Du hast noch keine Katzen hinzugefügt — tippe auf „Katze hinzufügen“!",
     "loadError": "Deine Sichtungen konnten nicht geladen werden."
+  },
+  "catDirectory": {
+    "title": "Katzenverzeichnis",
+    "searchPlaceholder": "Katzennamen suchen…",
+    "empty": "Keine benannten Katzenprofile gefunden.",
+    "loadError": "Katzenprofile konnten nicht geladen werden.",
+    "sightingCount_one": "{{count}} Sichtung",
+    "sightingCount_other": "{{count}} Sichtungen"
   },
   "recentFeed": {
     "title": "Neueste Sichtungen",

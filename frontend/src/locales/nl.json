@@ -15,7 +15,9 @@
     "reload": "Herladen",
     "remove": "Verwijderen",
     "save": "Wijzigingen opslaan",
-    "saving": "Opslaan…"
+    "saving": "Opslaan…",
+    "loading": "Laden…",
+    "loadMore": "Meer laden"
   },
   "header": {
     "brand": "CatMap",
@@ -35,6 +37,9 @@
     "mapCopyright": "Kaart ©",
     "language": "Taal"
   },
+  "bottomNav": {
+    "label": "Hoofdnavigatie"
+  },
   "map": {
     "zoomIn": "Inzoomen",
     "zoomOut": "Uitzoomen",
@@ -45,6 +50,7 @@
     "mapView": "Naar kaartweergave",
     "favorites": "Favorieten",
     "myCats": "Mijn katten",
+    "catDirectory": "Kattengids",
     "recent": "Recente waarnemingen",
     "reportIssue": "Probleem melden",
     "menu": "Kaartmenu",
@@ -62,10 +68,24 @@
     "title": "Geliefde katten",
     "empty": "Nog geen geliefde katten — tik op het hart bij een spotting om hier op te slaan."
   },
+  "watches": {
+    "title": "Gevolgd",
+    "empty": "Je volgt nog niets — tik op de bel bij een waarneming of kattenprofiel om het te volgen.",
+    "loadError": "Kon je gevolgde items niet laden.",
+    "catProfile": "Kattenprofiel"
+  },
   "mySightings": {
     "title": "Mijn katten",
     "empty": "Je hebt nog geen katten toegevoegd — tik op \"Kat toevoegen\"!",
     "loadError": "Kon je waarnemingen niet laden."
+  },
+  "catDirectory": {
+    "title": "Kattengids",
+    "searchPlaceholder": "Zoek kattennamen…",
+    "empty": "Geen benoemde kattenprofielen gevonden.",
+    "loadError": "Kon kattenprofielen niet laden.",
+    "sightingCount_one": "{{count}} waarneming",
+    "sightingCount_other": "{{count}} waarnemingen"
   },
   "recentFeed": {
     "title": "Recente waarnemingen",
