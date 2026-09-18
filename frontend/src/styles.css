@@ -601,6 +601,28 @@ summary:focus-visible {
   line-height: 1;
 }
 
+/* Desktop/tablet: a full-width bar reads as a stretched phone layout on a
+   wide viewport, so float it as a centered pill instead — the same
+   centering treatment `.sheet` already gets at min-width: 560px. */
+@media (min-width: 900px) {
+  .bottom-nav {
+    max-width: 480px;
+    margin: 0 auto;
+    border-top: none;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: var(--sh-2);
+  }
+}
+
+/* Very wide viewports: keep the header's content from stretching edge to
+   edge by insetting it with padding (the bar's background stays full-width). */
+@media (min-width: 1400px) {
+  .site-header {
+    padding-left: max(16px, calc((100vw - 1400px) / 2 + 16px));
+    padding-right: max(16px, calc((100vw - 1400px) / 2 + 16px));
+  }
+}
+
 /* ---------- Map markers (divIcon) ---------- */
 .cat-pin {
   position: relative;
