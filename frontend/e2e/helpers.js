@@ -2,6 +2,7 @@
 
 export const SIGHTING_ID = "11111111-1111-4111-8111-111111111111";
 export const MISSING_ID = "22222222-2222-4222-8222-222222222222";
+export const CAT_ID = "33333333-3333-4333-8333-333333333333";
 
 export function sightingFixture(overrides = {}) {
   const id = overrides.id || SIGHTING_ID;
@@ -91,6 +92,64 @@ export async function mockSightingApi(page, sighting) {
       return current;
     },
   };
+}
+
+export function catProfileFixture(overrides = {}) {
+  const id = overrides.id || CAT_ID;
+  return {
+    id,
+    name: "Whiskers",
+    sighting_count: 0,
+    first_seen_at: new Date().toISOString(),
+    last_seen_at: new Date().toISOString(),
+    color: null,
+    is_ear_tipped: null,
+    is_stray: null,
+    is_mine: false,
+    watching: false,
+    hearted: false,
+    hearts_count: 0,
+    sightings: [],
+    ...overrides,
+  };
+}
+
+export async function mockCatProfileApi(page, cat) {
+  await page.route(`**/api/cats/${cat.id}`, async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(cat),
+    });
+  });
+}
+
+/** Stub the list endpoints behind the content-browsing screens with an empty result, so each renders its (already-tested) empty state instead of hanging on a real network call. */
+export async function mockEmptyListApis(page) {
+  const emptyArrayRoutes = [
+    "**/api/sightings/recent**",
+    "**/api/watches**",
+    "**/api/sightings/mine**",
+    "**/api/cats?**",
+    "**/api/notifications",
+  ];
+  for (const pattern of emptyArrayRoutes) {
+    await page.route(pattern, async (route) => {
+      if (route.request().method() !== "GET") {
+        await route.fallback();
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      });
+    });
+  }
 }
 
 export async function dismissOnboarding(page) {

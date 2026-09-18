@@ -344,7 +344,12 @@ export default function SettingsModal({ onClose, onReportIssue, onOpenAccount })
         {qrUrl && !signedIn && (
           <img src={qrUrl} alt={t("settings.qrAlt")} className="settings-qr" />
         )}
-        <textarea readOnly value={exportJson} rows={4} />
+        <textarea
+          readOnly
+          value={exportJson}
+          rows={4}
+          aria-label={t("settings.copyData")}
+        />
         <button type="button" className="btn btn-ghost btn-block" onClick={copyBackupCode}>
           {t("settings.copyBackupCode")}
         </button>
