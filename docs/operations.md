@@ -94,3 +94,36 @@ Users opt in via **Settings → Alert me about missing cats nearby**. The
 backend stores `alert_lat`, `alert_lng`, and `alert_radius_km` on each push
 subscription and notifies matching devices when a new `kind=missing` post is
 created.
+
+## Accounts, email, and Google sign-in
+
+Accounts are **optional**. Anonymous device-token usage continues to work.
+Signing in links the current device token to the account so ownership,
+hearts, and inbox sync across devices.
+
+### Resend (email)
+
+1. Create a [Resend](https://resend.com) account and API key.
+2. Verify your sending domain (or use Resend's onboarding domain for tests).
+3. Set on the backend:
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM` — e.g. `CatMap <noreply@yourdomain.com>`
+   - optional `EMAIL_REPLY_TO`
+4. With the key unset, verification / reset / notification emails are no-ops
+   (useful for local Docker).
+
+### Google OAuth
+
+1. In Google Cloud Console, create OAuth client IDs for **Web**, **Android**,
+   and **iOS** (same project as Firebase if you already use FCM).
+2. Set `GOOGLE_CLIENT_IDS` on the backend to the comma-separated list of all
+   client IDs.
+3. Set `VITE_GOOGLE_CLIENT_ID` on the frontend to the **web** client ID.
+4. Android: add the signing SHA-1 fingerprint to the Android OAuth client and
+   keep `google-services.json` in place.
+5. iOS: add the reversed client ID URL scheme to the iOS app / Info.plist.
+6. Native apps use `@capacitor-firebase/authentication` when installed
+   (`npm i @capacitor-firebase/authentication` then `npx cap sync`). The
+   plugin returns a Google ID token that is posted to `/api/auth/google`.
+   Email/password remains available so App Store guideline 4.8 is satisfied
+   without Sign in with Apple.

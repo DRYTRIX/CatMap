@@ -37,6 +37,11 @@ services:
       CAT_DETECTION_STRICT: ${CAT_DETECTION_STRICT:-true}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-CatMap <noreply@catmap.drytrix.com>}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-90}
+      RATE_LIMIT_AUTH: ${RATE_LIMIT_AUTH:-20/hour}
     ports:
       - "8000:8000"
     depends_on:

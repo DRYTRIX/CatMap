@@ -64,6 +64,16 @@ services:
       # FCM HTTP v1 — paste Firebase service-account JSON (single line)
       - key: FCM_SERVICE_ACCOUNT_JSON
         sync: false
+      # Comma-separated Google OAuth client IDs (web + Android + iOS)
+      - key: GOOGLE_CLIENT_IDS
+        sync: false
+      # Resend email API for verification / reset / notification emails
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: CatMap <noreply@catmap.drytrix.com>
+      - key: SESSION_TTL_DAYS
+        value: "90"
 
   - type: web
     name: catmap-frontend
@@ -75,6 +85,8 @@ services:
       # Empty = browser calls /api on the frontend origin (nginx proxies to backend).
       - key: VITE_API_BASE
         value: ""
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
       - key: BACKEND_URL
         value: https://catmap-backend.onrender.com
       - key: BACKEND_HOST

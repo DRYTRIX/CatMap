@@ -51,6 +51,10 @@ services:
         sync: false
       - key: SENTRY_ENVIRONMENT
         value: "staging"
+      - key: GOOGLE_CLIENT_IDS
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
 
   - type: web
     name: catmap-frontend-staging
@@ -62,6 +66,8 @@ services:
       # Empty = browser calls /api on the frontend origin (nginx proxies to backend).
       - key: VITE_API_BASE
         value: ""
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
       - key: BACKEND_URL
         value: https://catmap-backend-staging.onrender.com
       - key: BACKEND_HOST
