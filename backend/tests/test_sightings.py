@@ -100,6 +100,7 @@ def test_bbox_filtering(client):
         "thumbnail_url",
         "stale",
         "kind",
+        "hearts_count",
     }
 
     near = client.get(

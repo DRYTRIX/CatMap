@@ -90,6 +90,25 @@ class Settings(BaseSettings):
     # FCM HTTP v1 — JSON service account for the Firebase project.
     fcm_service_account_json: str = ""
 
+    # Comma-separated Google OAuth client IDs (web + Android + iOS).
+    # Empty disables Google sign-in.
+    google_client_ids: str = ""
+
+    # Resend email API. Empty key disables outbound email (no-op sender).
+    resend_api_key: str = ""
+    email_from: str = "CatMap <noreply@catmap.drytrix.com>"
+    email_reply_to: str = ""
+
+    # Opaque session lifetime in days.
+    session_ttl_days: int = 90
+
+    # Auth endpoint rate limit (signup / login / forgot-password).
+    rate_limit_auth: str = "20/hour"
+
+    @property
+    def google_client_id_list(self) -> list[str]:
+        return [c.strip() for c in self.google_client_ids.split(",") if c.strip()]
+
     @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":

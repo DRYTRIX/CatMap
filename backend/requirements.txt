@@ -14,3 +14,4 @@ sentry-sdk[fastapi]==2.66.1
 httpx==0.28.1
 pywebpush==2.4.0
 google-auth==2.56.3
+argon2-cffi==25.1.0

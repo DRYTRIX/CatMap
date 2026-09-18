@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import optional_device_token, writable_device_token
-from ..models import Cat, Sighting, Watch
+from ..identity import Identity, optional_identity, writable_identity
+from ..models import Cat, Heart, Sighting, Watch
 from ..ratelimit import limiter
 from ..schemas import CatProfile, CatProfileSighting
 
@@ -21,33 +21,65 @@ def _thumb_url(sighting_id: str) -> str:
     return f"/api/sightings/{sighting_id}/thumbnail"
 
 
-def _get_own_sighting(db: Session, sighting_id: str, token: str) -> Sighting:
+def _get_own_sighting(db: Session, sighting_id: str, ident: Identity) -> Sighting:
     sighting = db.get(Sighting, sighting_id)
     if sighting is None:
         raise HTTPException(status_code=404, detail="Sighting not found.")
-    if sighting.creator_token != token:
+    if sighting.creator_token not in ident.tokens:
         raise HTTPException(status_code=403, detail="Not your sighting.")
     return sighting
 
 
-def _get_own_cat(db: Session, cat_id: str, token: str) -> Cat:
+def _get_own_cat(db: Session, cat_id: str, ident: Identity) -> Cat:
     cat = db.get(Cat, cat_id)
     if cat is None:
         raise HTTPException(status_code=404, detail="Cat profile not found.")
-    if cat.creator_token != token:
+    if cat.creator_token not in ident.tokens:
         raise HTTPException(status_code=403, detail="Not your cat profile.")
     return cat
 
 
-def _is_watching(db: Session, token: str | None, cat_id: str) -> bool:
-    if not token:
+def _is_watching(db: Session, tokens: frozenset[str] | None, cat_id: str) -> bool:
+    if not tokens:
         return False
     return (
         db.execute(
             select(Watch.id).where(
-                Watch.device_token == token,
+                Watch.device_token.in_(tokens),
                 Watch.target_type == "cat",
                 Watch.target_id == cat_id,
+            )
+        ).scalar_one_or_none()
+        is not None
+    )
+
+
+def _is_hearted(
+    db: Session,
+    tokens: frozenset[str] | None,
+    user_id: str | None,
+    cat_id: str,
+) -> bool:
+    if user_id:
+        if (
+            db.execute(
+                select(Heart.id).where(
+                    Heart.user_id == user_id,
+                    Heart.target_type == "cat",
+                    Heart.target_id == cat_id,
+                )
+            ).scalar_one_or_none()
+            is not None
+        ):
+            return True
+    if not tokens:
+        return False
+    return (
+        db.execute(
+            select(Heart.id).where(
+                Heart.device_token.in_(tokens),
+                Heart.target_type == "cat",
+                Heart.target_id == cat_id,
             )
         ).scalar_one_or_none()
         is not None
@@ -59,7 +91,8 @@ def _profile(
     sightings: list[Sighting],
     *,
     db: Session,
-    token: str | None = None,
+    tokens: frozenset[str] | None = None,
+    user_id: str | None = None,
 ) -> dict:
     active = [s for s in sightings if s.status == "active"]
     if not active:
@@ -98,8 +131,10 @@ def _profile(
         "color": latest.color if latest else None,
         "is_ear_tipped": latest.is_ear_tipped if latest else None,
         "is_stray": latest.is_stray if latest else None,
-        "is_mine": bool(token and cat.creator_token == token),
-        "watching": _is_watching(db, token, cat.id),
+        "is_mine": bool(tokens and cat.creator_token in tokens),
+        "watching": _is_watching(db, tokens, cat.id),
+        "hearted": _is_hearted(db, tokens, user_id, cat.id),
+        "hearts_count": int(getattr(cat, "hearts_count", 0) or 0),
     }
 
 
@@ -119,7 +154,7 @@ def create_cat(
     request: Request,
     sighting_ids: str = Form(...),
     name: str | None = Form(None),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Create a cat profile from one or more of your own sightings (comma-separated IDs)."""
@@ -129,11 +164,11 @@ def create_cat(
 
     sightings: list[Sighting] = []
     for sid in ids:
-        sightings.append(_get_own_sighting(db, sid, token))
+        sightings.append(_get_own_sighting(db, sid, ident))
 
     cat = Cat(
         name=(name or "").strip()[:MAX_CAT_NAME] or None,
-        creator_token=token,
+        creator_token=ident.device_token,
     )
     db.add(cat)
     db.flush()
@@ -143,13 +178,13 @@ def create_cat(
 
     db.commit()
     db.refresh(cat)
-    return _profile(cat, sightings, db=db, token=token)
+    return _profile(cat, sightings, db=db, tokens=ident.tokens, user_id=ident.user_id)
 
 
 @router.get("/{cat_id}", response_model=CatProfile)
 def get_cat(
     cat_id: str,
-    token: str | None = Depends(optional_device_token),
+    ident: Identity | None = Depends(optional_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Public cat profile with linked active sightings."""
@@ -160,7 +195,9 @@ def get_cat(
     sightings = _active_sightings(db, cat_id)
     if not sightings:
         raise HTTPException(status_code=404, detail="Cat profile not found.")
-    return _profile(cat, sightings, db=db, token=token)
+    tokens = ident.tokens if ident else None
+    user_id = ident.user_id if ident else None
+    return _profile(cat, sightings, db=db, tokens=tokens, user_id=user_id)
 
 
 @router.patch("/{cat_id}", response_model=CatProfile)
@@ -169,16 +206,16 @@ def rename_cat(
     request: Request,
     cat_id: str,
     name: str = Form(""),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Rename one of your cat profiles."""
-    cat = _get_own_cat(db, cat_id, token)
+    cat = _get_own_cat(db, cat_id, ident)
     cat.name = (name or "").strip()[:MAX_CAT_NAME] or None
     db.commit()
     db.refresh(cat)
     sightings = _active_sightings(db, cat_id)
-    return _profile(cat, sightings, db=db, token=token)
+    return _profile(cat, sightings, db=db, tokens=ident.tokens, user_id=ident.user_id)
 
 
 @router.post("/{cat_id}/link", response_model=CatProfile)
@@ -187,12 +224,12 @@ def link_sighting(
     request: Request,
     cat_id: str,
     sighting_id: str = Form(...),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Attach one of your sightings to an existing cat profile."""
-    cat = _get_own_cat(db, cat_id, token)
-    sighting = _get_own_sighting(db, sighting_id, token)
+    cat = _get_own_cat(db, cat_id, ident)
+    sighting = _get_own_sighting(db, sighting_id, ident)
     if sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")
     sighting.cat_id = cat.id
@@ -200,7 +237,7 @@ def link_sighting(
 
     sightings = _active_sightings(db, cat_id)
     db.refresh(cat)
-    return _profile(cat, sightings, db=db, token=token)
+    return _profile(cat, sightings, db=db, tokens=ident.tokens, user_id=ident.user_id)
 
 
 @router.post("/{cat_id}/unlink", response_model=CatProfile)
@@ -209,12 +246,12 @@ def unlink_sighting(
     request: Request,
     cat_id: str,
     sighting_id: str = Form(...),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Detach one of your sightings from a cat profile."""
-    cat = _get_own_cat(db, cat_id, token)
-    sighting = _get_own_sighting(db, sighting_id, token)
+    cat = _get_own_cat(db, cat_id, ident)
+    sighting = _get_own_sighting(db, sighting_id, ident)
     if sighting.cat_id != cat.id:
         raise HTTPException(status_code=400, detail="Sighting is not linked to this cat.")
     sighting.cat_id = None
@@ -223,6 +260,5 @@ def unlink_sighting(
     sightings = _active_sightings(db, cat_id)
     db.refresh(cat)
     if not sightings:
-        # Profile with no remaining sightings is still returned empty for the owner.
-        return _profile(cat, [], db=db, token=token)
-    return _profile(cat, sightings, db=db, token=token)
+        return _profile(cat, [], db=db, tokens=ident.tokens, user_id=ident.user_id)
+    return _profile(cat, sightings, db=db, tokens=ident.tokens, user_id=ident.user_id)

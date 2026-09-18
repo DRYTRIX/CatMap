@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, no_cache, writable_device_token
+from ..deps import no_cache
+from ..identity import Identity, identity, writable_identity
 from ..models import Notification, PushSubscription
 from ..schemas import NotificationOut, PushAlertPrefs, PushSubscribeResult, UnreadCountResult
 from ..user_notifications import mark_notifications_read, unread_count
@@ -21,13 +22,13 @@ ALLOWED_PLATFORMS = {"webpush", "fcm"}
 def list_notifications(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    token: str = Depends(device_token),
+    ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> list[NotificationOut]:
     stmt = (
         select(Notification)
-        .where(Notification.recipient_token == token)
+        .where(Notification.recipient_token.in_(ident.tokens))
         .order_by(Notification.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -49,21 +50,21 @@ def list_notifications(
 
 @router.get("/notifications/unread-count", response_model=UnreadCountResult)
 def get_unread_count(
-    token: str = Depends(device_token),
+    ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> UnreadCountResult:
-    return UnreadCountResult(count=unread_count(db, token))
+    return UnreadCountResult(count=unread_count(db, ident.tokens))
 
 
 @router.post("/notifications/read")
 def read_notifications(
     ids: str = Form(""),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     id_list = [s.strip() for s in ids.split(",") if s.strip()] if ids.strip() else None
-    marked = mark_notifications_read(db, token, id_list)
+    marked = mark_notifications_read(db, ident.tokens, id_list)
     return {"marked": marked}
 
 
@@ -77,19 +78,18 @@ def vapid_public_key() -> dict:
 
 @router.get("/push/alerts", response_model=PushAlertPrefs)
 def get_alert_prefs(
-    token: str = Depends(device_token),
+    ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> PushAlertPrefs:
-    """Return nearby-alert prefs from any subscription for this device."""
+    """Return nearby-alert prefs from any subscription for this identity."""
     rows = db.execute(
         select(PushSubscription)
-        .where(PushSubscription.device_token == token)
+        .where(PushSubscription.device_token.in_(ident.tokens))
         .order_by(PushSubscription.created_at.desc())
     ).scalars().all()
     if not rows:
         return PushAlertPrefs(has_subscription=False)
-    # Prefer a row that already has alert coordinates configured.
     chosen = next((r for r in rows if r.alert_lat is not None), rows[0])
     return PushAlertPrefs(
         has_subscription=True,
@@ -106,7 +106,7 @@ def subscribe_push(
     alert_lat: float | None = Form(None),
     alert_lng: float | None = Form(None),
     alert_radius_km: float | None = Form(None),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> PushSubscribeResult:
     plat = platform.strip().lower()
@@ -124,7 +124,7 @@ def subscribe_push(
 
     existing = db.execute(
         select(PushSubscription).where(
-            PushSubscription.device_token == token,
+            PushSubscription.device_token == ident.device_token,
             PushSubscription.subscription == sub_text,
         )
     ).scalar_one_or_none()
@@ -138,7 +138,7 @@ def subscribe_push(
         return PushSubscribeResult(subscribed=True, id=existing.id)
 
     row = PushSubscription(
-        device_token=token,
+        device_token=ident.device_token,
         platform=plat,
         subscription=sub_text,
         alert_lat=alert_lat,
@@ -154,13 +154,13 @@ def subscribe_push(
 @router.delete("/push/subscribe")
 def unsubscribe_push(
     subscription: str = Form(...),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     sub_text = subscription.strip()
     row = db.execute(
         select(PushSubscription).where(
-            PushSubscription.device_token == token,
+            PushSubscription.device_token == ident.device_token,
             PushSubscription.subscription == sub_text,
         )
     ).scalar_one_or_none()

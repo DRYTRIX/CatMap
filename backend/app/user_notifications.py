@@ -1,26 +1,53 @@
-"""In-app user notifications and push dispatch triggers."""
+"""In-app user notifications, push, and optional email dispatch."""
 
 from __future__ import annotations
 
 import json
 import logging
 import math
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
-from .models import Comment, Confirmation, Notification, PushSubscription, Sighting, Watch
+from .email import send_notification_email
+from .models import (
+    Comment,
+    Confirmation,
+    Notification,
+    PushSubscription,
+    Sighting,
+    User,
+    UserDevice,
+    Watch,
+)
 from .push import submit_push
 
 logger = logging.getLogger(__name__)
 
 EARTH_RADIUS_KM = 6371.0
+EMAIL_THROTTLE = timedelta(hours=6)
 
 _NEARBY_COPY = {
     "missing": ("Missing cat near you", "A cat was reported missing nearby."),
     "sighting": ("Cat sighted near you", "Someone spotted a cat nearby."),
+}
+
+# Notification type → email preference category.
+EMAIL_CATEGORY = {
+    "sighting_confirmed": "activity",
+    "comment_posted": "activity",
+    "photo_added": "activity",
+    "private_tip": "activity",
+    "watch_confirmed": "following",
+    "sighting_found": "following",
+    "sighting_gone": "following",
+    "missing_nearby": "nearby",
+    "sighting_nearby": "nearby",
+    "sighting_approved": "moderation",
+    "sighting_hidden": "moderation",
+    "comment_hidden": "moderation",
 }
 
 
@@ -119,6 +146,112 @@ def _dispatch_push(recipient_token: str, title: str, body: str, url: str | None 
         db.close()
 
 
+def _user_for_token(db: Session, token: str) -> User | None:
+    link = db.execute(
+        select(UserDevice).where(UserDevice.device_token == token)
+    ).scalar_one_or_none()
+    if link is None:
+        return None
+    return db.get(User, link.user_id)
+
+
+def _email_allowed(user: User, ntype: str) -> bool:
+    if not user.email_enabled or user.email_verified_at is None or not user.email:
+        return False
+    category = EMAIL_CATEGORY.get(ntype)
+    if category == "activity":
+        return user.email_activity
+    if category == "following":
+        return user.email_following
+    if category == "nearby":
+        return user.email_nearby
+    if category == "moderation":
+        return user.email_moderation
+    return False
+
+
+def _recently_emailed(
+    db: Session,
+    *,
+    recipient_token: str,
+    ntype: str,
+    sighting_id: str | None,
+) -> bool:
+    cutoff = datetime.now(UTC) - EMAIL_THROTTLE
+    stmt = select(Notification.id).where(
+        Notification.recipient_token == recipient_token,
+        Notification.type == ntype,
+        Notification.email_sent_at.is_not(None),
+        Notification.email_sent_at >= cutoff,
+    )
+    if sighting_id:
+        stmt = stmt.where(Notification.sighting_id == sighting_id)
+    return db.execute(stmt.limit(1)).scalar_one_or_none() is not None
+
+
+def _dispatch_email(
+    *,
+    recipient_token: str,
+    ntype: str,
+    title: str,
+    body: str,
+    url: str | None,
+    sighting_id: str | None,
+    notification_id: str | None,
+) -> None:
+    db = _session()
+    try:
+        user = _user_for_token(db, recipient_token)
+        if user is None or not _email_allowed(user, ntype):
+            return
+        if _recently_emailed(
+            db, recipient_token=recipient_token, ntype=ntype, sighting_id=sighting_id
+        ):
+            return
+        category = EMAIL_CATEGORY.get(ntype, "activity")
+        sent = send_notification_email(
+            to=user.email,
+            name=user.name,
+            title=title,
+            body=body,
+            url=url,
+            unsubscribe_token=user.unsubscribe_token,
+            category=category,
+        )
+        if sent and notification_id:
+            note = db.get(Notification, notification_id)
+            if note is not None:
+                note.email_sent_at = datetime.now(UTC)
+                db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("email dispatch failed for token prefix=%s", recipient_token[:8])
+    finally:
+        db.close()
+
+
+def _dispatch_channels(
+    *,
+    recipient_token: str,
+    ntype: str,
+    title: str,
+    body: str,
+    url: str | None = None,
+    sighting_id: str | None = None,
+    notification_id: str | None = None,
+) -> None:
+    _dispatch_push(recipient_token, title, body, url=url)
+    _dispatch_email(
+        recipient_token=recipient_token,
+        ntype=ntype,
+        title=title,
+        body=body,
+        url=url,
+        sighting_id=sighting_id,
+        notification_id=notification_id,
+    )
+
+
 def notify_inbox_and_push(
     *,
     recipient_token: str,
@@ -132,9 +265,10 @@ def notify_inbox_and_push(
 ) -> None:
     if not recipient_token:
         return
+    note_id: str | None = None
     db = _session()
     try:
-        _create_notification(
+        note = _create_notification(
             db,
             recipient_token=recipient_token,
             ntype=ntype,
@@ -143,13 +277,22 @@ def notify_inbox_and_push(
             payload={"title": title, "body": body, **(payload or {})},
         )
         db.commit()
+        note_id = note.id
     except Exception:
         db.rollback()
         logger.exception("failed to create notification")
         return
     finally:
         db.close()
-    _dispatch_push(recipient_token, title, body, url=url)
+    _dispatch_channels(
+        recipient_token=recipient_token,
+        ntype=ntype,
+        title=title,
+        body=body,
+        url=url,
+        sighting_id=sighting_id,
+        notification_id=note_id,
+    )
 
 
 def notify_sighting_confirmed(*, sighting_id: str, creator_token: str) -> None:
@@ -161,7 +304,6 @@ def notify_sighting_confirmed(*, sighting_id: str, creator_token: str) -> None:
         sighting_id=sighting_id,
         url=f"/?s={sighting_id}",
     )
-    # Alert devices that explicitly watch this sighting / its cat profile.
     db = _session()
     try:
         sighting = db.get(Sighting, sighting_id)
@@ -186,17 +328,27 @@ def notify_sighting_confirmed(*, sighting_id: str, creator_token: str) -> None:
         watchers.discard(creator_token)
         title = "Watched cat confirmed"
         body = "A cat you're watching was just confirmed."
+        note_ids: list[tuple[str, str]] = []
         for token in watchers:
-            _create_notification(
+            note = _create_notification(
                 db,
                 recipient_token=token,
                 ntype="watch_confirmed",
                 sighting_id=sighting_id,
                 payload={"title": title, "body": body},
             )
+            note_ids.append((token, note.id))
         db.commit()
-        for token in watchers:
-            _dispatch_push(token, title, body, url=f"/?s={sighting_id}")
+        for token, note_id in note_ids:
+            _dispatch_channels(
+                recipient_token=token,
+                ntype="watch_confirmed",
+                title=title,
+                body=body,
+                url=f"/?s={sighting_id}",
+                sighting_id=sighting_id,
+                notification_id=note_id,
+            )
     except Exception:
         db.rollback()
         logger.exception("notify watchers on confirm failed")
@@ -265,8 +417,9 @@ def notify_comment_posted(
         )
         body = "Someone left a tip — open CatMap to read it."
 
+        note_ids: list[tuple[str, str]] = []
         for token in recipients:
-            _create_notification(
+            note = _create_notification(
                 db,
                 recipient_token=token,
                 ntype="comment_posted",
@@ -274,10 +427,19 @@ def notify_comment_posted(
                 comment_id=comment_id,
                 payload={"title": title, "body": body},
             )
+            note_ids.append((token, note.id))
         db.commit()
 
-        for token in recipients:
-            _dispatch_push(token, title, body, url=f"/?s={sighting_id}")
+        for token, note_id in note_ids:
+            _dispatch_channels(
+                recipient_token=token,
+                ntype="comment_posted",
+                title=title,
+                body=body,
+                url=f"/?s={sighting_id}",
+                sighting_id=sighting_id,
+                notification_id=note_id,
+            )
     except Exception:
         db.rollback()
         logger.exception("notify_comment_posted failed")
@@ -352,17 +514,27 @@ def notify_sighting_status_changed(
     db = _session()
     try:
         recipients = _engaged_tokens(db, sighting_id=sighting_id, exclude=actor_token)
+        note_ids: list[tuple[str, str]] = []
         for token in recipients:
-            _create_notification(
+            note = _create_notification(
                 db,
                 recipient_token=token,
                 ntype=ntype,
                 sighting_id=sighting_id,
                 payload={"title": title, "body": body},
             )
+            note_ids.append((token, note.id))
         db.commit()
-        for token in recipients:
-            _dispatch_push(token, title, body, url=f"/?s={sighting_id}")
+        for token, note_id in note_ids:
+            _dispatch_channels(
+                recipient_token=token,
+                ntype=ntype,
+                title=title,
+                body=body,
+                url=f"/?s={sighting_id}",
+                sighting_id=sighting_id,
+                notification_id=note_id,
+            )
     except Exception:
         db.rollback()
         logger.exception("notify_sighting_status_changed failed")
@@ -407,6 +579,7 @@ def notify_nearby_sighting(
         desc = (description or "").strip()[:120] or default_body
         ntype = "missing_nearby" if kind == "missing" else "sighting_nearby"
 
+        note_ids: list[tuple[str, str]] = []
         for sub in subs:
             radius = sub.alert_radius_km or 0
             if radius <= 0:
@@ -415,7 +588,7 @@ def notify_nearby_sighting(
             if dist > radius:
                 continue
             if sub.device_token:
-                _create_notification(
+                note = _create_notification(
                     db,
                     recipient_token=sub.device_token,
                     ntype=ntype,
@@ -427,9 +600,20 @@ def notify_nearby_sighting(
                         "kind": kind,
                     },
                 )
+                note_ids.append((sub.device_token, note.id))
                 submit_push(sub, title=title, body=desc, url=f"/?s={sighting_id}")
 
         db.commit()
+        for token, note_id in note_ids:
+            _dispatch_email(
+                recipient_token=token,
+                ntype=ntype,
+                title=title,
+                body=desc,
+                url=f"/?s={sighting_id}",
+                sighting_id=sighting_id,
+                notification_id=note_id,
+            )
     except Exception:
         db.rollback()
         logger.exception("notify_nearby_sighting failed")
@@ -450,10 +634,16 @@ def notify_nearby_missing_cat(
     )
 
 
-def mark_notifications_read(db: Session, token: str, ids: list[str] | None) -> int:
+def mark_notifications_read(
+    db: Session, tokens: frozenset[str] | set[str] | str, ids: list[str] | None
+) -> int:
+    if isinstance(tokens, str):
+        token_set = {tokens}
+    else:
+        token_set = set(tokens)
     now = datetime.now(UTC)
     stmt = select(Notification).where(
-        Notification.recipient_token == token,
+        Notification.recipient_token.in_(token_set),
         Notification.read_at.is_(None),
     )
     if ids:
@@ -465,13 +655,17 @@ def mark_notifications_read(db: Session, token: str, ids: list[str] | None) -> i
     return len(rows)
 
 
-def unread_count(db: Session, token: str) -> int:
+def unread_count(db: Session, tokens: frozenset[str] | set[str] | str) -> int:
+    if isinstance(tokens, str):
+        token_set = {tokens}
+    else:
+        token_set = set(tokens)
     return int(
         db.scalar(
             select(func.count())
             .select_from(Notification)
             .where(
-                Notification.recipient_token == token,
+                Notification.recipient_token.in_(token_set),
                 Notification.read_at.is_(None),
             )
         )

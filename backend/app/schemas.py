@@ -15,6 +15,7 @@ class SightingDot(BaseModel):
     thumbnail_url: str
     stale: bool = False
     kind: str = "sighting"
+    hearts_count: int = 0
 
 
 class PhotoOut(BaseModel):
@@ -49,6 +50,8 @@ class SightingDetail(BaseModel):
     contact_public: bool = False
     is_mine: bool = False
     watching: bool = False
+    hearted: bool = False
+    hearts_count: int = 0
 
 
 class SightingCluster(BaseModel):
@@ -173,6 +176,8 @@ class CatProfile(BaseModel):
     is_stray: bool | None = None
     is_mine: bool = False
     watching: bool = False
+    hearted: bool = False
+    hearts_count: int = 0
 
 
 class CreateSightingResult(BaseModel):
@@ -199,6 +204,8 @@ class CreateSightingResult(BaseModel):
     contact_public: bool = False
     is_mine: bool = True
     watching: bool = False
+    hearted: bool = False
+    hearts_count: int = 0
 
 
 class BBox(BaseModel):
@@ -280,3 +287,52 @@ class BlockedTokenRow(BaseModel):
     token: str
     reason: str
     created_at: datetime
+
+
+class EmailPrefsOut(BaseModel):
+    enabled: bool = True
+    activity: bool = True
+    following: bool = True
+    nearby: bool = True
+    moderation: bool = True
+
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    email_verified: bool = False
+    name: str | None = None
+    has_password: bool = False
+    providers: list[str] = []
+    email_prefs: EmailPrefsOut
+    device_claimed: bool = True
+    device_claim_reason: str | None = None
+    created_at: datetime
+    last_login_at: datetime | None = None
+
+
+class AuthSessionOut(BaseModel):
+    session_token: str
+    user: UserOut
+
+
+class MessageOut(BaseModel):
+    ok: bool = True
+
+
+class HeartOut(BaseModel):
+    id: str
+    target_type: str
+    target_id: str
+    created_at: datetime
+
+
+class HeartResult(BaseModel):
+    hearted: bool
+    hearts_count: int
+    id: str | None = None
+
+
+class HeartImportResult(BaseModel):
+    imported: int
+    skipped: int

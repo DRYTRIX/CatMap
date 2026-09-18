@@ -79,6 +79,9 @@ class Sighting(Base):
         String(36), ForeignKey("cats.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
+    # Denormalized public heart count (see Heart table).
+    hearts_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     confirmations: Mapped[list["Confirmation"]] = relationship(
         back_populates="sighting", cascade="all, delete-orphan"
     )
@@ -116,6 +119,7 @@ class Cat(Base):
         DateTime(timezone=True), default=_now, nullable=False
     )
     creator_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    hearts_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     sightings: Mapped[list["Sighting"]] = relationship(back_populates="cat")
 
@@ -257,6 +261,10 @@ class Notification(Base):
     read_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # When an email was sent for this notification (throttling / audit).
+    email_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class PushSubscription(Base):
@@ -330,4 +338,154 @@ class IssueReport(Base):
     __table_args__ = (
         Index("ix_issue_reports_status", "status"),
         Index("ix_issue_reports_created_at", "created_at"),
+    )
+
+
+class User(Base):
+    """Optional account layered on top of anonymous device tokens."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Null for Google-only accounts until they set a password.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Private — used in emails and the account UI, never shown publicly.
+    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    unsubscribe_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, default=_uuid
+    )
+    email_enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    email_activity: Mapped[bool] = mapped_column(default=True, nullable=False)
+    email_following: Mapped[bool] = mapped_column(default=True, nullable=False)
+    email_nearby: Mapped[bool] = mapped_column(default=True, nullable=False)
+    email_moderation: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    blocked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    identities: Mapped[list["UserIdentity"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    devices: Mapped[list["UserDevice"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions: Mapped[list["UserSession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserIdentity(Base):
+    """OAuth provider subject linked to a user (e.g. Google)."""
+
+    __tablename__ = "user_identities"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="identities")
+
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_subject", name="uq_user_identity_provider"),
+    )
+
+
+class UserDevice(Base):
+    """Links an anonymous device token to an account (many devices per user)."""
+
+    __tablename__ = "user_devices"
+
+    device_token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    linked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="devices")
+
+
+class UserSession(Base):
+    """Opaque server-side session; only the sha256 of the token is stored."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    last_used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
+
+
+class EmailToken(Base):
+    """Single-use verification / password-reset token (sha256 stored only)."""
+
+    __tablename__ = "email_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class Heart(Base):
+    """Server-side heart (replaces client-only favorites)."""
+
+    __tablename__ = "hearts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    # "sighting" or "cat"
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "target_type", "target_id", "device_token", name="uq_heart_device"
+        ),
+        Index("ix_hearts_target", "target_type", "target_id"),
     )

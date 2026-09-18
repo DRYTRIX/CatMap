@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import no_cache, optional_device_token, writable_device_token
+from ..deps import no_cache
+from ..identity import Identity, optional_identity, writable_identity
 from ..models import Comment, CommentReport, Sighting
 from ..notifications import notify_comment_reported
 from ..ratelimit import limiter
@@ -36,7 +37,7 @@ def _get_viewable_sighting(db: Session, sighting_id: str) -> Sighting:
     return sighting
 
 
-def _comment_out(c: Comment, token: str | None) -> CommentOut:
+def _comment_out(c: Comment, tokens: frozenset[str] | None) -> CommentOut:
     return CommentOut(
         id=c.id,
         sighting_id=c.sighting_id,
@@ -44,7 +45,7 @@ def _comment_out(c: Comment, token: str | None) -> CommentOut:
         lat=c.lat,
         lng=c.lng,
         created_at=c.created_at,
-        is_mine=bool(token and c.device_token == token),
+        is_mine=bool(tokens and c.device_token in tokens),
     )
 
 
@@ -53,7 +54,7 @@ def list_comments(
     sighting_id: str,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    token: str | None = Depends(optional_device_token),
+    ident: Identity | None = Depends(optional_identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> list[CommentOut]:
@@ -69,7 +70,8 @@ def list_comments(
         .limit(limit)
     )
     rows = db.execute(stmt).scalars().all()
-    return [_comment_out(c, token) for c in rows]
+    tokens = ident.tokens if ident else None
+    return [_comment_out(c, tokens) for c in rows]
 
 
 @router.post("/{sighting_id}/comments", response_model=CommentOut, status_code=201)
@@ -81,7 +83,7 @@ def create_comment(
     text: str = Form(...),
     lat: float | None = Form(None),
     lng: float | None = Form(None),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> CommentOut:
     sighting = _get_viewable_sighting(db, sighting_id)
@@ -103,7 +105,7 @@ def create_comment(
 
     comment = Comment(
         sighting_id=sighting_id,
-        device_token=token,
+        device_token=ident.device_token,
         text=body,
         lat=lat,
         lng=lng,
@@ -118,11 +120,11 @@ def create_comment(
         notify_comment_posted,
         comment_id=comment.id,
         sighting_id=sighting_id,
-        author_token=token,
+        author_token=ident.device_token,
         sighting_creator_token=sighting.creator_token,
     )
 
-    return _comment_out(comment, token)
+    return _comment_out(comment, ident.tokens)
 
 
 @router.delete("/{sighting_id}/comments/{comment_id}", status_code=204)
@@ -131,7 +133,7 @@ def delete_comment(
     request: Request,
     sighting_id: str,
     comment_id: str,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> Response:
     sighting = db.get(Sighting, sighting_id)
@@ -142,7 +144,7 @@ def delete_comment(
     if comment is None or comment.sighting_id != sighting_id:
         raise HTTPException(status_code=404, detail="Comment not found.")
 
-    if comment.device_token != token and sighting.creator_token != token:
+    if comment.device_token not in ident.tokens and sighting.creator_token not in ident.tokens:
         raise HTTPException(status_code=403, detail="Not allowed to delete this comment.")
 
     db.delete(comment)
@@ -157,7 +159,7 @@ def report_comment(
     sighting_id: str,
     comment_id: str,
     background_tasks: BackgroundTasks,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> CommentReportResult:
     _get_viewable_sighting(db, sighting_id)
@@ -165,7 +167,7 @@ def report_comment(
     if comment is None or comment.sighting_id != sighting_id or comment.status != "visible":
         raise HTTPException(status_code=404, detail="Comment not found.")
 
-    report = CommentReport(comment_id=comment_id, device_token=token)
+    report = CommentReport(comment_id=comment_id, device_token=ident.device_token)
     db.add(report)
     try:
         db.flush()

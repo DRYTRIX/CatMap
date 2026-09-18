@@ -20,9 +20,10 @@ from sqlalchemy.orm import Session, selectinload
 from ..cat_detection import detect_cat, get_detection_status
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, no_cache, optional_device_token, writable_device_token
+from ..deps import no_cache
+from ..identity import Identity, identity, optional_identity, writable_identity
 from ..images import InvalidImageError, extract_gps, process_upload
-from ..models import Confirmation, Photo, Report, Sighting, Watch
+from ..models import Confirmation, Heart, Photo, Report, Sighting, Watch
 from ..notifications import notify_sighting_created, notify_sighting_reported
 from ..ratelimit import limiter
 from ..schemas import (
@@ -108,11 +109,13 @@ def _is_stale(last_seen: datetime) -> bool:
 def _detail(
     s: Sighting,
     *,
-    token: str | None = None,
+    tokens: frozenset[str] | None = None,
     watching: bool | None = None,
+    hearted: bool | None = None,
+    db: Session | None = None,
 ) -> dict:
     last_seen = _last_seen(s)
-    is_mine = bool(token and s.creator_token == token)
+    is_mine = bool(tokens and s.creator_token in tokens)
     contact_public = bool(getattr(s, "contact_public", False))
     # Hide contact from the public unless the owner opted in; always show to owner.
     contact = s.contact if (is_mine or contact_public) else None
@@ -139,17 +142,50 @@ def _detail(
         "contact_public": contact_public,
         "is_mine": is_mine,
         "watching": bool(watching) if watching is not None else False,
+        "hearted": bool(hearted) if hearted is not None else False,
+        "hearts_count": int(getattr(s, "hearts_count", 0) or 0),
     }
 
 
-def _is_watching(db: Session, token: str | None, target_type: str, target_id: str) -> bool:
-    if not token:
+def _is_watching(
+    db: Session, tokens: frozenset[str] | None, target_type: str, target_id: str
+) -> bool:
+    if not tokens:
         return False
     row = db.execute(
         select(Watch.id).where(
-            Watch.device_token == token,
+            Watch.device_token.in_(tokens),
             Watch.target_type == target_type,
             Watch.target_id == target_id,
+        )
+    ).scalar_one_or_none()
+    return row is not None
+
+
+def _is_hearted(
+    db: Session,
+    tokens: frozenset[str] | None,
+    user_id: str | None,
+    target_type: str,
+    target_id: str,
+) -> bool:
+    if user_id:
+        row = db.execute(
+            select(Heart.id).where(
+                Heart.user_id == user_id,
+                Heart.target_type == target_type,
+                Heart.target_id == target_id,
+            )
+        ).scalar_one_or_none()
+        if row:
+            return True
+    if not tokens:
+        return False
+    row = db.execute(
+        select(Heart.id).where(
+            Heart.device_token.in_(tokens),
+            Heart.target_type == target_type,
+            Heart.target_id == target_id,
         )
     ).scalar_one_or_none()
     return row is not None
@@ -218,7 +254,7 @@ def _normalize_kind(kind: str | None) -> str:
 
 
 def _get_viewable_sighting(
-    db: Session, sighting_id: str, token: str | None = None
+    db: Session, sighting_id: str, tokens: frozenset[str] | None = None
 ) -> Sighting:
     """Fetch a sighting that is still viewable (active/found), or the owner's off-map post."""
     sighting = db.get(Sighting, sighting_id)
@@ -227,8 +263,8 @@ def _get_viewable_sighting(
     if sighting.status in VIEWABLE_STATUSES:
         return sighting
     if (
-        token
-        and sighting.creator_token == token
+        tokens
+        and sighting.creator_token in tokens
         and sighting.status in OWNER_VIEWABLE_STATUSES
     ):
         return sighting
@@ -285,6 +321,7 @@ def list_sightings(
             Sighting.created_at,
             Sighting.last_seen_at,
             Sighting.kind,
+            Sighting.hearts_count,
         )
         .where(*conditions)
         .order_by(Sighting.created_at.desc())
@@ -303,6 +340,7 @@ def list_sightings(
             thumbnail_url=_thumb_url(r.id),
             stale=_is_stale(r.last_seen_at or r.created_at),
             kind=r.kind,
+            hearts_count=int(r.hearts_count or 0),
         )
         for r in rows
     ]
@@ -408,7 +446,7 @@ async def create_sighting(
     cat_name: str | None = Form(None),
     contact: str | None = Form(None),
     contact_public: bool = Form(False),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Create a sighting (one or more photos). Coordinates come from the form,
@@ -499,7 +537,7 @@ async def create_sighting(
         photo=primary_main,
         thumbnail=primary_thumb,
         photo_mime=primary_mime,
-        creator_token=token,
+        creator_token=ident.device_token,
         cat_confidence=best_score,
         color=_normalize_color(color),
         is_ear_tipped=is_ear_tipped,
@@ -539,7 +577,7 @@ async def create_sighting(
             description=sighting.description,
             kind=post_kind,
         )
-    result = _detail(sighting, token=token)
+    result = _detail(sighting, tokens=ident.tokens)
     result["pending"] = pending
     return result
 
@@ -620,14 +658,14 @@ def recent_sightings(
 
 @router.get("/mine", response_model=list[SightingDetail])
 def my_sightings(
-    token: str = Depends(device_token),
+    ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    """Sightings created by the calling device (all statuses), newest first."""
+    """Sightings owned by the calling identity (all statuses), newest first."""
     stmt = (
         select(Sighting)
         .where(
-            Sighting.creator_token == token,
+            Sighting.creator_token.in_(ident.tokens),
             Sighting.status.in_(MINE_STATUSES),
         )
         .options(selectinload(Sighting.photos))
@@ -635,7 +673,12 @@ def my_sightings(
         .limit(200)
     )
     return [
-        _detail(s, token=token, watching=_is_watching(db, token, "sighting", s.id))
+        _detail(
+            s,
+            tokens=ident.tokens,
+            watching=_is_watching(db, ident.tokens, "sighting", s.id),
+            hearted=_is_hearted(db, ident.tokens, ident.user_id, "sighting", s.id),
+        )
         for s in db.execute(stmt).scalars().all()
     ]
 
@@ -676,6 +719,7 @@ def similar_sightings(
             Sighting.created_at,
             Sighting.last_seen_at,
             Sighting.kind,
+            Sighting.hearts_count,
         )
         .where(*conditions)
         .order_by(Sighting.created_at.desc())
@@ -693,6 +737,7 @@ def similar_sightings(
             thumbnail_url=_thumb_url(r.id),
             stale=_is_stale(r.last_seen_at or r.created_at),
             kind=r.kind,
+            hearts_count=int(r.hearts_count or 0),
         )
         for r in rows
     ]
@@ -701,25 +746,29 @@ def similar_sightings(
 @router.get("/{sighting_id}", response_model=SightingDetail)
 def get_sighting(
     sighting_id: str,
-    token: str | None = Depends(optional_device_token),
+    ident: Identity | None = Depends(optional_identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> dict:
-    sighting = _get_viewable_sighting(db, sighting_id, token)
+    tokens = ident.tokens if ident else None
+    user_id = ident.user_id if ident else None
+    sighting = _get_viewable_sighting(db, sighting_id, tokens)
     return _detail(
         sighting,
-        token=token,
-        watching=_is_watching(db, token, "sighting", sighting.id),
+        tokens=tokens,
+        watching=_is_watching(db, tokens, "sighting", sighting.id),
+        hearted=_is_hearted(db, tokens, user_id, "sighting", sighting.id),
     )
 
 
 @router.get("/{sighting_id}/photo")
 def get_photo(
     sighting_id: str,
-    token: str | None = Depends(optional_device_token),
+    ident: Identity | None = Depends(optional_identity),
     db: Session = Depends(get_db),
 ) -> Response:
-    sighting = _get_viewable_sighting(db, sighting_id, token)
+    tokens = ident.tokens if ident else None
+    sighting = _get_viewable_sighting(db, sighting_id, tokens)
     return Response(
         content=sighting.photo,
         media_type=sighting.photo_mime,
@@ -730,10 +779,11 @@ def get_photo(
 @router.get("/{sighting_id}/thumbnail")
 def get_thumbnail(
     sighting_id: str,
-    token: str | None = Depends(optional_device_token),
+    ident: Identity | None = Depends(optional_identity),
     db: Session = Depends(get_db),
 ) -> Response:
-    sighting = _get_viewable_sighting(db, sighting_id, token)
+    tokens = ident.tokens if ident else None
+    sighting = _get_viewable_sighting(db, sighting_id, tokens)
     return Response(
         content=sighting.thumbnail,
         media_type=sighting.photo_mime,
@@ -779,7 +829,7 @@ async def add_photos(
     background_tasks: BackgroundTasks,
     images: list[UploadFile] = File(default=[]),
     image: UploadFile | None = File(None),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Add one or more photos to an existing sighting.
@@ -867,31 +917,39 @@ async def add_photos(
                 thumbnail=thumb_bytes,
                 photo_mime=mime,
                 position=start + offset,
-                contributor_token=token,
+                contributor_token=ident.device_token,
             )
         )
 
     db.commit()
     db.refresh(sighting)
 
-    if sighting.creator_token and sighting.creator_token != token:
+    if sighting.creator_token and sighting.creator_token not in ident.tokens:
         from ..user_notifications import notify_photo_added
 
         background_tasks.add_task(
             notify_photo_added,
             sighting_id=sighting.id,
             creator_token=sighting.creator_token,
-            contributor_token=token,
+            contributor_token=ident.device_token,
             photo_count=len(processed),
         )
 
-    return _detail(sighting)
+    return _detail(
+        sighting,
+        tokens=ident.tokens,
+        watching=_is_watching(db, ident.tokens, "sighting", sighting.id),
+        hearted=_is_hearted(db, ident.tokens, ident.user_id, "sighting", sighting.id),
+    )
+
+
+@router.delete("/{sighting_id}/photos/{photo_id}", status_code=204)
 @limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def delete_extra_photo(
     request: Request,
     sighting_id: str,
     photo_id: str,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> Response:
     """Delete an extra photo — creator or the photo contributor only."""
@@ -903,8 +961,8 @@ def delete_extra_photo(
     if photo is None or photo.sighting_id != sighting_id:
         raise HTTPException(status_code=404, detail="Photo not found.")
 
-    is_creator = sighting.creator_token == token
-    is_contributor = photo.contributor_token == token
+    is_creator = sighting.creator_token in ident.tokens
+    is_contributor = bool(photo.contributor_token and photo.contributor_token in ident.tokens)
     if not is_creator and not is_contributor:
         raise HTTPException(status_code=403, detail="Not allowed to delete this photo.")
 
@@ -919,7 +977,7 @@ def confirm_sighting(
     request: Request,
     sighting_id: str,
     background_tasks: BackgroundTasks,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> ConfirmResult:
     """Confirm a sighting once per device (idempotent)."""
@@ -927,7 +985,7 @@ def confirm_sighting(
     if sighting is None or sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")
 
-    confirmation = Confirmation(sighting_id=sighting_id, device_token=token)
+    confirmation = Confirmation(sighting_id=sighting_id, device_token=ident.device_token)
     db.add(confirmation)
     try:
         # Flush to trigger the unique constraint before mutating the counter.
@@ -944,7 +1002,7 @@ def confirm_sighting(
     sighting.last_seen_at = datetime.now(UTC)  # a fresh confirmation = recently seen
     creator = sighting.creator_token
     db.commit()
-    if creator and creator != token:
+    if creator and creator not in ident.tokens:
         from ..user_notifications import notify_sighting_confirmed
 
         background_tasks.add_task(
@@ -964,7 +1022,7 @@ def report_sighting(
     sighting_id: str,
     background_tasks: BackgroundTasks,
     reason: str = Form(""),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> ReportResult:
     """Report a sighting once per device; auto-hide once enough reports accrue."""
@@ -978,7 +1036,7 @@ def report_sighting(
 
     report = Report(
         sighting_id=sighting_id,
-        device_token=token,
+        device_token=ident.device_token,
         reason=reason[:280],
     )
     db.add(report)
@@ -1015,12 +1073,12 @@ def report_sighting(
     return ReportResult(reported=True, hidden=sighting.status == "hidden")
 
 
-def _get_own_sighting(db: Session, sighting_id: str, token: str) -> Sighting:
-    """Fetch a sighting the calling device created, or raise 404/403."""
+def _get_own_sighting(db: Session, sighting_id: str, ident: Identity) -> Sighting:
+    """Fetch a sighting the calling identity owns, or raise 404/403."""
     sighting = db.get(Sighting, sighting_id)
     if sighting is None:
         raise HTTPException(status_code=404, detail="Sighting not found.")
-    if sighting.creator_token != token:
+    if sighting.creator_token not in ident.tokens:
         raise HTTPException(status_code=403, detail="Not your sighting.")
     return sighting
 
@@ -1039,11 +1097,11 @@ def update_sighting(
     cat_name: str | None = Form(None),
     contact: str | None = Form(None),
     contact_public: bool | None = Form(None),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Edit a sighting's description/attributes/location — creator-only."""
-    sighting = _get_own_sighting(db, sighting_id, token)
+    sighting = _get_own_sighting(db, sighting_id, ident)
     if sighting.status != "active":
         raise HTTPException(status_code=404, detail="Sighting not found.")
 
@@ -1074,8 +1132,9 @@ def update_sighting(
     db.refresh(sighting)
     return _detail(
         sighting,
-        token=token,
-        watching=_is_watching(db, token, "sighting", sighting.id),
+        tokens=ident.tokens,
+        watching=_is_watching(db, ident.tokens, "sighting", sighting.id),
+        hearted=_is_hearted(db, ident.tokens, ident.user_id, "sighting", sighting.id),
     )
 
 
@@ -1085,11 +1144,11 @@ def mark_gone(
     request: Request,
     sighting_id: str,
     background_tasks: BackgroundTasks,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Mark your own sighting as 'gone' — the cat has moved on (off the map)."""
-    sighting = _get_own_sighting(db, sighting_id, token)
+    sighting = _get_own_sighting(db, sighting_id, ident)
     sighting.status = "gone"
     db.commit()
     db.refresh(sighting)
@@ -1099,10 +1158,10 @@ def mark_gone(
     background_tasks.add_task(
         notify_sighting_status_changed,
         sighting_id=sighting.id,
-        actor_token=token,
+        actor_token=ident.device_token,
         status="gone",
     )
-    return _detail(sighting, token=token)
+    return _detail(sighting, tokens=ident.tokens)
 
 
 @router.post("/{sighting_id}/found", response_model=SightingDetail)
@@ -1111,11 +1170,11 @@ def mark_found(
     request: Request,
     sighting_id: str,
     background_tasks: BackgroundTasks,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
     """Mark your own missing-cat post as found (off the map, still in /mine)."""
-    sighting = _get_own_sighting(db, sighting_id, token)
+    sighting = _get_own_sighting(db, sighting_id, ident)
     if sighting.kind != "missing":
         raise HTTPException(
             status_code=400,
@@ -1132,10 +1191,10 @@ def mark_found(
     background_tasks.add_task(
         notify_sighting_status_changed,
         sighting_id=sighting.id,
-        actor_token=token,
+        actor_token=ident.device_token,
         status="found",
     )
-    return _detail(sighting, token=token)
+    return _detail(sighting, tokens=ident.tokens)
 
 
 @router.post("/{sighting_id}/message", response_model=PrivateMessageResult)
@@ -1145,18 +1204,18 @@ def private_message(
     sighting_id: str,
     background_tasks: BackgroundTasks,
     text: str = Form(...),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> PrivateMessageResult:
     """Send a private tip to the missing-cat owner (not shown publicly on the map)."""
-    sighting = _get_viewable_sighting(db, sighting_id, token)
+    sighting = _get_viewable_sighting(db, sighting_id, ident.tokens)
     if sighting.kind != "missing":
         raise HTTPException(
             status_code=400, detail="Private tips are only for missing-cat posts."
         )
     if sighting.status not in ("active", "found"):
         raise HTTPException(status_code=404, detail="Sighting not found.")
-    if sighting.creator_token == token:
+    if sighting.creator_token in ident.tokens:
         raise HTTPException(status_code=400, detail="Cannot message yourself.")
 
     body = (text or "").strip()[:500]
@@ -1169,7 +1228,7 @@ def private_message(
         notify_private_tip,
         sighting_id=sighting.id,
         creator_token=sighting.creator_token,
-        author_token=token,
+        author_token=ident.device_token,
         message=body,
     )
     return PrivateMessageResult(sent=True)
@@ -1180,11 +1239,11 @@ def private_message(
 def delete_sighting(
     request: Request,
     sighting_id: str,
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> Response:
     """Delete a sighting — only the device that created it may do so."""
-    sighting = _get_own_sighting(db, sighting_id, token)
+    sighting = _get_own_sighting(db, sighting_id, ident)
     db.delete(sighting)  # cascades to confirmations and reports
     db.commit()
     return Response(status_code=204)

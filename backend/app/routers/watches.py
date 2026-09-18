@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
-from ..deps import device_token, no_cache, writable_device_token
+from ..deps import no_cache
+from ..identity import Identity, identity, writable_identity
 from ..models import Cat, Sighting, Watch
 from ..ratelimit import limiter
 from ..schemas import WatchOut, WatchResult
@@ -32,13 +33,13 @@ def _validate_target(db: Session, target_type: str, target_id: str) -> None:
 
 @router.get("/watches", response_model=list[WatchOut])
 def list_watches(
-    token: str = Depends(device_token),
+    ident: Identity = Depends(identity),
     db: Session = Depends(get_db),
     _: None = Depends(no_cache),
 ) -> list[WatchOut]:
     rows = db.execute(
         select(Watch)
-        .where(Watch.device_token == token)
+        .where(Watch.device_token.in_(ident.tokens))
         .order_by(Watch.created_at.desc())
         .limit(200)
     ).scalars().all()
@@ -59,7 +60,7 @@ def create_watch(
     request: Request,
     target_type: str = Form(...),
     target_id: str = Form(...),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> WatchResult:
     ttype = target_type.strip().lower()
@@ -68,7 +69,7 @@ def create_watch(
 
     existing = db.execute(
         select(Watch).where(
-            Watch.device_token == token,
+            Watch.device_token.in_(ident.tokens),
             Watch.target_type == ttype,
             Watch.target_id == tid,
         )
@@ -76,7 +77,7 @@ def create_watch(
     if existing:
         return WatchResult(watching=True, id=existing.id)
 
-    row = Watch(device_token=token, target_type=ttype, target_id=tid)
+    row = Watch(device_token=ident.device_token, target_type=ttype, target_id=tid)
     db.add(row)
     db.commit()
     db.refresh(row)
@@ -89,19 +90,20 @@ def delete_watch(
     request: Request,
     target_type: str = Query(...),
     target_id: str = Query(...),
-    token: str = Depends(writable_device_token),
+    ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> WatchResult:
     ttype = target_type.strip().lower()
     tid = target_id.strip()
-    row = db.execute(
+    rows = db.execute(
         select(Watch).where(
-            Watch.device_token == token,
+            Watch.device_token.in_(ident.tokens),
             Watch.target_type == ttype,
             Watch.target_id == tid,
         )
-    ).scalar_one_or_none()
-    if row:
+    ).scalars().all()
+    for row in rows:
         db.delete(row)
+    if rows:
         db.commit()
     return WatchResult(watching=False, id=None)
