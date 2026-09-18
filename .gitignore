@@ -45,3 +45,4 @@ frontend/ios/DerivedData/
 *.swp
 .idea/
 .vscode/
+*.plist
