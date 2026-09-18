@@ -180,6 +180,20 @@ class CatProfile(BaseModel):
     hearts_count: int = 0
 
 
+class CatSummary(BaseModel):
+    """Lightweight cat profile card for the browse/directory list."""
+
+    id: str
+    name: str | None = None
+    lat: float
+    lng: float
+    thumbnail_url: str
+    sighting_count: int
+    last_seen_at: datetime
+    hearts_count: int = 0
+    kind: str = "sighting"
+
+
 class CreateSightingResult(BaseModel):
     id: str
     lat: float

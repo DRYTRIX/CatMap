@@ -78,6 +78,54 @@ def test_similar_sightings_nearby(client):
     assert base["id"] not in ids
 
 
+def test_list_cats_browse(client):
+    s1 = create_sighting(client, TOKEN, lat=10.0, lng=20.0, description="tabby").json()
+    cat_id = client.post(
+        "/api/cats",
+        headers={"X-Device-Token": TOKEN},
+        data={"sighting_ids": s1["id"], "name": "Milo"},
+    ).json()["id"]
+
+    listed = client.get("/api/cats")
+    assert listed.status_code == 200
+    body = listed.json()
+    assert any(c["id"] == cat_id and c["name"] == "Milo" for c in body)
+
+    by_name = client.get("/api/cats", params={"q": "mil"})
+    assert any(c["id"] == cat_id for c in by_name.json())
+
+    by_name_miss = client.get("/api/cats", params={"q": "nope-no-such-cat"})
+    assert all(c["id"] != cat_id for c in by_name_miss.json())
+
+    near = client.get(
+        "/api/cats", params={"near_lat": 10.0, "near_lng": 20.0, "radius_km": 5}
+    )
+    assert any(c["id"] == cat_id for c in near.json())
+
+    far = client.get(
+        "/api/cats", params={"near_lat": 60.0, "near_lng": 100.0, "radius_km": 5}
+    )
+    assert all(c["id"] != cat_id for c in far.json())
+
+
+def test_list_cats_excludes_profiles_without_active_sightings(client):
+    sid = create_sighting(client, TOKEN).json()["id"]
+    cat_id = client.post(
+        "/api/cats",
+        headers={"X-Device-Token": TOKEN},
+        data={"sighting_ids": sid},
+    ).json()["id"]
+
+    client.post(
+        f"/api/cats/{cat_id}/unlink",
+        headers={"X-Device-Token": TOKEN},
+        data={"sighting_id": sid},
+    )
+
+    listed = client.get("/api/cats")
+    assert all(c["id"] != cat_id for c in listed.json())
+
+
 def test_admin_delete_cat(client):
     sid = create_sighting(client, TOKEN).json()["id"]
     cat_id = client.post(

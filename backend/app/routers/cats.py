@@ -1,15 +1,16 @@
 """Cat profiles — group multiple sightings of the same individual cat."""
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..config import get_settings
 from ..database import get_db
+from ..deps import no_cache
 from ..identity import Identity, optional_identity, writable_identity
 from ..models import Cat, Heart, Sighting, Watch
 from ..ratelimit import limiter
-from ..schemas import CatProfile, CatProfileSighting
+from ..schemas import CatProfile, CatProfileSighting, CatSummary
 
 router = APIRouter(prefix="/cats", tags=["cats"])
 settings = get_settings()
@@ -146,6 +147,87 @@ def _active_sightings(db: Session, cat_id: str) -> list[Sighting]:
         .order_by(Sighting.created_at.asc())
     )
     return list(db.execute(stmt).scalars().all())
+
+
+@router.get("", response_model=list[CatSummary])
+def list_cats(
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    q: str | None = None,
+    near_lat: float | None = None,
+    near_lng: float | None = None,
+    radius_km: float | None = Query(None, ge=0.1, le=500),
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> list[dict]:
+    """Browse/search cat profiles that have at least one active sighting."""
+    if (near_lat is None) ^ (near_lng is None):
+        raise HTTPException(status_code=400, detail="Provide both near_lat and near_lng.")
+    if radius_km is not None and (near_lat is None or near_lng is None):
+        raise HTTPException(status_code=400, detail="radius_km requires near_lat and near_lng.")
+
+    # Each cat's most recent active sighting supplies its card location/thumbnail.
+    latest_subq = (
+        select(
+            Sighting.cat_id.label("cat_id"),
+            func.max(Sighting.created_at).label("max_created_at"),
+        )
+        .where(Sighting.cat_id.is_not(None), Sighting.status == "active")
+        .group_by(Sighting.cat_id)
+        .subquery()
+    )
+
+    stmt = (
+        select(Cat, Sighting)
+        .join(latest_subq, latest_subq.c.cat_id == Cat.id)
+        .join(
+            Sighting,
+            (Sighting.cat_id == Cat.id)
+            & (Sighting.created_at == latest_subq.c.max_created_at)
+            & (Sighting.status == "active"),
+        )
+    )
+    if q:
+        needle = f"%{q.strip()[:MAX_CAT_NAME]}%"
+        stmt = stmt.where(Cat.name.ilike(needle))
+    if near_lat is not None and near_lng is not None and radius_km:
+        deg = radius_km / 111.0
+        stmt = stmt.where(
+            Sighting.lat >= near_lat - deg,
+            Sighting.lat <= near_lat + deg,
+            Sighting.lng >= near_lng - deg,
+            Sighting.lng <= near_lng + deg,
+        )
+
+    stmt = stmt.order_by(latest_subq.c.max_created_at.desc()).offset(offset).limit(limit)
+    rows = db.execute(stmt).all()
+
+    results = []
+    for cat, sighting in rows:
+        if near_lat is not None and near_lng is not None and radius_km:
+            from ..user_notifications import _haversine_km
+
+            if _haversine_km(near_lat, near_lng, sighting.lat, sighting.lng) > radius_km:
+                continue
+        sighting_count = db.execute(
+            select(func.count())
+            .select_from(Sighting)
+            .where(Sighting.cat_id == cat.id, Sighting.status == "active")
+        ).scalar_one()
+        results.append(
+            {
+                "id": cat.id,
+                "name": cat.name,
+                "lat": sighting.lat,
+                "lng": sighting.lng,
+                "thumbnail_url": _thumb_url(sighting.id),
+                "sighting_count": sighting_count,
+                "last_seen_at": sighting.last_seen_at or sighting.created_at,
+                "hearts_count": int(getattr(cat, "hearts_count", 0) or 0),
+                "kind": sighting.kind,
+            }
+        )
+    return results
 
 
 @router.post("", response_model=CatProfile, status_code=201)
