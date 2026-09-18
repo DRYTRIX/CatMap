@@ -65,65 +65,113 @@ function AppShell() {
   const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const mapRef = useRef(null);
 
+  // Every "screen" reachable via a shareable/bookmarkable `?screen=` URL param.
+  // Sighting/cat sheets (`s`/`c`) are handled separately below since they can
+  // stack on top of one of these.
+  const SCREEN_NAMES = {
+    filter: [filtering, setFiltering],
+    favorites: [showFavorites, setShowFavorites],
+    mySightings: [showMySightings, setShowMySightings],
+    recent: [showRecent, setShowRecent],
+    reportIssue: [showReportIssue, setShowReportIssue],
+    notifications: [showNotifications, setShowNotifications],
+    settings: [showSettings, setShowSettings],
+    account: [showAccount, setShowAccount],
+    offlineQueue: [showOfflineQueue, setShowOfflineQueue],
+    watches: [showWatches, setShowWatches],
+    catDirectory: [showCatDirectory, setShowCatDirectory],
+  };
+
+  function pushNav(mutate) {
+    const params = new URLSearchParams(window.location.search);
+    mutate(params);
+    const qs = params.toString();
+    window.history.pushState({ catmapNav: true }, "", qs ? `/?${qs}` : "/");
+  }
+
+  function replaceNav(mutate) {
+    const params = new URLSearchParams(window.location.search);
+    mutate(params);
+    const qs = params.toString();
+    window.history.replaceState({ catmapNav: true }, "", qs ? `/?${qs}` : "/");
+  }
+
+  /** Open one of SCREEN_NAMES as a new, navigable history entry. */
+  function openScreen(name) {
+    pushNav((params) => {
+      params.set("screen", name);
+      params.delete("s");
+      params.delete("c");
+    });
+    SCREEN_NAMES[name][1](true);
+  }
+
+  /** Jump directly from one screen to another in place (e.g. Settings -> Account) without growing the back stack. */
+  function switchScreen(name) {
+    replaceNav((params) => {
+      params.set("screen", name);
+      params.delete("s");
+      params.delete("c");
+    });
+    Object.entries(SCREEN_NAMES).forEach(([key, [, set]]) => set(key === name));
+  }
+
+  // Opening a sighting/cat sheet always takes over from whatever screen was
+  // open (matches every call site: selecting an item in Favorites/Recent/
+  // Watches/etc. is meant to replace that screen with the detail sheet, not
+  // stack on top of it) — so this is the one place that both closes the
+  // current screen and opens the sheet, as a single history push. Callers
+  // must NOT also call onClose/closeScreen alongside these.
+  function openSighting(id) {
+    pushNav((params) => {
+      params.set("s", id);
+      params.delete("c");
+      params.delete("screen");
+    });
+    Object.values(SCREEN_NAMES).forEach(([, set]) => set(false));
+    setSelectedCatId(null);
+    setSelectedId(id);
+  }
+
+  function openCat(id) {
+    pushNav((params) => {
+      params.set("c", id);
+      params.delete("s");
+      params.delete("screen");
+    });
+    Object.values(SCREEN_NAMES).forEach(([, set]) => set(false));
+    setSelectedId(null);
+    setSelectedCatId(id);
+  }
+
+  /** Close whatever screen/sheet is on top. Used as the onClose for every URL-synced modal. */
+  function closeScreen() {
+    if (window.history.state?.catmapNav) {
+      window.history.back();
+      return;
+    }
+    replaceNav((params) => {
+      params.delete("screen");
+      params.delete("s");
+      params.delete("c");
+    });
+    Object.values(SCREEN_NAMES).forEach(([, set]) => set(false));
+    setSelectedId(null);
+    setSelectedCatId(null);
+  }
+
   function handleBackButton() {
     if (adding) {
       setAdding(false);
       return true;
     }
-    if (selectedId) {
-      setSelectedId(null);
-      return true;
-    }
-    if (selectedCatId) {
-      setSelectedCatId(null);
-      return true;
-    }
-    if (filtering) {
-      setFiltering(false);
-      return true;
-    }
-    if (showFavorites) {
-      setShowFavorites(false);
-      return true;
-    }
-    if (showMySightings) {
-      setShowMySightings(false);
-      return true;
-    }
-    if (showRecent) {
-      setShowRecent(false);
-      return true;
-    }
-    if (showReportIssue) {
-      setShowReportIssue(false);
-      return true;
-    }
-    if (showNotifications) {
-      setShowNotifications(false);
-      return true;
-    }
-    if (showSettings) {
-      setShowSettings(false);
-      return true;
-    }
-    if (showAccount) {
-      setShowAccount(false);
-      return true;
-    }
-    if (showOfflineQueue) {
-      setShowOfflineQueue(false);
-      return true;
-    }
-    if (showWatches) {
-      setShowWatches(false);
-      return true;
-    }
-    if (showCatDirectory) {
-      setShowCatDirectory(false);
-      return true;
-    }
     if (mapMenuOpen) {
       setMapMenuOpen(false);
+      return true;
+    }
+    const anyScreenOpen = Object.values(SCREEN_NAMES).some(([v]) => v);
+    if (anyScreenOpen || selectedId || selectedCatId) {
+      window.history.back();
       return true;
     }
     return false;
@@ -138,49 +186,64 @@ function AppShell() {
     []
   );
 
+  // Reconcile screen/sighting/cat state from the URL whenever the user (or the
+  // native back button, which falls back to window.history.back()) navigates.
+  useEffect(() => {
+    function onPopState() {
+      const params = new URLSearchParams(window.location.search);
+      const screen = params.get("screen");
+      Object.entries(SCREEN_NAMES).forEach(([name, [, set]]) => set(name === screen));
+      setSelectedId(params.get("s"));
+      setSelectedCatId(params.get("c"));
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+    // Intentionally mount-only: the setters captured here are stable across
+    // renders (useState), so this doesn't need to re-run when SCREEN_NAMES'
+    // *values* change on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     track("app_open");
 
     // Normalize /s/{id} bookmarks to /?s={id} for the SPA.
     const pathMatch = window.location.pathname.match(/^\/s\/([^/]+)\/?$/);
-    let id = pathMatch?.[1] ?? null;
-    if (pathMatch) {
-      const params = new URLSearchParams(window.location.search);
-      params.set("s", id);
-      const qs = params.toString();
-      window.history.replaceState(null, "", `/?${qs}`);
-    } else {
-      id = new URLSearchParams(window.location.search).get("s");
-    }
+    const params = new URLSearchParams(window.location.search);
+    const id = pathMatch?.[1] ?? params.get("s");
+    if (pathMatch) params.set("s", id);
+
+    const catId = params.get("c");
+    const screen = params.get("screen");
+    const verify = params.get("verify");
+    const reset = params.get("reset");
 
     if (id) {
       track("deep_link_open");
       setSelectedId(id);
     }
+    if (catId) setSelectedCatId(catId);
+    if (screen && SCREEN_NAMES[screen]) SCREEN_NAMES[screen][1](true);
 
-    const catId = new URLSearchParams(window.location.search).get("c");
-    if (catId) {
-      setSelectedCatId(catId);
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const verify = params.get("verify");
-    const reset = params.get("reset");
     if (verify) {
       setAccountVerifyToken(verify);
       setShowAccount(true);
       params.delete("verify");
-      const qs = params.toString();
-      window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
+      params.set("screen", "account");
     } else if (reset) {
       setAccountResetToken(reset);
       setShowAccount(true);
       params.delete("reset");
+      params.set("screen", "account");
+    }
+
+    if (pathMatch || id || catId || screen || verify || reset) {
       const qs = params.toString();
-      window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
+      window.history.replaceState({ catmapNav: true }, "", qs ? `/?${qs}` : "/");
     }
 
     migrateFavoritesToHearts().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Online/offline feedback.
@@ -284,10 +347,10 @@ function AppShell() {
         donateURL="https://buymeacoffee.com/drytrix"
         unreadCount={unreadCount}
         queueCount={queueCount}
-        onNotifications={() => setShowNotifications(true)}
-        onSettings={() => setShowSettings(true)}
-        onQueue={() => setShowOfflineQueue(true)}
-        onSelectSighting={setSelectedId}
+        onNotifications={() => openScreen("notifications")}
+        onSettings={() => openScreen("settings")}
+        onQueue={() => openScreen("offlineQueue")}
+        onSelectSighting={openSighting}
       />
 
       <main className="map-wrap" id="map-root">
@@ -296,7 +359,7 @@ function AppShell() {
           filters={filters}
           viewMode={viewMode}
           onCountChange={setCount}
-          onSelect={setSelectedId}
+          onSelect={openSighting}
           onMapReady={(m) => {
             mapRef.current = m;
             if (m) setMapReady(true);
@@ -305,10 +368,7 @@ function AppShell() {
         <MapControls
           map={map}
           onLocate={locateMe}
-          onFilter={() => setFiltering(true)}
-          onMySightings={() => setShowMySightings(true)}
-          onCatDirectory={() => setShowCatDirectory(true)}
-          onReportIssue={() => setShowReportIssue(true)}
+          onFilter={() => openScreen("filter")}
           activeFilterCount={countActiveFilters(filters)}
           viewMode={viewMode}
           onToggleView={toggleView}
@@ -318,9 +378,11 @@ function AppShell() {
       </main>
 
       <BottomNav
-        onRecent={() => setShowRecent(true)}
-        onFavorites={() => setShowFavorites(true)}
-        onWatches={() => setShowWatches(true)}
+        onRecent={() => openScreen("recent")}
+        onFavorites={() => openScreen("favorites")}
+        onWatches={() => openScreen("watches")}
+        onMyCats={() => openScreen("mySightings")}
+        onCatDirectory={() => openScreen("catDirectory")}
       />
 
       <Footer />
@@ -333,23 +395,17 @@ function AppShell() {
       {selectedId && (
         <SightingSheet
           id={selectedId}
-          onClose={() => setSelectedId(null)}
+          onClose={closeScreen}
           onChanged={() => setRefreshKey((k) => k + 1)}
-          onCatSelect={(catId) => {
-            setSelectedId(null);
-            setSelectedCatId(catId);
-          }}
+          onCatSelect={openCat}
         />
       )}
 
       {selectedCatId && (
         <CatProfileSheet
           id={selectedCatId}
-          onClose={() => setSelectedCatId(null)}
-          onSelectSighting={(sid) => {
-            setSelectedCatId(null);
-            setSelectedId(sid);
-          }}
+          onClose={closeScreen}
+          onSelectSighting={openSighting}
         />
       )}
 
@@ -357,54 +413,51 @@ function AppShell() {
         <FilterPanel
           value={filters}
           onApply={applyFilters}
-          onClose={() => setFiltering(false)}
+          onClose={closeScreen}
         />
       )}
 
       {showFavorites && (
-        <FavoritesModal onClose={() => setShowFavorites(false)} onSelect={setSelectedId} />
+        <FavoritesModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
       {showMySightings && (
-        <MySightingsModal onClose={() => setShowMySightings(false)} onSelect={setSelectedId} />
+        <MySightingsModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
       {showRecent && (
-        <RecentFeedModal onClose={() => setShowRecent(false)} onSelect={setSelectedId} />
+        <RecentFeedModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
       {showReportIssue && (
-        <ReportIssueModal onClose={() => setShowReportIssue(false)} />
+        <ReportIssueModal onClose={closeScreen} />
       )}
 
       {showNotifications && (
         <NotificationsModal
           onClose={() => {
-            setShowNotifications(false);
+            closeScreen();
             fetchUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
           }}
-          onSelectSighting={(sid) => setSelectedId(sid)}
+          onSelectSighting={(id) => {
+            openSighting(id);
+            fetchUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
+          }}
         />
       )}
 
       {showSettings && (
         <SettingsModal
-          onClose={() => setShowSettings(false)}
-          onReportIssue={() => {
-            setShowSettings(false);
-            setShowReportIssue(true);
-          }}
-          onOpenAccount={() => {
-            setShowSettings(false);
-            setShowAccount(true);
-          }}
+          onClose={closeScreen}
+          onReportIssue={() => switchScreen("reportIssue")}
+          onOpenAccount={() => switchScreen("account")}
         />
       )}
 
       {showAccount && (
         <AccountModal
           onClose={() => {
-            setShowAccount(false);
+            closeScreen();
             setAccountVerifyToken(null);
             setAccountResetToken(null);
           }}
@@ -415,24 +468,21 @@ function AppShell() {
 
       {showOfflineQueue && (
         <OfflineQueueModal
-          onClose={() => setShowOfflineQueue(false)}
+          onClose={closeScreen}
           onFlushed={() => pendingCount().then(setQueueCount)}
         />
       )}
 
       {showWatches && (
         <WatchesModal
-          onClose={() => setShowWatches(false)}
-          onSelect={setSelectedId}
-          onCatSelect={setSelectedCatId}
+          onClose={closeScreen}
+          onSelect={openSighting}
+          onCatSelect={openCat}
         />
       )}
 
       {showCatDirectory && (
-        <CatDirectoryModal
-          onClose={() => setShowCatDirectory(false)}
-          onSelect={setSelectedCatId}
-        />
+        <CatDirectoryModal onClose={closeScreen} onSelect={openCat} />
       )}
       </Suspense>
 
@@ -440,7 +490,7 @@ function AppShell() {
       <InstallPrompt />
       <IdentityBackupBanner
         refreshKey={refreshKey}
-        onBackup={() => setShowSettings(true)}
+        onBackup={() => openScreen("settings")}
       />
     </div>
   );

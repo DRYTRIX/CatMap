@@ -41,7 +41,7 @@ export default function NotificationsModal({ onClose, onSelectSighting }) {
       );
     }
     if (item.sighting_id) onSelectSighting?.(item.sighting_id);
-    onClose();
+    else onClose();
   }
 
   function markAllRead() {

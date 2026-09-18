@@ -306,6 +306,11 @@ summary:focus-visible {
     padding-left: 12px;
     padding-right: 12px;
   }
+  /* Five bottom-nav items is tight on the narrowest phones — icons only,
+     accessible name still comes from the button's aria-label. */
+  .bottom-nav-item-label {
+    display: none;
+  }
 }
 
 /* ---------- Search ---------- */

@@ -131,10 +131,7 @@ export default function CatDirectoryModal({ onClose, onSelect }) {
               type="button"
               className="sighting-list-item"
               role="listitem"
-              onClick={() => {
-                onSelect(c.id);
-                onClose();
-              }}
+              onClick={() => onSelect(c.id)}
             >
               {c.thumbnail_url ? (
                 <img

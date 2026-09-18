@@ -85,7 +85,6 @@ export default function WatchesModal({ onClose, onSelect, onCatSelect }) {
   }
 
   function open(row) {
-    onClose();
     if (row.watch.target_type === "cat") {
       onCatSelect?.(row.watch.target_id);
     } else {

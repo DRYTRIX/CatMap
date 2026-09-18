@@ -173,10 +173,7 @@ export default function RecentFeedModal({ onClose, onSelect }) {
               type="button"
               className="sighting-list-item"
               role="listitem"
-              onClick={() => {
-                onSelect(d.id);
-                onClose();
-              }}
+              onClick={() => onSelect(d.id)}
             >
               <img
                 className="sighting-list-thumb"

@@ -322,10 +322,7 @@ export default function SettingsModal({ onClose, onReportIssue, onOpenAccount })
         <button
           type="button"
           className="btn btn-ghost btn-block"
-          onClick={() => {
-            onClose();
-            onReportIssue?.();
-          }}
+          onClick={() => onReportIssue?.()}
         >
           {t("settings.reportIssue")}
         </button>

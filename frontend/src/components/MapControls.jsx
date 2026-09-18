@@ -1,4 +1,4 @@
-/** Compact on-map controls: locate + hamburger menu for secondary actions. */
+/** Compact on-map controls: locate + hamburger menu for map-viewport tools (zoom, filter, view toggle). */
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,9 +9,6 @@ import {
   faFilter,
   faList,
   faMap,
-  faCat,
-  faCompass,
-  faBug,
   faBars,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -20,9 +17,6 @@ export default function MapControls({
   map,
   onLocate,
   onFilter,
-  onMySightings,
-  onCatDirectory,
-  onReportIssue,
   activeFilterCount = 0,
   viewMode = "map",
   onToggleView,
@@ -93,24 +87,6 @@ export default function MapControls({
       label: viewMode === "map" ? t("map.listView") : t("map.mapView"),
       icon: viewMode === "map" ? faList : faMap,
       onClick: onToggleView,
-    },
-    {
-      id: "my-cats",
-      label: t("map.myCats"),
-      icon: faCat,
-      onClick: onMySightings,
-    },
-    {
-      id: "cat-directory",
-      label: t("map.catDirectory"),
-      icon: faCompass,
-      onClick: onCatDirectory,
-    },
-    {
-      id: "report",
-      label: t("map.reportIssue"),
-      icon: faBug,
-      onClick: onReportIssue,
     },
   ];
 
