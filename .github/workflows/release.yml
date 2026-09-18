@@ -289,6 +289,12 @@ jobs:
   github-release:
     runs-on: ubuntu-latest
     needs: [validate-tag, deploy-render, android-release, ios-release]
+    # iOS is optional: publish the release even if the iOS build failed.
+    if: >-
+      ${{ !cancelled()
+      && needs.validate-tag.result == 'success'
+      && needs.deploy-render.result == 'success'
+      && needs.android-release.result == 'success' }}
     permissions:
       contents: write
     steps:
@@ -301,6 +307,7 @@ jobs:
           path: release-artifacts
 
       - name: Download iOS artifacts
+        if: needs.ios-release.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: ios-release-${{ needs.validate-tag.outputs.tag }}
