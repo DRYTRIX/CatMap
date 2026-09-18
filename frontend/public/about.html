@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f59e0b" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href="https://catmap.drytrix.com/about" />
+    <title>About — CatMap</title>
+    <meta
+      name="description"
+      content="CatMap is a free, anonymous world map of cat sightings. No accounts required, open source under the MIT license."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CatMap" />
+    <meta property="og:title" content="About — CatMap" />
+    <meta
+      property="og:description"
+      content="CatMap is a free, anonymous world map of cat sightings. No accounts required, open source under the MIT license."
+    />
+    <meta property="og:url" content="https://catmap.drytrix.com/about" />
+    <meta property="og:image" content="https://catmap.drytrix.com/icon-512.png" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: #1e293b;
+        --muted: #64748b;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --accent: #f59e0b;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e2e8f0;
+          --muted: #94a3b8;
+          --bg: #0f172a;
+          --card: #1e293b;
+        }
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin-bottom: 0.25rem;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+      }
+      section {
+        background: var(--card);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+      }
+      h2 {
+        font-size: 1.1rem;
+        margin: 0 0 0.5rem;
+      }
+      p,
+      ul,
+      ol {
+        margin: 0.5rem 0 0;
+      }
+      ul,
+      ol {
+        padding-left: 1.25rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      .back {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      code {
+        background: rgba(127, 127, 127, 0.15);
+        border-radius: 4px;
+        padding: 0.1rem 0.3rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Back to CatMap</a>
+      <h1>About CatMap</h1>
+      <p class="meta">An anonymous world map of cat sightings</p>
+
+      <section>
+        <h2>What CatMap is</h2>
+        <p>
+          CatMap is a free, anonymous world map where anyone can drop a pin to
+          report a cat sighting. Attach a photo and a short description, and
+          the cat appears on the map for others nearby to find and confirm.
+          Over time the map fills in with real, community-confirmed sightings
+          of stray, ear-tipped, and neighborhood cats worldwide.
+        </p>
+        <p>
+          It's built for people who care about the cats around them: trackers
+          of colony cats and TNR (trap-neuter-return) efforts, people looking
+          for a missing cat, or anyone who just wants to see which cats live
+          nearby.
+        </p>
+      </section>
+
+      <section>
+        <h2>How it works</h2>
+        <ol>
+          <li>Tap the map (or use your location) to drop a pin where you saw a cat.</li>
+          <li>Add a photo — the app reads EXIF GPS automatically when available.</li>
+          <li>Write a short description and post it. A dot appears on the world map.</li>
+          <li>Anyone can tap a dot to view the sighting and confirm the cat is still around.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Anonymous by default</h2>
+        <p>
+          You don't need an account to use CatMap. Each device is identified
+          by a random token stored only in your browser, used solely to
+          prevent double-confirming and to let you manage your own posts. No
+          personal information is required to post, confirm, or browse the
+          map. Uploaded photos have their EXIF metadata stripped before
+          storage.
+        </p>
+        <p>
+          An account (email/password or Google) is entirely optional — it
+          only exists to sync your cats and hearts across devices and to send
+          you notifications you opt into. Read the full
+          <a href="/privacy.html">Privacy Policy</a> for details on what is
+          and isn't stored.
+        </p>
+      </section>
+
+      <section>
+        <h2>Open source</h2>
+        <p>
+          CatMap is open source software, released under the
+          <a
+            href="https://github.com/DRYTRIX/CatMap/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener noreferrer"
+            >MIT license</a
+          >. The full source code, issue tracker, and contribution guide are
+          on
+          <a
+            href="https://github.com/DRYTRIX/CatMap"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub</a
+          >.
+        </p>
+      </section>
+
+      <section>
+        <h2>Made by DRYTRIX</h2>
+        <p>
+          CatMap is built and maintained by
+          <a href="https://drytrix.com" target="_blank" rel="noopener noreferrer"
+            >DRYTRIX</a
+          >. Check out our other projects:
+          <a
+            href="https://timetracker.drytrix.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            >TimeTracker</a
+          >
+          and
+          <a
+            href="https://seam-de-stress.drytrix.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Seam de Stress</a
+          >.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -19,6 +19,10 @@ export default function Footer() {
         <span className="site-footer-sep" aria-hidden="true">
           ·
         </span>
+        <a href="/about">{t("footer.about")}</a>
+        <span className="site-footer-sep" aria-hidden="true">
+          ·
+        </span>
         <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
           {t("footer.github")}
         </a>
