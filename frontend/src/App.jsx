@@ -38,6 +38,24 @@ import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
 import { AuthProvider } from "./context/AuthContext";
 import { migrateFavoritesToHearts } from "./lib/hearts";
 
+// Every "screen" reachable via a shareable/bookmarkable `?screen=` URL param.
+// Sighting/cat sheets (`s`/`c`) are handled separately since they can stack on
+// top of one of these.
+const SCREENS = new Set([
+  "filter",
+  "favorites",
+  "mySightings",
+  "recent",
+  "reportIssue",
+  "stats",
+  "notifications",
+  "settings",
+  "account",
+  "offlineQueue",
+  "watches",
+  "catDirectory",
+]);
+
 function AppShell() {
   const { t } = useTranslation();
   const toast = useToast();
@@ -49,43 +67,14 @@ function AppShell() {
   const [selectedId, setSelectedId] = useState(null);
   const [selectedCatId, setSelectedCatId] = useState(null);
   const [filters, setFilters] = useState(loadFilters);
-  const [filtering, setFiltering] = useState(false);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [showMySightings, setShowMySightings] = useState(false);
-  const [showRecent, setShowRecent] = useState(false);
-  const [showReportIssue, setShowReportIssue] = useState(false);
-  const [showStats, setShowStats] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showAccount, setShowAccount] = useState(false);
+  const [screen, setScreen] = useState(null); // one of SCREENS, or null
   const [accountVerifyToken, setAccountVerifyToken] = useState(null);
   const [accountResetToken, setAccountResetToken] = useState(null);
-  const [showOfflineQueue, setShowOfflineQueue] = useState(false);
-  const [showWatches, setShowWatches] = useState(false);
-  const [showCatDirectory, setShowCatDirectory] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [queueCount, setQueueCount] = useState(0);
   const [viewMode, setViewMode] = useState("map");
   const [mapMenuOpen, setMapMenuOpen] = useState(false);
   const mapRef = useRef(null);
-
-  // Every "screen" reachable via a shareable/bookmarkable `?screen=` URL param.
-  // Sighting/cat sheets (`s`/`c`) are handled separately below since they can
-  // stack on top of one of these.
-  const SCREEN_NAMES = {
-    filter: [filtering, setFiltering],
-    favorites: [showFavorites, setShowFavorites],
-    mySightings: [showMySightings, setShowMySightings],
-    recent: [showRecent, setShowRecent],
-    reportIssue: [showReportIssue, setShowReportIssue],
-    stats: [showStats, setShowStats],
-    notifications: [showNotifications, setShowNotifications],
-    settings: [showSettings, setShowSettings],
-    account: [showAccount, setShowAccount],
-    offlineQueue: [showOfflineQueue, setShowOfflineQueue],
-    watches: [showWatches, setShowWatches],
-    catDirectory: [showCatDirectory, setShowCatDirectory],
-  };
 
   function pushNav(mutate) {
     const params = new URLSearchParams(window.location.search);
@@ -101,14 +90,14 @@ function AppShell() {
     window.history.replaceState({ catmapNav: true }, "", qs ? `/?${qs}` : "/");
   }
 
-  /** Open one of SCREEN_NAMES as a new, navigable history entry. */
+  /** Open one of SCREENS as a new, navigable history entry. */
   function openScreen(name) {
     pushNav((params) => {
       params.set("screen", name);
       params.delete("s");
       params.delete("c");
     });
-    SCREEN_NAMES[name][1](true);
+    setScreen(name);
   }
 
   /** Jump directly from one screen to another in place (e.g. Settings -> Account) without growing the back stack. */
@@ -118,7 +107,7 @@ function AppShell() {
       params.delete("s");
       params.delete("c");
     });
-    Object.entries(SCREEN_NAMES).forEach(([key, [, set]]) => set(key === name));
+    setScreen(name);
   }
 
   // Opening a sighting/cat sheet always takes over from whatever screen was
@@ -133,7 +122,7 @@ function AppShell() {
       params.delete("c");
       params.delete("screen");
     });
-    Object.values(SCREEN_NAMES).forEach(([, set]) => set(false));
+    setScreen(null);
     setSelectedCatId(null);
     setSelectedId(id);
   }
@@ -144,7 +133,7 @@ function AppShell() {
       params.delete("s");
       params.delete("screen");
     });
-    Object.values(SCREEN_NAMES).forEach(([, set]) => set(false));
+    setScreen(null);
     setSelectedId(null);
     setSelectedCatId(id);
   }
@@ -160,7 +149,7 @@ function AppShell() {
       params.delete("s");
       params.delete("c");
     });
-    Object.values(SCREEN_NAMES).forEach(([, set]) => set(false));
+    setScreen(null);
     setSelectedId(null);
     setSelectedCatId(null);
   }
@@ -174,8 +163,7 @@ function AppShell() {
       setMapMenuOpen(false);
       return true;
     }
-    const anyScreenOpen = Object.values(SCREEN_NAMES).some(([v]) => v);
-    if (anyScreenOpen || selectedId || selectedCatId) {
+    if (screen || selectedId || selectedCatId) {
       window.history.back();
       return true;
     }
@@ -196,17 +184,13 @@ function AppShell() {
   useEffect(() => {
     function onPopState() {
       const params = new URLSearchParams(window.location.search);
-      const screen = params.get("screen");
-      Object.entries(SCREEN_NAMES).forEach(([name, [, set]]) => set(name === screen));
+      const next = params.get("screen");
+      setScreen(SCREENS.has(next) ? next : null);
       setSelectedId(params.get("s"));
       setSelectedCatId(params.get("c"));
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-    // Intentionally mount-only: the setters captured here are stable across
-    // renders (useState), so this doesn't need to re-run when SCREEN_NAMES'
-    // *values* change on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -219,7 +203,7 @@ function AppShell() {
     if (pathMatch) params.set("s", id);
 
     const catId = params.get("c");
-    const screen = params.get("screen");
+    const screenParam = params.get("screen");
     const verify = params.get("verify");
     const reset = params.get("reset");
 
@@ -228,21 +212,21 @@ function AppShell() {
       setSelectedId(id);
     }
     if (catId) setSelectedCatId(catId);
-    if (screen && SCREEN_NAMES[screen]) SCREEN_NAMES[screen][1](true);
+    if (SCREENS.has(screenParam)) setScreen(screenParam);
 
     if (verify) {
       setAccountVerifyToken(verify);
-      setShowAccount(true);
+      setScreen("account");
       params.delete("verify");
       params.set("screen", "account");
     } else if (reset) {
       setAccountResetToken(reset);
-      setShowAccount(true);
+      setScreen("account");
       params.delete("reset");
       params.set("screen", "account");
     }
 
-    if (pathMatch || id || catId || screen || verify || reset) {
+    if (pathMatch || id || catId || screenParam || verify || reset) {
       const qs = params.toString();
       window.history.replaceState({ catmapNav: true }, "", qs ? `/?${qs}` : "/");
     }
@@ -278,9 +262,17 @@ function AppShell() {
         .then(setQueueCount)
         .catch(() => {});
     }
+    // Skip polling while the tab is hidden; catch up as soon as it's visible again.
+    function refreshIfVisible() {
+      if (document.visibilityState === "visible") refreshCounts();
+    }
     refreshCounts();
-    const id = setInterval(refreshCounts, 60_000);
-    return () => clearInterval(id);
+    const id = setInterval(refreshIfVisible, 60_000);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
   }, [refreshKey]);
 
   useEffect(() => {
@@ -431,7 +423,7 @@ function AppShell() {
         />
       )}
 
-      {filtering && (
+      {screen === "filter" && (
         <FilterPanel
           value={filters}
           onApply={applyFilters}
@@ -439,19 +431,19 @@ function AppShell() {
         />
       )}
 
-      {showFavorites && (
+      {screen === "favorites" && (
         <FavoritesModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
-      {showMySightings && (
+      {screen === "mySightings" && (
         <MySightingsModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
-      {showRecent && (
+      {screen === "recent" && (
         <RecentFeedModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
-      {showStats && (
+      {screen === "stats" && (
         <StatsModal
           onClose={closeScreen}
           getBounds={() => {
@@ -468,11 +460,11 @@ function AppShell() {
         />
       )}
 
-      {showReportIssue && (
+      {screen === "reportIssue" && (
         <ReportIssueModal onClose={closeScreen} />
       )}
 
-      {showNotifications && (
+      {screen === "notifications" && (
         <NotificationsModal
           onClose={() => {
             closeScreen();
@@ -489,7 +481,7 @@ function AppShell() {
         />
       )}
 
-      {showSettings && (
+      {screen === "settings" && (
         <SettingsModal
           onClose={closeScreen}
           onReportIssue={() => switchScreen("reportIssue")}
@@ -498,7 +490,7 @@ function AppShell() {
         />
       )}
 
-      {showAccount && (
+      {screen === "account" && (
         <AccountModal
           onClose={() => {
             closeScreen();
@@ -510,14 +502,14 @@ function AppShell() {
         />
       )}
 
-      {showOfflineQueue && (
+      {screen === "offlineQueue" && (
         <OfflineQueueModal
           onClose={closeScreen}
           onFlushed={() => pendingCount().then(setQueueCount)}
         />
       )}
 
-      {showWatches && (
+      {screen === "watches" && (
         <WatchesModal
           onClose={closeScreen}
           onSelect={openSighting}
@@ -529,7 +521,7 @@ function AppShell() {
         />
       )}
 
-      {showCatDirectory && (
+      {screen === "catDirectory" && (
         <CatDirectoryModal onClose={closeScreen} onSelect={openCat} />
       )}
       </Suspense>

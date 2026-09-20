@@ -14,11 +14,14 @@ import {
   markGone,
   reportSighting,
   reverseGeocode,
-  sendPrivateTip,
   unwatchTarget,
   watchTarget,
 } from "../api";
 import CommentThread from "./CommentThread";
+import SightingPhotos from "./SightingPhotos";
+import MissingCard from "./MissingCard";
+import ReportSheet from "./ReportSheet";
+import SimilarSheet from "./SimilarSheet";
 // Lazy-loaded: pulls jspdf / html-to-image / qrcode / map compositor out of the
 // main bundle — they only load when the user opens the poster.
 const PosterModal = lazy(() => import("./PosterModal"));
@@ -45,7 +48,6 @@ import {
   faImages,
   faFilePdf,
   faLocationDot,
-  faPhone,
   faBell,
   faBellSlash,
   faHeart as faHeartSolid,
@@ -54,18 +56,6 @@ import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
 
 // Mirrors MAX_PHOTOS_PER_SIGHTING in backend/app/routers/sightings.py.
 const MAX_PHOTOS = 6;
-
-// Turn a free-text contact into a tappable tel:/mailto: link when it clearly
-// looks like a phone number or email; otherwise return null (render as text).
-function contactHref(contact) {
-  const s = (contact || "").trim();
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return `mailto:${s}`;
-  const phone = s.replace(/[^\d+]/g, "");
-  if (/^\+?\d{6,}$/.test(phone)) return `tel:${phone}`;
-  return null;
-}
-
-const REPORT_REASON_IDS = ["not_a_cat", "spam", "wrong_location", "duplicate", "other"];
 
 /**
  * Bottom-sheet sighting detail. Hosts the photo (→ lightbox), confirm,
@@ -98,8 +88,6 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   const [linking, setLinking] = useState(false);
   const [address, setAddress] = useState(null);
   const [posterOpen, setPosterOpen] = useState(false);
-  const [privateTip, setPrivateTip] = useState("");
-  const [privateTipOpen, setPrivateTipOpen] = useState(false);
   const mine = Boolean(data?.is_mine);
 
   useEffect(() => {
@@ -111,6 +99,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     setData(null);
     setError(null);
     setActivePhoto(0);
+    setImgLoaded(false);
     setFavorite(isFavorite(id));
     setHeartsCount(0);
     setWatching(false);
@@ -160,23 +149,6 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
       }
     } catch (e) {
       toast.error(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onSendPrivateTip(e) {
-    e.preventDefault();
-    const body = privateTip.trim();
-    if (!body) return;
-    setBusy(true);
-    try {
-      await sendPrivateTip(id, body);
-      setPrivateTip("");
-      setPrivateTipOpen(false);
-      toast.success(t("sighting.privateTipSent"));
-    } catch (err) {
-      toast.error(err.message);
     } finally {
       setBusy(false);
     }
@@ -432,113 +404,28 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
 
       {data && (
         <>
-          <button
-            className="card-img-btn detail-img-btn"
-            onClick={() => {
+          <SightingPhotos
+            data={data}
+            mine={mine}
+            busy={busy}
+            activePhoto={activePhoto}
+            imgLoaded={imgLoaded}
+            onSelectPhoto={(i) => {
+              setActivePhoto(i);
+              setImgLoaded(false);
+            }}
+            onImgLoad={() => setImgLoaded(true)}
+            onExpand={() => {
               track("sighting_photo_expand");
               setLightbox(true);
             }}
-            aria-label={t("sighting.viewFullPhoto")}
-          >
-            <img
-              className={`card-img detail-img ${imgLoaded ? "is-loaded" : ""}`}
-              src={assetUrl(data.photos[activePhoto]?.thumbnail_url ?? data.thumbnail_url)}
-              alt={t("common.catSighting")}
-              onLoad={() => setImgLoaded(true)}
-            />
-            <span className="card-img-zoom" aria-hidden="true">⛶</span>
-          </button>
-
-          {data.photos.length > 1 && (
-            <div className="photo-thumbs" role="list">
-              {data.photos.map((p, i) => (
-                <div key={p.id} className={`photo-thumb-wrap ${i === activePhoto ? "is-active" : ""}`}>
-                  <button
-                    type="button"
-                    role="listitem"
-                    className={`photo-thumb ${i === activePhoto ? "is-active" : ""}`}
-                    aria-label={t("sighting.photoOf", { index: i + 1, total: data.photos.length })}
-                    aria-current={i === activePhoto}
-                    onClick={() => {
-                      setActivePhoto(i);
-                      setImgLoaded(false);
-                    }}
-                  >
-                    <img src={assetUrl(p.thumbnail_url)} alt="" loading="lazy" />
-                  </button>
-                  {mine && p.id !== "primary" && (
-                    <button
-                      type="button"
-                      className="photo-thumb-delete"
-                      aria-label={t("sighting.deletePhoto")}
-                      onClick={() => onDeletePhoto(p.id)}
-                      disabled={busy}
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+            onDeletePhoto={onDeletePhoto}
+          />
 
           {data.description && <p className="card-desc">{data.description}</p>}
 
           {isMissing && (
-            <div className={`missing-card ${isFound ? "is-found" : ""}`}>
-              <div className="missing-card-head">
-                <span
-                  className={`kind-badge ${isFound ? "kind-badge--found" : "kind-badge--missing"}`}
-                >
-                  {isFound ? t("sighting.foundBadge") : t("sighting.missingBadge")}
-                </span>
-                {data.cat_name && <span className="missing-card-name">{data.cat_name}</span>}
-              </div>
-              {!isFound && <p className="missing-card-sub">{t("sighting.missingHelp")}</p>}
-              {data.contact &&
-                (contactHref(data.contact) ? (
-                  <a
-                    className="btn btn-primary btn-block missing-contact"
-                    href={contactHref(data.contact)}
-                  >
-                    <FontAwesomeIcon icon={faPhone} /> {data.contact}
-                  </a>
-                ) : (
-                  <p className="missing-info-row">
-                    <strong>{t("sighting.contactLabel")}:</strong> {data.contact}
-                  </p>
-                ))}
-              {!mine && !isFound && !data.contact && (
-                <p className="hint">{t("sighting.contactPrivateHint")}</p>
-              )}
-              {!mine && !isFound && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-block"
-                  onClick={() => setPrivateTipOpen((v) => !v)}
-                >
-                  {t("sighting.privateTip")}
-                </button>
-              )}
-              {privateTipOpen && (
-                <form className="private-tip-form" onSubmit={onSendPrivateTip}>
-                  <textarea
-                    value={privateTip}
-                    onChange={(e) => setPrivateTip(e.target.value)}
-                    placeholder={t("sighting.privateTipPlaceholder")}
-                    maxLength={500}
-                    rows={3}
-                  />
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-block"
-                    disabled={busy || !privateTip.trim()}
-                  >
-                    {t("sighting.privateTipSend")}
-                  </button>
-                </form>
-              )}
-            </div>
+            <MissingCard data={data} sightingId={id} mine={mine} isFound={isFound} />
           )}
 
           {data.status === "pending" && (
@@ -749,36 +636,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
         />
       )}
 
-      {reportOpen && (
-        <Modal
-          onClose={() => setReportOpen(false)}
-          labelledBy="report-title"
-          className="sheet report-sheet"
-        >
-          <div className="wizard-head">
-            <h2 id="report-title">{t("sighting.reportTitle")}</h2>
-            <button
-              className="icon-btn"
-              aria-label={t("common.close")}
-              onClick={() => setReportOpen(false)}
-            >
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          </div>
-          <p className="hint">{t("sighting.reportWhy")}</p>
-          <div className="report-reasons">
-            {REPORT_REASON_IDS.map((r) => (
-              <button
-                key={r}
-                className="btn btn-ghost btn-block"
-                onClick={() => submitReport(r)}
-              >
-                {t(`sighting.reasons.${r}`)}
-              </button>
-            ))}
-          </div>
-        </Modal>
-      )}
+      {reportOpen && <ReportSheet onClose={() => setReportOpen(false)} onSubmit={submitReport} />}
 
       <ConfirmDialog
         open={confirmAction === "gone"}
@@ -832,62 +690,12 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
       />
 
       {similarOpen && (
-        <Modal
+        <SimilarSheet
+          similar={similar}
+          linking={linking}
           onClose={() => setSimilarOpen(false)}
-          labelledBy="similar-title"
-          className="sheet report-sheet"
-        >
-          <div className="wizard-head">
-            <h2 id="similar-title">{t("sighting.similarTitle")}</h2>
-            <button
-              className="icon-btn"
-              aria-label={t("common.close")}
-              onClick={() => setSimilarOpen(false)}
-            >
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          </div>
-          <p className="hint">{t("sighting.similarHint")}</p>
-
-          {similar === null && (
-            <>
-              <div className="skeleton skeleton-line" />
-              <div className="skeleton skeleton-line short" />
-            </>
-          )}
-
-          {similar?.length === 0 && (
-            <div className="sighting-list-empty">{t("sighting.similarEmpty")}</div>
-          )}
-
-          {similar && similar.length > 0 && (
-            <div className="sighting-list" role="list">
-              {similar.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="sighting-list-item"
-                  role="listitem"
-                  disabled={linking}
-                  onClick={() => linkToSighting(s.id)}
-                >
-                  <img
-                    className="sighting-list-thumb"
-                    src={assetUrl(s.thumbnail_url)}
-                    alt=""
-                    loading="lazy"
-                  />
-                  <div className="sighting-list-body">
-                    <p className="sighting-list-desc">{s.description || t("common.catSighting")}</p>
-                    <p className="sighting-list-meta">
-                      🐱 {timeAgo(s.created_at)} · {t("sighting.linkSameCat")}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Modal>
+          onPick={linkToSighting}
+        />
       )}
     </Modal>
   );
