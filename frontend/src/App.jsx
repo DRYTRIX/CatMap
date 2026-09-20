@@ -30,7 +30,7 @@ const WatchesModal = lazy(() => import("./components/WatchesModal"));
 const CatDirectoryModal = lazy(() => import("./components/CatDirectoryModal"));
 import { markCreated } from "./deviceToken";
 import { flushQueue, pendingCount } from "./lib/offlineQueue";
-import { getPosition } from "./lib/geolocate";
+import { getPosition, locateErrorKey } from "./lib/geolocate";
 import { initNativeApp } from "./lib/nativeInit";
 import { track } from "./analytics";
 import { countActiveFilters, loadFilters, saveFilters } from "./lib/filters";
@@ -41,6 +41,7 @@ function AppShell() {
   const { t } = useTranslation();
   const toast = useToast();
   const [adding, setAdding] = useState(false);
+  const [addAt, setAddAt] = useState(null); // pre-filled pin from the empty-map CTA
   const [refreshKey, setRefreshKey] = useState(0);
   const [count, setCount] = useState(null);
   const [mapReady, setMapReady] = useState(false);
@@ -309,8 +310,19 @@ function AppShell() {
     setAdding(true);
   }
 
+  function openAddHere() {
+    const m = mapRef.current;
+    // Only pre-fill when zoomed in enough that the centre is a meaningful spot.
+    if (m && m.getZoom() >= 10) {
+      const c = m.getCenter();
+      setAddAt({ lat: c.lat, lng: c.lng });
+    }
+    openAdd();
+  }
+
   function closeAdd() {
     setAdding(false);
+    setAddAt(null);
   }
 
   function locateMe() {
@@ -320,7 +332,7 @@ function AppShell() {
       .then((pos) =>
         mapRef.current.setView([pos.coords.latitude, pos.coords.longitude], 15)
       )
-      .catch(() => toast.error(t("map.locateError")));
+      .catch((err) => toast.error(t(locateErrorKey(err))));
   }
 
   function applyFilters(next) {
@@ -361,6 +373,7 @@ function AppShell() {
           viewMode={viewMode}
           onCountChange={setCount}
           onSelect={openSighting}
+          onAddHere={openAddHere}
           onMapReady={(m) => {
             mapRef.current = m;
             if (m) setMapReady(true);
@@ -390,7 +403,11 @@ function AppShell() {
 
       <Suspense fallback={<LoadingFallback />}>
       {adding && (
-        <AddSightingModal onClose={closeAdd} onCreated={handleCreated} />
+        <AddSightingModal
+          onClose={closeAdd}
+          onCreated={handleCreated}
+          initialLocation={addAt}
+        />
       )}
 
       {selectedId && (

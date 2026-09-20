@@ -6,7 +6,14 @@ import { timeAgo } from "../lib/time";
  * Scrollable feed of sightings in the current map view, as an alternative to
  * the cluster map. Reuses the same dots already fetched by MapView.
  */
-export default function SightingList({ dots, loadedOnce, onSelect }) {
+export default function SightingList({
+  dots,
+  loadedOnce,
+  onSelect,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
+}) {
   const { t } = useTranslation();
 
   if (loadedOnce && dots.length === 0) {
@@ -45,6 +52,16 @@ export default function SightingList({ dots, loadedOnce, onSelect }) {
           </div>
         </button>
       ))}
+      {hasMore && onLoadMore && (
+        <button
+          type="button"
+          className="btn btn-ghost sighting-list-more"
+          onClick={onLoadMore}
+          disabled={loadingMore}
+        >
+          {t("common.loadMore")}
+        </button>
+      )}
     </div>
   );
 }

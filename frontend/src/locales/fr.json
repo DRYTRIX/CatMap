@@ -59,6 +59,10 @@
     "fetchError": "Impossible d'actualiser la carte — affichage des données en cache.",
     "retryLoad": "Réessayer",
     "locateError": "Impossible d'obtenir votre position.",
+    "addFirstHere": "Ajouter ici",
+    "locateDenied": "L'accès à la position est bloqué. Autorisez-le dans les réglages du navigateur ou de l'appareil, ou choisissez un point sur la carte.",
+    "locateTimeout": "La demande de position a expiré. Réessayez.",
+    "locateUnavailable": "Votre position n'est pas disponible pour le moment.",
     "clusterCount": "{{count}} chats dans cette zone"
   },
   "connectivity": {
@@ -124,6 +128,9 @@
     }
   },
   "addSighting": {
+    "draftFound": "Vous avez un signalement inachevé.",
+    "draftResume": "Reprendre",
+    "draftDiscard": "Supprimer",
     "title": "Ajouter une observation",
     "steps": {
       "photos": "Photos",
@@ -300,6 +307,8 @@
     "tipMapHint": "Lieux des indices et l’épingle d’origine."
   },
   "notifications": {
+    "delete": "Supprimer la notification",
+    "deleteError": "Impossible de supprimer la notification.",
     "title": "Notifications",
     "empty": "Aucune notification pour l'instant.",
     "loadError": "Impossible de charger les notifications.",

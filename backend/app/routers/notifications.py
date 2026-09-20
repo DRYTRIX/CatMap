@@ -68,6 +68,26 @@ def read_notifications(
     return {"marked": marked}
 
 
+@router.delete("/notifications/{notification_id}")
+def delete_notification(
+    notification_id: str,
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Delete one notification from the caller's inbox."""
+    row = db.execute(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.recipient_token.in_(ident.tokens),
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}
+
+
 @router.get("/push/vapid-public-key")
 def vapid_public_key() -> dict:
     key = settings.vapid_public_key

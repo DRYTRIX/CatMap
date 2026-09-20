@@ -6,6 +6,11 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Add-sighting drafts: unfinished forms (photos, text, pin) are saved locally and can be resumed.
+- Distinct location error messages (denied / timed out / unavailable) and an "Add one here" action on empty map areas.
+- "Load more" in the list view and notification inbox; `DELETE /notifications/{id}` and a delete button per notification.
+- Offline reads: the service worker caches map data (network-first), cat thumbnails, and the app shell.
+- `GET /sightings/clusters` returns each cluster's extent (`min_lat`/`max_lat`/`min_lng`/`max_lng`); clicking a cluster zooms to fit its cats.
 - Persistent bottom navigation (Recent, Favorites, Watching) so these no longer require opening the map's hamburger menu first.
 - "Watching" screen listing everything the current identity follows, with unwatch via the existing bell toggle.
 - Cat directory: `GET /cats` (search by name, near-me radius) and a browse UI, so named cat profiles are discoverable without first finding a linked sighting.

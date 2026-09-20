@@ -64,7 +64,11 @@ export async function fetchStats() {
   return handle(res);
 }
 
-export async function fetchDots(bbox, filters = {}, signal) {
+// Server-side cap on dots per request (backend `max_dots_per_query`). When a
+// response reaches it, more sightings may exist and can be paged with `offset`.
+export const DOTS_PAGE_SIZE = 2000;
+
+export async function fetchDots(bbox, filters = {}, signal, { offset = 0 } = {}) {
   const params = new URLSearchParams({
     min_lat: bbox.minLat,
     max_lat: bbox.maxLat,
@@ -72,6 +76,7 @@ export async function fetchDots(bbox, filters = {}, signal) {
     max_lng: bbox.maxLng,
     ...filtersToParams(filters),
   });
+  if (offset > 0) params.set("offset", offset);
   const res = await fetch(`${API_BASE}/api/sightings?${params}`, { signal });
   return handle(res);
 }
@@ -503,8 +508,11 @@ export async function reportComment(sightingId, commentId) {
 
 // ---------- Notifications & push ----------
 
-export async function fetchNotifications(signal) {
-  const res = await fetch(`${API_BASE}/api/notifications`, {
+export const NOTIFICATIONS_PAGE_SIZE = 50;
+
+export async function fetchNotifications(signal, { offset = 0 } = {}) {
+  const params = new URLSearchParams({ limit: NOTIFICATIONS_PAGE_SIZE, offset });
+  const res = await fetch(`${API_BASE}/api/notifications?${params}`, {
     headers: authHeaders(),
     signal,
   });
@@ -526,6 +534,14 @@ export async function markNotificationsRead(ids = []) {
     method: "POST",
     headers: authHeaders(),
     body: form,
+  });
+  return handle(res);
+}
+
+export async function deleteNotification(id) {
+  const res = await fetch(`${API_BASE}/api/notifications/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
   });
   return handle(res);
 }

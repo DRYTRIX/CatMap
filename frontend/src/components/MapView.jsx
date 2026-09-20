@@ -12,7 +12,7 @@ import MarkerClusterGroupImport from "react-leaflet-cluster";
 // Vite 8 + "type":"module" can resolve CJS default exports as the module namespace.
 const MarkerClusterGroup =
   MarkerClusterGroupImport?.default ?? MarkerClusterGroupImport;
-import { fetchClusters, fetchDots } from "../api";
+import { DOTS_PAGE_SIZE, fetchClusters, fetchDots } from "../api";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 import { getPosition } from "../lib/geolocate";
 import { catIcon, clusterIcon, serverClusterIcon } from "../lib/markers";
@@ -64,11 +64,13 @@ export default function MapView({
   onMapReady,
   onCountChange,
   onSelect,
+  onAddHere,
 }) {
   const [dots, setDots] = useState([]);
   const [clusters, setClusters] = useState([]);
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const viewRef = useRef(null); // { bbox, zoom }
   const abortRef = useRef(null);
   const mapRef = useRef(null);
@@ -112,6 +114,24 @@ export default function MapView({
     },
     [filters, viewMode, onCountChange, toast, t]
   );
+
+  async function loadMore() {
+    if (!viewRef.current || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const more = await fetchDots(viewRef.current.bbox, filters, undefined, {
+        offset: dots.length,
+      });
+      const seen = new Set(dots.map((d) => d.id));
+      const merged = [...dots, ...more.filter((d) => !seen.has(d.id))];
+      setDots(merged);
+      onCountChange?.(merged.length);
+    } catch {
+      toast.error(t("map.fetchError"));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   function retryLoad() {
     if (viewRef.current) load(viewRef.current.bbox, viewRef.current.zoom);
@@ -185,11 +205,20 @@ export default function MapView({
                 click: () => {
                   const map = mapRef.current;
                   if (!map) return;
-                  // Drill in toward the cluster's centroid; big cells split into
-                  // smaller clusters/dots over the actual cats instead of jumping
-                  // to a fixed zoom over empty space.
-                  const next = Math.min(map.getZoom() + 3, CLUSTER_ZOOM + 2);
-                  map.flyTo([c.lat, c.lng], next);
+                  // Zoom to fit the cats in this cell so the result is predictable;
+                  // fall back to a centroid drill-in if bounds are missing.
+                  if (c.min_lat != null) {
+                    map.flyToBounds(
+                      [
+                        [c.min_lat, c.min_lng],
+                        [c.max_lat, c.max_lng],
+                      ],
+                      { padding: [40, 40], maxZoom: 17 }
+                    );
+                  } else {
+                    const next = Math.min(map.getZoom() + 3, CLUSTER_ZOOM + 2);
+                    map.flyTo([c.lat, c.lng], next);
+                  }
                 },
               }}
             />
@@ -233,9 +262,25 @@ export default function MapView({
       )}
 
       {viewMode === "list" ? (
-        <SightingList dots={dots} loadedOnce={loadedOnce} onSelect={onSelect} />
+        <SightingList
+          dots={dots}
+          loadedOnce={loadedOnce}
+          onSelect={onSelect}
+          hasMore={dots.length >= DOTS_PAGE_SIZE}
+          loadingMore={loadingMore}
+          onLoadMore={loadMore}
+        />
       ) : (
-        isEmpty && <div className="empty-hint">{t("map.emptyArea")}</div>
+        isEmpty && (
+          <div className="empty-hint">
+            {t("map.emptyArea")}
+            {onAddHere && (
+              <button type="button" className="empty-hint-cta" onClick={onAddHere}>
+                {t("map.addFirstHere")}
+              </button>
+            )}
+          </div>
+        )
       )}
     </>
   );

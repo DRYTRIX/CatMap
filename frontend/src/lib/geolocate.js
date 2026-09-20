@@ -22,7 +22,7 @@ export async function getPosition({
     if (permission.location === "denied") {
       const requested = await Geolocation.requestPermissions();
       if (requested.location === "denied") {
-        throw new Error("Location permission denied.");
+        throw Object.assign(new Error("Location permission denied."), { code: 1 });
       }
     }
 
@@ -52,4 +52,22 @@ export async function getPosition({
       maximumAge,
     });
   });
+}
+
+/**
+ * Maps a geolocation failure to an i18n key so users learn *why* locating
+ * failed (denied vs. timed out vs. unavailable) instead of one generic toast.
+ * Codes follow GeolocationPositionError: 1 denied, 2 unavailable, 3 timeout.
+ */
+export function locateErrorKey(err) {
+  switch (err?.code) {
+    case 1:
+      return "map.locateDenied";
+    case 3:
+      return "map.locateTimeout";
+    case 2:
+      return "map.locateUnavailable";
+    default:
+      return "map.locateError";
+  }
 }

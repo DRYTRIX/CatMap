@@ -702,6 +702,18 @@ summary:focus-visible {
   animation: fade-up 0.4s var(--ease) both;
 }
 
+.empty-hint-cta {
+  margin-left: 10px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: #f59e0b;
+  color: #1c1917;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ---------- Map load error banner ---------- */
 /* Persistent (not just a toast) retry affordance for a failed sightings
    fetch, so stale pins aren't the only feedback the user gets. */
@@ -2777,4 +2789,36 @@ input[type="range"] {
   border-top-color: var(--amber-500);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+}
+
+.sighting-list-more {
+  display: block;
+  margin: 12px auto 20px;
+}
+
+.draft-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md, 12px);
+  background: var(--surface-2);
+  font-size: 14px;
+}
+.draft-banner span {
+  flex: 1 1 100%;
+}
+
+.notif-row {
+  display: flex;
+  align-items: center;
+}
+.notif-row .sighting-list-item {
+  flex: 1;
+  min-width: 0;
+}
+.notif-delete {
+  flex: none;
 }

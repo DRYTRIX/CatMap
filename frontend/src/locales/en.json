@@ -59,7 +59,11 @@
     "emptyArea": "No cats spotted in this area yet — be the first! 🐾",
     "fetchError": "Couldn't refresh the map — showing cached data.",
     "retryLoad": "Retry",
-    "locateError": "Couldn't get your location."
+    "locateError": "Couldn't get your location.",
+    "addFirstHere": "Add one here",
+    "locateDenied": "Location access is blocked. Allow it in your browser or device settings, or pick a spot on the map.",
+    "locateTimeout": "Location request timed out. Try again.",
+    "locateUnavailable": "Your location isn't available right now."
   },
   "connectivity": {
     "offline": "You're offline — changes may not save.",
@@ -124,6 +128,9 @@
     }
   },
   "addSighting": {
+    "draftFound": "You have an unfinished sighting.",
+    "draftResume": "Resume",
+    "draftDiscard": "Discard",
     "title": "Add a cat sighting",
     "steps": {
       "photos": "Photos",
@@ -300,6 +307,8 @@
     "tipMapHint": "Tip locations and the original pin."
   },
   "notifications": {
+    "delete": "Delete notification",
+    "deleteError": "Couldn't delete the notification.",
     "title": "Notifications",
     "empty": "No notifications yet.",
     "loadError": "Couldn't load notifications.",

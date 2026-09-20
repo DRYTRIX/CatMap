@@ -8,7 +8,7 @@ import {
   fetchComments,
   reportComment,
 } from "../api";
-import { getPosition } from "../lib/geolocate";
+import { getPosition, locateErrorKey } from "../lib/geolocate";
 import { timeAgo } from "../lib/time";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import LocationPicker from "./LocationPicker";
@@ -114,8 +114,8 @@ export default function CommentThread({
         lng: pos.coords.longitude,
       });
       setWithLocation(true);
-    } catch {
-      toast.error(t("map.locateError"));
+    } catch (err) {
+      toast.error(t(locateErrorKey(err)));
     }
   }
 

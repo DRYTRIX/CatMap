@@ -81,3 +81,25 @@ def test_missing_cat_fields(client):
     body = r.json()
     assert body["cat_name"] == "Luna"
     assert body["contact"] == "555-0100"
+
+
+def test_delete_notification_and_pagination(client):
+    owner = "notif-del-owner"
+    headers = {"X-Device-Token": owner}
+    sid = create_sighting(client, owner).json()["id"]
+    for i in range(2):
+        client.post(f"/api/sightings/{sid}/confirm", headers={"X-Device-Token": f"helper-{i}"})
+
+    rows = client.get("/api/notifications", headers=headers).json()
+    assert len(rows) >= 2
+    page = client.get("/api/notifications?limit=1&offset=1", headers=headers).json()
+    assert len(page) == 1 and page[0]["id"] == rows[1]["id"]
+
+    # Another identity can't delete it; the owner can, exactly once.
+    nid = rows[0]["id"]
+    other = client.delete(f"/api/notifications/{nid}", headers={"X-Device-Token": "someone-else"})
+    assert other.status_code == 404
+    assert client.delete(f"/api/notifications/{nid}", headers=headers).status_code == 200
+    assert client.delete(f"/api/notifications/{nid}", headers=headers).status_code == 404
+    left = client.get("/api/notifications", headers=headers).json()
+    assert nid not in [n["id"] for n in left]

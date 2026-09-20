@@ -1,11 +1,50 @@
 /* eslint-disable no-undef */
-import { precacheAndRoute } from "workbox-precaching";
-import { registerRoute } from "workbox-routing";
-import { CacheFirst } from "workbox-strategies";
+import { createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
+import { NavigationRoute, registerRoute } from "workbox-routing";
+import { CacheFirst, NetworkFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 
 precacheAndRoute(self.__WB_MANIFEST);
+
+// Offline app shell: serve the precached index.html for SPA navigations. The
+// API and server-rendered share pages (/s/:id) must still hit the network.
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL("/index.html"), {
+    denylist: [/^\/api\//, /^\/s\//],
+  })
+);
+
+// Public, non-personalised map reads only (matched by path so it also works
+// when the API lives on another origin). Network first so data stays fresh;
+// the cached copy is used when offline or the network is slow. Detail,
+// notifications, watches and other identity-scoped endpoints are deliberately
+// NOT cached.
+registerRoute(
+  ({ request, url }) =>
+    request.method === "GET" &&
+    (url.pathname === "/api/sightings" || url.pathname === "/api/sightings/clusters"),
+  new NetworkFirst({
+    cacheName: "api-map",
+    networkTimeoutSeconds: 4,
+    plugins: [
+      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 3 }),
+      new CacheableResponsePlugin({ statuses: [200] }),
+    ],
+  })
+);
+
+registerRoute(
+  ({ request, url }) =>
+    request.method === "GET" && /^\/api\/sightings\/[^/]+\/thumbnail$/.test(url.pathname),
+  new CacheFirst({
+    cacheName: "cat-thumbnails",
+    plugins: [
+      new ExpirationPlugin({ maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 7 }),
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+    ],
+  })
+);
 
 registerRoute(
   /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i,

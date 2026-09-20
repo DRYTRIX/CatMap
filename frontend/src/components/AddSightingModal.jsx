@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { track } from "../analytics";
 import { createSighting } from "../api";
+import { clearDraft, isDraftWorthSaving, loadDraft, saveDraft } from "../lib/addDraft";
 import { isNetworkError, queueSighting, serializeFiles } from "../lib/offlineQueue";
 import { compressImage, formatBytes } from "../lib/image";
 import {
@@ -83,7 +84,7 @@ function PhotoRequirementIcon({ status }) {
   return <FontAwesomeIcon icon={faCircle} className="photo-req-icon" aria-hidden="true" />;
 }
 
-export default function AddSightingModal({ onClose, onCreated }) {
+export default function AddSightingModal({ onClose, onCreated, initialLocation = null }) {
   const { t } = useTranslation();
   const toast = useToast();
   const submittedRef = useRef(false);
@@ -95,7 +96,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [photos, setPhotos] = useState([]);
   const [processing, setProcessing] = useState(false);
 
-  const [location, setLocation] = useState(null);
+  const [location, setLocation] = useState(initialLocation);
   const [fromExif, setFromExif] = useState(false);
 
   const [description, setDescription] = useState("");
@@ -107,6 +108,72 @@ export default function AddSightingModal({ onClose, onCreated }) {
   const [isStray, setIsStray] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const [draftOffer, setDraftOffer] = useState(null);
+
+  // Offer to resume a draft left behind by an earlier close/reload.
+  useEffect(() => {
+    let active = true;
+    loadDraft()
+      .then((d) => active && d && setDraftOffer(d))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Persist unsent work on unmount (close button, backdrop, Escape, back nav).
+  // A ref keeps the latest state visible to the one-time cleanup.
+  const draftRef = useRef(null);
+  draftRef.current = {
+    kind,
+    location,
+    fromExif,
+    description,
+    catName,
+    contact,
+    contactPublic,
+    color,
+    isEarTipped,
+    isStray,
+    photos: photos.map(({ id, previewUrl, ...rest }) => rest), // eslint-disable-line no-unused-vars
+  };
+  useEffect(
+    () => () => {
+      if (!submittedRef.current && isDraftWorthSaving(draftRef.current)) {
+        saveDraft(draftRef.current).catch(() => {});
+      }
+    },
+    []
+  );
+
+  function resumeDraft() {
+    const d = draftOffer;
+    setDraftOffer(null);
+    setKind(d.kind || "sighting");
+    if (d.location) setLocation(d.location);
+    setFromExif(Boolean(d.fromExif));
+    setDescription(d.description || "");
+    setCatName(d.catName || "");
+    setContact(d.contact || "");
+    setContactPublic(Boolean(d.contactPublic));
+    setColor(d.color || "");
+    setIsEarTipped(d.isEarTipped || "");
+    setIsStray(d.isStray || "");
+    setPhotos(
+      (d.photos || []).map((p) => ({
+        ...p,
+        id: nextPhotoId.current++,
+        previewUrl: URL.createObjectURL(p.file),
+      }))
+    );
+    track("add_sighting_draft_resume");
+  }
+
+  function discardDraft() {
+    setDraftOffer(null);
+    clearDraft().catch(() => {});
+  }
 
   const isMissing = kind === "missing";
   const photoRequirements = getPhotoRequirements({ photos, processing });
@@ -211,6 +278,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
         onProgress: setProgress,
       });
       submittedRef.current = true;
+      clearDraft().catch(() => {});
       if (created.pending) {
         toast.success(t("addSighting.pendingReview"));
         onClose();
@@ -242,6 +310,7 @@ export default function AddSightingModal({ onClose, onCreated }) {
             contactPublic: isMissing ? contactPublic : false,
           });
           submittedRef.current = true;
+          clearDraft().catch(() => {});
           toast.success(t("offline.queued"));
           onClose();
           return;
@@ -284,6 +353,18 @@ export default function AddSightingModal({ onClose, onCreated }) {
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
+
+      {draftOffer && (
+        <div className="draft-banner" role="status">
+          <span>{t("addSighting.draftFound")}</span>
+          <button type="button" className="btn btn-ghost" onClick={resumeDraft}>
+            {t("addSighting.draftResume")}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={discardDraft}>
+            {t("addSighting.draftDiscard")}
+          </button>
+        </div>
+      )}
 
       <div className="field" style={{ marginBottom: 12 }}>
         <label>{t("addSighting.kindLabel")}</label>

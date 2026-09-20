@@ -59,6 +59,10 @@
     "fetchError": "Kaart kon niet vernieuwd worden — gecachte data wordt getoond.",
     "retryLoad": "Opnieuw proberen",
     "locateError": "Kon je locatie niet ophalen.",
+    "addFirstHere": "Voeg er hier een toe",
+    "locateDenied": "Locatietoegang is geblokkeerd. Sta het toe in je browser- of apparaatinstellingen, of kies een plek op de kaart.",
+    "locateTimeout": "Locatieverzoek verlopen. Probeer opnieuw.",
+    "locateUnavailable": "Je locatie is nu niet beschikbaar.",
     "clusterCount": "{{count}} katten in dit gebied"
   },
   "connectivity": {
@@ -124,6 +128,9 @@
     }
   },
   "addSighting": {
+    "draftFound": "Je hebt een onafgemaakte melding.",
+    "draftResume": "Hervatten",
+    "draftDiscard": "Weggooien",
     "title": "Katwaarneming toevoegen",
     "steps": {
       "photos": "Foto's",
@@ -300,6 +307,8 @@
     "tipMapHint": "Tip-locaties en de oorspronkelijke pin."
   },
   "notifications": {
+    "delete": "Melding verwijderen",
+    "deleteError": "Kon de melding niet verwijderen.",
     "title": "Meldingen",
     "empty": "Nog geen meldingen.",
     "loadError": "Kon meldingen niet laden.",

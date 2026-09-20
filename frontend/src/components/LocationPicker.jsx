@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import { defaultIcon } from "../leafletIcon";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
-import { getPosition } from "../lib/geolocate";
+import { getPosition, locateErrorKey } from "../lib/geolocate";
 import { useToast } from "./Toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLocationDot, faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -32,7 +32,7 @@ export default function LocationPicker({ value, onChange }) {
         onChange({ lat: latitude, lng: longitude });
         if (map) map.setView([latitude, longitude], 15);
       })
-      .catch(() => toast.error(t("map.locateError")))
+      .catch((err) => toast.error(t(locateErrorKey(err))))
       .finally(() => setLocating(false));
   }
 

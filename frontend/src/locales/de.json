@@ -59,6 +59,10 @@
     "fetchError": "Karte konnte nicht aktualisiert werden — zwischengespeicherte Daten werden angezeigt.",
     "retryLoad": "Erneut versuchen",
     "locateError": "Standort konnte nicht ermittelt werden.",
+    "addFirstHere": "Hier hinzufügen",
+    "locateDenied": "Standortzugriff ist blockiert. Erlaube ihn in den Browser- oder Geräteeinstellungen oder wähle einen Punkt auf der Karte.",
+    "locateTimeout": "Zeitüberschreitung bei der Standortabfrage. Bitte erneut versuchen.",
+    "locateUnavailable": "Dein Standort ist gerade nicht verfügbar.",
     "clusterCount": "{{count}} Katzen in diesem Gebiet"
   },
   "connectivity": {
@@ -124,6 +128,9 @@
     }
   },
   "addSighting": {
+    "draftFound": "Du hast eine unfertige Meldung.",
+    "draftResume": "Fortsetzen",
+    "draftDiscard": "Verwerfen",
     "title": "Katzensichtung hinzufügen",
     "steps": {
       "photos": "Fotos",
@@ -300,6 +307,8 @@
     "tipMapHint": "Tipp-Standorte und die ursprüngliche Stecknadel."
   },
   "notifications": {
+    "delete": "Benachrichtigung löschen",
+    "deleteError": "Benachrichtigung konnte nicht gelöscht werden.",
     "title": "Benachrichtigungen",
     "empty": "Noch keine Benachrichtigungen.",
     "loadError": "Benachrichtigungen konnten nicht geladen werden.",

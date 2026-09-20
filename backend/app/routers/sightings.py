@@ -396,6 +396,10 @@ def cluster_sightings(
             func.avg(Sighting.lat).label("c_lat"),
             func.avg(Sighting.lng).label("c_lng"),
             func.count().label("n"),
+            func.min(Sighting.lat).label("min_lat"),
+            func.max(Sighting.lat).label("max_lat"),
+            func.min(Sighting.lng).label("min_lng"),
+            func.max(Sighting.lng).label("max_lng"),
         )
         .where(*conditions)
         .group_by(lat_key, lng_key)
@@ -403,7 +407,15 @@ def cluster_sightings(
     rows = db.execute(stmt).all()
     # Counts are exact — nothing is silently dropped.
     return [
-        SightingCluster(lat=r.c_lat, lng=r.c_lng, count=r.n)
+        SightingCluster(
+            lat=r.c_lat,
+            lng=r.c_lng,
+            count=r.n,
+            min_lat=r.min_lat,
+            max_lat=r.max_lat,
+            min_lng=r.min_lng,
+            max_lng=r.max_lng,
+        )
         for r in rows
     ]
 

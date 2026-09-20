@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { assetUrl, fetchRecent } from "../api";
-import { getPosition } from "../lib/geolocate";
+import { getPosition, locateErrorKey } from "../lib/geolocate";
 import { timeAgo } from "../lib/time";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
@@ -44,9 +44,9 @@ export default function RecentFeedModal({ onClose, onSelect }) {
       .then((pos) =>
         setNearCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
       )
-      .catch(() => {
+      .catch((err) => {
         setNearMe(false);
-        toast.error(t("map.locateError"));
+        toast.error(t(locateErrorKey(err)));
       });
   }, [nearMe, toast, t]);
 
