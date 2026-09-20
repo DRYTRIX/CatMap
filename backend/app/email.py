@@ -167,7 +167,7 @@ def send_notification_email(
     html = _wrap_html(
         f"<p>{escape(greeting)}</p>"
         f"<p><strong>{escape(title)}</strong></p>"
-        f"<p>{escape(body)}</p>"
+        f"<p>{escape(body).replace(chr(10), '<br>')}</p>"
         f'<p><a href="{escape(link)}">Open in CatMap</a></p>',
         unsub=unsub,
     )

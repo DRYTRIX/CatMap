@@ -561,8 +561,13 @@ def notify_nearby_sighting(
     lng: float,
     description: str,
     kind: str = "missing",
+    exclude_tokens: frozenset[str] | set[str] | None = None,
 ) -> None:
-    """Alert geo-subscribed devices about a new nearby sighting of any kind."""
+    """Alert devices about a new nearby sighting of any kind.
+
+    Covers push subscriptions with a nearby-alert area and area watches
+    (``exclude_tokens`` — usually the poster — is skipped for area watches).
+    """
     db = _session()
     try:
         subs = db.execute(
@@ -580,6 +585,7 @@ def notify_nearby_sighting(
         ntype = "missing_nearby" if kind == "missing" else "sighting_nearby"
 
         note_ids: list[tuple[str, str]] = []
+        notified: set[str] = set()
         for sub in subs:
             radius = sub.alert_radius_km or 0
             if radius <= 0:
@@ -601,9 +607,39 @@ def notify_nearby_sighting(
                     },
                 )
                 note_ids.append((sub.device_token, note.id))
+                notified.add(sub.device_token)
                 submit_push(sub, title=title, body=desc, url=f"/?s={sighting_id}")
 
+        # Area watches: work without a push subscription (inbox + email), and
+        # never double-notify a device already alerted through its push area.
+        skip = notified | set(exclude_tokens or ())
+        area_pushes: list[str] = []
+        for watch in db.scalars(select(Watch).where(Watch.target_type == "area")).all():
+            if watch.device_token in skip or not watch.radius_km:
+                continue
+            dist = _haversine_km(watch.lat, watch.lng, lat, lng)
+            if dist > watch.radius_km:
+                continue
+            skip.add(watch.device_token)
+            note = _create_notification(
+                db,
+                recipient_token=watch.device_token,
+                ntype=ntype,
+                sighting_id=sighting_id,
+                payload={
+                    "title": title,
+                    "body": desc,
+                    "distance_km": round(dist, 1),
+                    "kind": kind,
+                    "area": watch.label,
+                },
+            )
+            note_ids.append((watch.device_token, note.id))
+            area_pushes.append(watch.device_token)
+
         db.commit()
+        for token in area_pushes:
+            _dispatch_push(token, title, desc, url=f"/?s={sighting_id}")
         for token, note_id in note_ids:
             _dispatch_email(
                 recipient_token=token,
@@ -671,3 +707,142 @@ def unread_count(db: Session, tokens: frozenset[str] | set[str] | str) -> int:
         )
         or 0
     )
+
+
+def send_missing_reminders(now: datetime | None = None) -> int:
+    """Nudge owners of long-running missing-cat posts ("still missing?").
+
+    A post qualifies when it is active, and both its last activity
+    (created/last seen) and its previous reminder are older than
+    ``missing_reminder_days``. Returns the number of reminders sent. Meant to be
+    run periodically (see docs/operations.md).
+    """
+    from .config import get_settings
+
+    now = now or datetime.now(UTC)
+    cutoff = now - timedelta(days=get_settings().missing_reminder_days)
+    db = _session()
+    try:
+        rows = db.execute(
+            select(Sighting.id, Sighting.creator_token, Sighting.cat_name).where(
+                Sighting.kind == "missing",
+                Sighting.status == "active",
+                Sighting.created_at < cutoff,
+                func.coalesce(Sighting.last_seen_at, Sighting.created_at) < cutoff,
+                (Sighting.last_reminded_at.is_(None)) | (Sighting.last_reminded_at < cutoff),
+            )
+        ).all()
+        for row in rows:
+            db.execute(
+                Sighting.__table__.update()
+                .where(Sighting.id == row.id)
+                .values(last_reminded_at=now)
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("send_missing_reminders failed")
+        return 0
+    finally:
+        db.close()
+
+    for row in rows:
+        name = f" {row.cat_name}" if row.cat_name else ""
+        notify_inbox_and_push(
+            recipient_token=row.creator_token,
+            ntype="missing_reminder",
+            title="Still missing?",
+            body=f"Is your cat{name} still missing? Update or close the post.",
+            sighting_id=row.id,
+            url=f"/?s={row.id}",
+        )
+    return len(rows)
+
+
+DIGEST_INTERVAL = timedelta(days=6)
+DIGEST_WINDOW = timedelta(days=7)
+DIGEST_MAX_LISTED = 5
+
+
+def send_weekly_digest(now: datetime | None = None) -> int:
+    """Email opted-in, verified users a summary of new cats in their watched areas.
+
+    Skipped when nothing is new or a digest went out in the last 6 days, so
+    running the job more often than weekly is harmless. Returns emails sent.
+    """
+    now = now or datetime.now(UTC)
+    since = now - DIGEST_WINDOW
+    sent = 0
+    db = _session()
+    try:
+        users = db.scalars(
+            select(User).where(
+                User.email_enabled.is_(True),
+                User.email_digest.is_(True),
+                User.email_verified_at.is_not(None),
+                User.blocked_at.is_(None),
+            )
+        ).all()
+        for user in users:
+            if user.last_digest_at is not None:
+                last = user.last_digest_at
+                if last.tzinfo is None:
+                    last = last.replace(tzinfo=UTC)
+                if now - last < DIGEST_INTERVAL:
+                    continue
+            tokens = list(
+                db.scalars(select(UserDevice.device_token).where(UserDevice.user_id == user.id))
+            )
+            if not tokens:
+                continue
+            watches = db.scalars(
+                select(Watch).where(Watch.device_token.in_(tokens), Watch.target_type == "area")
+            ).all()
+            if not watches:
+                continue
+
+            recent = db.execute(
+                select(
+                    Sighting.id, Sighting.lat, Sighting.lng, Sighting.kind, Sighting.description
+                )
+                .where(Sighting.status == "active", Sighting.created_at >= since)
+                .order_by(Sighting.created_at.desc())
+            ).all()
+
+            lines: list[str] = []
+            for w in watches:
+                near = [
+                    r for r in recent if _haversine_km(w.lat, w.lng, r.lat, r.lng) <= w.radius_km
+                ]
+                if not near:
+                    continue
+                missing = sum(1 for r in near if r.kind == "missing")
+                name = w.label or f"{w.lat:.2f}, {w.lng:.2f}"
+                line = f"{name}: {len(near)} new"
+                if missing:
+                    line += f" ({missing} missing)"
+                lines.append(line)
+                for r in near[:DIGEST_MAX_LISTED]:
+                    lines.append(f"  - {(r.description or 'Cat sighting').strip()[:80]}")
+            if not lines:
+                continue
+
+            ok = send_notification_email(
+                to=user.email,
+                name=user.name,
+                title="Your weekly CatMap digest",
+                body="\n".join(lines),
+                url="/",
+                unsubscribe_token=user.unsubscribe_token,
+                category="digest",
+            )
+            if ok:
+                user.last_digest_at = now
+                db.commit()
+                sent += 1
+    except Exception:
+        db.rollback()
+        logger.exception("send_weekly_digest failed")
+    finally:
+        db.close()
+    return sent

@@ -272,6 +272,7 @@ def patch_email_prefs(
     following: bool | None = Form(None),
     nearby: bool | None = Form(None),
     moderation: bool | None = Form(None),
+    digest: bool | None = Form(None),
     ident: Identity = Depends(require_user),
     db: Session = Depends(get_db),
 ) -> EmailPrefsOut:
@@ -284,6 +285,7 @@ def patch_email_prefs(
         following=following,
         nearby=nearby,
         moderation=moderation,
+        digest=digest,
     )
     return EmailPrefsOut(
         enabled=user.email_enabled,
@@ -291,6 +293,7 @@ def patch_email_prefs(
         following=user.email_following,
         nearby=user.email_nearby,
         moderation=user.email_moderation,
+        digest=user.email_digest,
     )
 
 

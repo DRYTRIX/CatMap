@@ -77,7 +77,15 @@
     "title": "Watching",
     "empty": "You're not watching anything yet — tap the bell on a sighting or cat profile to follow it.",
     "loadError": "Couldn't load what you're watching.",
-    "catProfile": "Cat profile"
+    "catProfile": "Cat profile",
+    "areasTitle": "Watched areas",
+    "areasHint": "Get alerted about new cats near a place. Uses the centre of the map.",
+    "areaLabel": "Name (e.g. Home)",
+    "areaAdd": "Watch this area",
+    "areaAdded": "Area added.",
+    "areaRemove": "Stop watching this area",
+    "areaRadius": "{{km}} km",
+    "areaRadiusLabel": "Radius"
   },
   "mySightings": {
     "title": "My cats",
@@ -275,7 +283,16 @@
     "shareTitle": "Cat on CatMap: {{desc}}",
     "shareTitleGeneric": "Cat sighting on CatMap",
     "viewFullPhoto": "View full photo",
-    "photoOf": "Photo {{index}} of {{total}}"
+    "photoOf": "Photo {{index}} of {{total}}",
+    "relist": "Put back on the map",
+    "relistSuccess": "Back on the map.",
+    "outcomeLabel": "What happened?",
+    "storyLabel": "Tell the story (optional)",
+    "outcome": {
+      "returned_home": "Returned home",
+      "found_by_others": "Found by someone else",
+      "deceased": "Sadly, the cat passed away"
+    }
   },
   "catProfile": {
     "title": "Cat profile",
@@ -288,7 +305,10 @@
     "renameSuccess": "Cat name updated.",
     "unlink": "Unlink",
     "unlinkSuccess": "Sighting unlinked from this profile.",
-    "timelineHint": "Sightings on the timeline map, oldest to newest."
+    "timelineHint": "Sightings on the timeline map, oldest to newest.",
+    "report": "Report profile",
+    "reported": "Thanks — a moderator will take a look.",
+    "alreadyReported": "You already reported this profile."
   },
   "comments": {
     "title": "Comments",
@@ -543,6 +563,41 @@
     "deleteBodyWithContent": "Your account and all sightings/cats/comments from linked devices will be permanently deleted.",
     "deleteContentToo": "Also delete my sightings, cats, and comments",
     "deleted": "Account deleted",
-    "emailRequired": "Enter your email first"
+    "emailRequired": "Enter your email first",
+    "prefDigest": "Weekly digest of new cats in my watched areas"
+  },
+  "stats": {
+    "title": "Statistics",
+    "hint": "Community totals and data downloads.",
+    "open": "View statistics & export",
+    "loadError": "Couldn't load statistics.",
+    "total": "Cats on the map",
+    "missing": "Missing now",
+    "reunited": "Reunited",
+    "confirmations": "Confirmations",
+    "earTipped": "Ear-tipped",
+    "stray": "Stray",
+    "perDay": "New sightings per day",
+    "perDayLabel": "{{count}} new sightings in the last {{days}} days",
+    "export": "Export data",
+    "exportHint": "Download public sightings (no personal details).",
+    "exportArea": "Area",
+    "areaView": "Current map view",
+    "areaWorld": "Worldwide (newest 5000)"
+  },
+  "merge": {
+    "button": "Same cat as another profile?",
+    "title": "Same cat?",
+    "hint": "Pick the profile that is the same cat. Both owners need to agree before they merge.",
+    "search": "Search cat profiles",
+    "none": "No profiles found.",
+    "unnamed": "Unnamed cat",
+    "sent": "Suggestion sent to the owner.",
+    "merged": "Profiles merged.",
+    "approved": "Approved — waiting for the other owner.",
+    "rejected": "Suggestion declined.",
+    "pending": "Someone thinks this cat is the same as {{name}}.",
+    "accept": "Merge",
+    "reject": "Decline"
   }
 }

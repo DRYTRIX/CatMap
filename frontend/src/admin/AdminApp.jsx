@@ -25,6 +25,11 @@ import {
 import {
   adminApproveSighting,
   adminBlockToken,
+  adminBulkSightings,
+  adminDeleteCat,
+  adminMergeCats,
+  fetchAdminCats,
+  setAdminContext,
   adminDeleteBlockedToken,
   adminDeleteComment,
   adminDeleteIssue,
@@ -96,6 +101,7 @@ function AdminThumb({ url, token, onClick, loading }) {
 }
 
 const TOKEN_KEY = "catmap_admin_token";
+const LABEL_KEY = "catmap_admin_label";
 const PAGE_SIZE = 25;
 const ACTIONS_PAGE_SIZE = 10;
 
@@ -210,6 +216,75 @@ function AdminPanel() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [deleteIssueConfirmId, setDeleteIssueConfirmId] = useState(null);
   const [deleteCommentConfirmId, setDeleteCommentConfirmId] = useState(null);
+  const [modLabel, setModLabel] = useState(() => localStorage.getItem(LABEL_KEY) || "");
+  const [modReason, setModReason] = useState("");
+  const [selected, setSelected] = useState(() => new Set());
+  const [cats, setCats] = useState(null);
+  const [catQuery, setCatQuery] = useState("");
+  const [catReportedOnly, setCatReportedOnly] = useState(true);
+  const [mergeKeep, setMergeKeep] = useState(null);
+  const [mergeAway, setMergeAway] = useState(null);
+
+  // The audit-log context lives in the api module so every admin call picks it up.
+  setAdminContext({ label: modLabel, reason: modReason });
+
+  const loadCats = useCallback(async () => {
+    if (!token) return;
+    try {
+      setCats(await fetchAdminCats({ token, q: catQuery, reportedOnly: catReportedOnly }));
+    } catch {
+      /* non-critical panel */
+    }
+  }, [token, catQuery, catReportedOnly]);
+
+  useEffect(() => {
+    loadCats();
+  }, [loadCats]);
+
+  function toggleSelected(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function bulk(action) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setBusyId("bulk");
+    try {
+      const res = await adminBulkSightings(action, ids, token);
+      toast.success(`${res.processed} sighting(s): ${action}.`);
+      setSelected(new Set());
+      load();
+      loadPending();
+      loadActions();
+      loadMetrics();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function mergeCats() {
+    if (!mergeKeep || !mergeAway) return;
+    setBusyId("merge");
+    try {
+      await adminMergeCats(mergeKeep.id, mergeAway.id, token);
+      toast.success("Cat profiles merged.");
+      setMergeKeep(null);
+      setMergeAway(null);
+      loadCats();
+      loadActions();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -424,6 +499,36 @@ function AdminPanel() {
           Sign out
         </button>
       </header>
+
+      <section className="admin-panel">
+        <div className="admin-controls">
+          <label htmlFor="admin-label">
+            Moderator name{" "}
+            <input
+              id="admin-label"
+              type="text"
+              maxLength={60}
+              value={modLabel}
+              placeholder="e.g. alice"
+              onChange={(e) => {
+                setModLabel(e.target.value);
+                localStorage.setItem(LABEL_KEY, e.target.value);
+              }}
+            />
+          </label>
+          <label htmlFor="admin-reason">
+            Reason for next action{" "}
+            <input
+              id="admin-reason"
+              type="text"
+              maxLength={280}
+              value={modReason}
+              placeholder="recorded in the audit log"
+              onChange={(e) => setModReason(e.target.value)}
+            />
+          </label>
+        </div>
+      </section>
 
       <section className="admin-panel admin-panel--overview">
         <PanelHeader icon={faChartLine} title="Overview" />
@@ -712,6 +817,21 @@ function AdminPanel() {
         {rows === null && <p>Loading…</p>}
         {rows?.length === 0 && <p>No reported sightings 🎉</p>}
 
+        {selected.size > 0 && (
+          <div className="admin-controls">
+            <span>{selected.size} selected</span>
+            <button className="btn btn-ghost" disabled={busyId === "bulk"} onClick={() => bulk("hide")}>
+              Hide selected
+            </button>
+            <button className="btn btn-ghost" disabled={busyId === "bulk"} onClick={() => bulk("unhide")}>
+              Unhide selected
+            </button>
+            <button className="btn btn-ghost" onClick={() => setSelected(new Set())}>
+              Clear
+            </button>
+          </div>
+        )}
+
         {rows && rows.length > 0 && (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -731,6 +851,12 @@ function AdminPanel() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${r.description || r.id}`}
+                      checked={selected.has(r.id)}
+                      onChange={() => toggleSelected(r.id)}
+                    />
                     <AdminThumb
                       url={r.thumbnail_url}
                       token={token}
@@ -975,6 +1101,101 @@ function AdminPanel() {
       </section>
 
       <section className="admin-panel">
+        <PanelHeader icon={faFlag} title="Cat profiles" count={cats?.length} />
+        <div className="admin-controls">
+          <label htmlFor="admin-cat-q">
+            Search{" "}
+            <input
+              id="admin-cat-q"
+              type="search"
+              value={catQuery}
+              onChange={(e) => setCatQuery(e.target.value)}
+            />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={catReportedOnly}
+              onChange={(e) => setCatReportedOnly(e.target.checked)}
+            />{" "}
+            Reported only
+          </label>
+        </div>
+        {(mergeKeep || mergeAway) && (
+          <div className="admin-controls">
+            <span>
+              Merge <strong>{mergeAway?.name || mergeAway?.id || "…"}</strong> into{" "}
+              <strong>{mergeKeep?.name || mergeKeep?.id || "…"}</strong>
+            </span>
+            <button
+              className="btn btn-primary"
+              disabled={!mergeKeep || !mergeAway || busyId === "merge"}
+              onClick={mergeCats}
+            >
+              Merge
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                setMergeKeep(null);
+                setMergeAway(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        {cats === null && <p>Loading…</p>}
+        {cats?.length === 0 && <p>No cat profiles match.</p>}
+        {cats && cats.length > 0 && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Sightings</th>
+                  <th>Hearts</th>
+                  <th>Reports</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cats.map((c) => (
+                  <tr key={c.id}>
+                    <td className="admin-desc">{c.name || c.id}</td>
+                    <td>{c.sighting_count}</td>
+                    <td>{c.hearts_count}</td>
+                    <td>{c.reports_count}</td>
+                    <td>{timeAgo(c.created_at)}</td>
+                    <td className="admin-actions">
+                      <button className="btn btn-ghost" onClick={() => setMergeKeep(c)}>
+                        Keep
+                      </button>
+                      <button className="btn btn-ghost" onClick={() => setMergeAway(c)}>
+                        Merge away
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        disabled={busyId === c.id}
+                        onClick={async () => {
+                          if (!window.confirm(`Delete cat profile "${c.name || c.id}"? Its sightings are kept.`)) return;
+                          await act("Cat profile deleted.", adminDeleteCat, c.id);
+                          loadCats();
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="admin-panel">
         <PanelHeader icon={faClipboardList} title="Recent moderation actions" />
         {actions === null && <p>Loading…</p>}
         {actions?.length === 0 && <p>No moderation actions yet.</p>}
@@ -984,7 +1205,9 @@ function AdminPanel() {
               <thead>
                 <tr>
                   <th>Action</th>
-                  <th>Sighting</th>
+                  <th>Target</th>
+                  <th>Moderator</th>
+                  <th>Reason</th>
                   <th>When</th>
                 </tr>
               </thead>
@@ -993,6 +1216,8 @@ function AdminPanel() {
                   <tr key={a.id}>
                     <td className="admin-status">{a.action}</td>
                     <td className="admin-desc">{a.sighting_id}</td>
+                    <td>{a.admin_label || "—"}</td>
+                    <td className="admin-desc">{a.reason || "—"}</td>
                     <td>{timeAgo(a.created_at)}</td>
                   </tr>
                 ))}

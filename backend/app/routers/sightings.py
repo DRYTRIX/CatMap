@@ -13,6 +13,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
@@ -54,6 +55,9 @@ ALLOWED_KINDS = {"sighting", "missing"}
 
 # Statuses that are still fetchable by id / photo (map only shows "active").
 VIEWABLE_STATUSES = {"active", "found"}
+
+# How a missing-cat post ended (POST /{id}/found).
+FOUND_OUTCOMES = {"returned_home", "found_by_others", "deceased"}
 
 # Creator can still open their own posts that are off the public map.
 OWNER_VIEWABLE_STATUSES = {"active", "found", "pending", "gone", "hidden"}
@@ -144,6 +148,9 @@ def _detail(
         "watching": bool(watching) if watching is not None else False,
         "hearted": bool(hearted) if hearted is not None else False,
         "hearts_count": int(getattr(s, "hearts_count", 0) or 0),
+        "found_outcome": s.found_outcome,
+        "found_story": s.found_story,
+        "resolved_at": s.resolved_at,
     }
 
 
@@ -588,6 +595,7 @@ async def create_sighting(
             lng=sighting.lng,
             description=sighting.description,
             kind=post_kind,
+            exclude_tokens=ident.tokens,
         )
     result = _detail(sighting, tokens=ident.tokens)
     result["pending"] = pending
@@ -604,6 +612,7 @@ def recent_sightings(
     kind: str | None = None,
     q: str | None = None,
     status: str = Query("active", pattern="^(active|found)$"),
+    exclude_outcome: str | None = Query(None, pattern="^(returned_home|found_by_others|deceased)$"),
     near_lat: float | None = None,
     near_lng: float | None = None,
     radius_km: float | None = Query(None, ge=0.1, le=500),
@@ -627,6 +636,11 @@ def recent_sightings(
         else (Sighting.created_at.desc(),)
     )
     conditions = [Sighting.status == status]
+    if exclude_outcome:
+        # Legacy rows have no outcome (NULL); keep them.
+        conditions.append(
+            or_(Sighting.found_outcome.is_(None), Sighting.found_outcome != exclude_outcome)
+        )
     if kind is not None:
         conditions.append(Sighting.kind == kind)
     if q:
@@ -666,6 +680,104 @@ def recent_sightings(
         ]
 
     return [_detail(s) for s in rows]
+
+
+EXPORT_CSV_FIELDS = [
+    "id", "lat", "lng", "description", "kind", "color", "is_ear_tipped", "is_stray",
+    "confirmations_count", "created_at", "last_seen_at",
+]
+
+
+def _csv_safe(value):
+    """Neutralise spreadsheet formula injection in user-supplied text."""
+    if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
+
+
+@router.get("/export")
+@limiter.limit(settings.rate_limit_export)
+def export_sightings(
+    request: Request,
+    min_lat: float,
+    max_lat: float,
+    min_lng: float,
+    max_lng: float,
+    format: str = Query("geojson", pattern="^(geojson|csv)$"),
+    since: datetime | None = None,
+    until: datetime | None = None,
+    color: str | None = None,
+    is_ear_tipped: bool | None = None,
+    is_stray: bool | None = None,
+    min_confidence: float | None = None,
+    kind: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Download public sightings in a bounding box as GeoJSON or CSV.
+
+    Only public fields are exported (no contact details or identity), capped at
+    ``max_export_rows`` newest sightings.
+    """
+    import csv
+    import io
+
+    if min_lat > max_lat:
+        raise HTTPException(status_code=400, detail="Invalid bounding box.")
+    if kind is not None and kind not in ALLOWED_KINDS:
+        raise HTTPException(status_code=400, detail="Invalid kind.")
+    conditions = _bbox_filter_conditions(
+        min_lat, max_lat, min_lng, max_lng,
+        since, until, color, is_ear_tipped, is_stray, min_confidence, kind,
+    )
+    rows = db.execute(
+        select(Sighting)
+        .where(*conditions)
+        .order_by(Sighting.created_at.desc())
+        .limit(settings.max_export_rows)
+    ).scalars().all()
+
+    def props(s: Sighting) -> dict:
+        return {
+            "id": s.id,
+            "lat": s.lat,
+            "lng": s.lng,
+            "description": s.description,
+            "kind": s.kind,
+            "color": s.color,
+            "is_ear_tipped": s.is_ear_tipped,
+            "is_stray": s.is_stray,
+            "confirmations_count": s.confirmations_count,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "last_seen_at": _last_seen(s).isoformat() if _last_seen(s) else None,
+        }
+
+    if format == "csv":
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=EXPORT_CSV_FIELDS)
+        writer.writeheader()
+        for s in rows:
+            writer.writerow({k: _csv_safe(v) for k, v in props(s).items()})
+        return Response(
+            buf.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="catmap-sightings.csv"'},
+        )
+
+    features = []
+    for s in rows:
+        p = props(s)
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [p.pop("lng"), p.pop("lat")]},
+                "properties": p,
+            }
+        )
+    return JSONResponse(
+        {"type": "FeatureCollection", "features": features},
+        media_type="application/geo+json",
+        headers={"Content-Disposition": 'attachment; filename="catmap-sightings.geojson"'},
+    )
 
 
 @router.get("/mine", response_model=list[SightingDetail])
@@ -1179,16 +1291,46 @@ def mark_gone(
     return _detail(sighting, tokens=ident.tokens)
 
 
+@router.post("/{sighting_id}/relist", response_model=SightingDetail)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def relist_sighting(
+    request: Request,
+    sighting_id: str,
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Put your own 'gone' or 'found' post back on the map (undo a mistake, or
+    the cat is missing / back again). Moderation-hidden posts can't be relisted."""
+    sighting = _get_own_sighting(db, sighting_id, ident)
+    if sighting.status not in ("gone", "found"):
+        raise HTTPException(status_code=400, detail="Only gone or found posts can be relisted.")
+    sighting.status = "active"
+    sighting.found_outcome = None
+    sighting.found_story = None
+    sighting.resolved_at = None
+    sighting.last_seen_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(sighting)
+    return _detail(sighting, tokens=ident.tokens)
+
+
 @router.post("/{sighting_id}/found", response_model=SightingDetail)
 @limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
 def mark_found(
     request: Request,
     sighting_id: str,
     background_tasks: BackgroundTasks,
+    outcome: str = Form("returned_home"),
+    story: str | None = Form(None),
     ident: Identity = Depends(writable_identity),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Mark your own missing-cat post as found (off the map, still in /mine)."""
+    """Mark your own missing-cat post as resolved (off the map, still in /mine)."""
+    if outcome not in FOUND_OUTCOMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid outcome (expected one of: {', '.join(sorted(FOUND_OUTCOMES))}).",
+        )
     sighting = _get_own_sighting(db, sighting_id, ident)
     if sighting.kind != "missing":
         raise HTTPException(
@@ -1198,6 +1340,9 @@ def mark_found(
     if sighting.status not in ("active", "pending"):
         raise HTTPException(status_code=404, detail="Sighting not found.")
     sighting.status = "found"
+    sighting.found_outcome = outcome
+    sighting.found_story = (story or "").strip()[:500] or None
+    sighting.resolved_at = datetime.now(UTC)
     db.commit()
     db.refresh(sighting)
 

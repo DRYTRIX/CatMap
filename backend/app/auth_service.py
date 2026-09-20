@@ -21,6 +21,7 @@ from .email import (
 from .models import (
     Cat,
     Comment,
+    Confirmation,
     EmailToken,
     Heart,
     Sighting,
@@ -28,6 +29,7 @@ from .models import (
     UserDevice,
     UserIdentity,
     UserSession,
+    Watch,
 )
 from .security import (
     generate_token,
@@ -227,6 +229,7 @@ def user_out(
             "following": user.email_following,
             "nearby": user.email_nearby,
             "moderation": user.email_moderation,
+            "digest": user.email_digest,
         },
         "device_claimed": device_claimed,
         "device_claim_reason": device_claim_reason,
@@ -480,6 +483,7 @@ def update_email_prefs(
     following: bool | None = None,
     nearby: bool | None = None,
     moderation: bool | None = None,
+    digest: bool | None = None,
 ) -> User:
     if enabled is not None:
         user.email_enabled = enabled
@@ -491,6 +495,8 @@ def update_email_prefs(
         user.email_nearby = nearby
     if moderation is not None:
         user.email_moderation = moderation
+    if digest is not None:
+        user.email_digest = digest
     db.commit()
     db.refresh(user)
     return user
@@ -518,6 +524,8 @@ def unsubscribe(
         user.email_nearby = False
     elif cat == "moderation":
         user.email_moderation = False
+    elif cat == "digest":
+        user.email_digest = False
     else:
         raise HTTPException(status_code=400, detail="Unknown category.")
     db.commit()
@@ -558,6 +566,8 @@ def export_account(db: Session, user: User) -> dict:
     sightings = []
     cats = []
     comments = []
+    confirmations = []
+    watches = []
     hearts = []
     if tokens:
         sightings = [
@@ -569,10 +579,36 @@ def export_account(db: Session, user: User) -> dict:
                 "kind": s.kind,
                 "status": s.status,
                 "created_at": s.created_at.isoformat() if s.created_at else None,
+                "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
                 "cat_id": s.cat_id,
+                "confirmations_count": s.confirmations_count,
+                "photo_count": 1 + len(s.photos),  # primary photo + extras
+                "found_outcome": s.found_outcome,
+                "found_story": s.found_story,
             }
             for s in db.execute(
-                select(Sighting).where(Sighting.creator_token.in_(tokens))
+                select(Sighting)
+                .where(Sighting.creator_token.in_(tokens))
+                .options(selectinload(Sighting.photos))
+            ).scalars().all()
+        ]
+        confirmations = [
+            {
+                "sighting_id": c.sighting_id,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in db.execute(
+                select(Confirmation).where(Confirmation.device_token.in_(tokens))
+            ).scalars().all()
+        ]
+        watches = [
+            {
+                "target_type": w.target_type,
+                "target_id": w.target_id,
+                "created_at": w.created_at.isoformat() if w.created_at else None,
+            }
+            for w in db.execute(
+                select(Watch).where(Watch.device_token.in_(tokens))
             ).scalars().all()
         ]
         cats = [
@@ -618,5 +654,7 @@ def export_account(db: Session, user: User) -> dict:
         "sightings": sightings,
         "cats": cats,
         "comments": comments,
+        "confirmations": confirmations,
+        "watches": watches,
         "hearts": hearts,
     }

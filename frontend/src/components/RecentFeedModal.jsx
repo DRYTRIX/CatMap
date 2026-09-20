@@ -12,7 +12,7 @@ const TABS = [
   { id: "all", kind: "", status: "active" },
   { id: "sightings", kind: "sighting", status: "active" },
   { id: "missing", kind: "missing", status: "active" },
-  { id: "reunited", kind: "missing", status: "found" },
+  { id: "reunited", kind: "missing", status: "found", exclude_outcome: "deceased" },
 ];
 
 export default function RecentFeedModal({ onClose, onSelect }) {
@@ -69,6 +69,7 @@ export default function RecentFeedModal({ onClose, onSelect }) {
       sort,
       kind: tabCfg.kind || undefined,
       status: tabCfg.status,
+      exclude_outcome: tabCfg.exclude_outcome,
       q: debouncedQ || undefined,
     };
     if (nearCoords) {

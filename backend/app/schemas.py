@@ -52,6 +52,9 @@ class SightingDetail(BaseModel):
     watching: bool = False
     hearted: bool = False
     hearts_count: int = 0
+    found_outcome: str | None = None
+    found_story: str | None = None
+    resolved_at: datetime | None = None
 
 
 class SightingCluster(BaseModel):
@@ -111,6 +114,23 @@ class AdminActionRow(BaseModel):
     action: str
     sighting_id: str
     created_at: datetime
+    reason: str | None = None
+    admin_label: str | None = None
+
+
+class AdminCatRow(BaseModel):
+    id: str
+    name: str | None = None
+    created_at: datetime
+    creator_token: str
+    sighting_count: int
+    hearts_count: int
+    reports_count: int
+
+
+class BulkResult(BaseModel):
+    processed: int
+    not_found: list[str] = []
 
 
 class AdminDailyCount(BaseModel):
@@ -183,6 +203,23 @@ class CatProfile(BaseModel):
     watching: bool = False
     hearted: bool = False
     hearts_count: int = 0
+
+
+class MergeSuggestionOut(BaseModel):
+    """A "same cat?" proposal between two cat profiles."""
+
+    id: str
+    status: str
+    from_cat_id: str
+    into_cat_id: str
+    from_name: str | None = None
+    into_name: str | None = None
+    from_approved: bool
+    into_approved: bool
+    # True when the caller owns a side that hasn't approved yet.
+    can_respond: bool = False
+    # True when this call completed the merge (the source profile no longer exists).
+    merged: bool = False
 
 
 class CatSummary(BaseModel):
@@ -291,6 +328,11 @@ class WatchOut(BaseModel):
     target_type: str
     target_id: str
     created_at: datetime
+    # Only set for area watches.
+    lat: float | None = None
+    lng: float | None = None
+    radius_km: float | None = None
+    label: str | None = None
 
 
 class WatchResult(BaseModel):
@@ -314,6 +356,7 @@ class EmailPrefsOut(BaseModel):
     following: bool = True
     nearby: bool = True
     moderation: bool = True
+    digest: bool = False
 
 
 class UserOut(BaseModel):

@@ -1,0 +1,27 @@
+name: Missing-cat reminders
+
+# Daily "still missing?" nudges to owners of long-running missing-cat posts.
+# Skipped unless the CATMAP_API_URL and CATMAP_ADMIN_TOKEN secrets are set —
+# see docs/operations.md.
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 09:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminders
+        env:
+          API_URL: ${{ secrets.CATMAP_API_URL }}
+          ADMIN_TOKEN: ${{ secrets.CATMAP_ADMIN_TOKEN }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$ADMIN_TOKEN" ]; then
+            echo "::warning::CATMAP_API_URL / CATMAP_ADMIN_TOKEN not set — skipping."
+            exit 0
+          fi
+          curl --fail-with-body -sS -X POST \
+            -H "X-Admin-Token: $ADMIN_TOKEN" \
+            "${API_URL%/}/api/admin/jobs/missing-reminders"

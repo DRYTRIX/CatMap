@@ -6,6 +6,11 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Moderation upgrades: every audit-log entry can carry a reason and a self-declared moderator name (`reason` query param, `X-Admin-Label` header); cat-profile reports (`POST /cats/{id}/report`) and an admin cat list (`GET /admin/cats`); admin force-merge (`POST /admin/cats/{id}/merge`); bulk hide/unhide/delete (`POST /admin/sightings/bulk`); matching admin UI (migration 0021).
+- Area watches (`POST /watches/areas`, up to 5 per identity): alerts for new cats near a place without needing push, shown in the Watching screen. Optional weekly email digest of new cats in watched areas (`POST /admin/jobs/weekly-digest`, opt-in preference, migration 0020).
+- "Same cat?" duplicate handling: suggest that another cat profile is the same cat (`POST /cats/{id}/merge-suggestions`); once both owners approve, sightings, hearts and watches are merged into one profile (migration 0019).
+- Statistics screen (Settings → Statistics) backed by `GET /stats/detail` (totals, missing/reunited, ear-tipped/stray share, sightings per day), and public `GET /sightings/export` (GeoJSON/CSV, bbox + filters, rate-limited, public fields only). The account export now includes confirmations, watches and photo counts. `GET /stats` is unchanged.
+- Missing-cat reunion outcomes (returned home / found by others / deceased) with an optional story, `POST /sightings/{id}/relist` to put gone or found posts back on the map, and daily "still missing?" reminders (`POST /admin/jobs/missing-reminders`, migration 0018).
 - Add-sighting drafts: unfinished forms (photos, text, pin) are saved locally and can be resumed.
 - Distinct location error messages (denied / timed out / unavailable) and an "Add one here" action on empty map areas.
 - "Load more" in the list view and notification inbox; `DELETE /notifications/{id}` and a delete button per notification.

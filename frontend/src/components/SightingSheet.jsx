@@ -10,6 +10,7 @@ import {
   fetchSighting,
   linkSightingToCat,
   markFound,
+  relistSighting,
   markGone,
   reportSighting,
   reverseGeocode,
@@ -90,6 +91,8 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
   const [watching, setWatching] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [foundOutcome, setFoundOutcome] = useState("returned_home");
+  const [foundStory, setFoundStory] = useState("");
   const [similarOpen, setSimilarOpen] = useState(false);
   const [similar, setSimilar] = useState(null);
   const [linking, setLinking] = useState(false);
@@ -353,6 +356,20 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
     setConfirmAction("found");
   }
 
+  async function onRelist() {
+    setBusy(true);
+    try {
+      await relistSighting(id);
+      track("sighting_relist");
+      toast.success(t("sighting.relistSuccess"));
+      onChanged?.();
+      onClose();
+    } catch (e) {
+      toast.error(e.message);
+      setBusy(false);
+    }
+  }
+
   async function onDelete() {
     setConfirmAction("delete");
   }
@@ -371,7 +388,7 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
         onChanged?.();
         onClose();
       } else if (action === "found") {
-        await markFound(id);
+        await markFound(id, { outcome: foundOutcome, story: foundStory });
         track("sighting_found");
         toast.success(t("sighting.foundSuccess"));
         onChanged?.();
@@ -530,6 +547,12 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
           {data.status === "gone" && (
             <p className="hint">{t("sighting.goneStatus")}</p>
           )}
+          {data.status === "found" && data.found_outcome && (
+            <p className="hint status-found">
+              {t(`sighting.outcome.${data.found_outcome}`)}
+              {data.found_story ? ` — ${data.found_story}` : ""}
+            </p>
+          )}
           {data.status === "hidden" && (
             <p className="hint">{t("sighting.hiddenStatus")}</p>
           )}
@@ -671,6 +694,11 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
                 </button>
               </>
             )}
+            {mine && (isFound || data.status === "gone") && (
+              <button className="btn btn-ghost" onClick={onRelist} disabled={busy}>
+                <FontAwesomeIcon icon={faCat} /> {t("sighting.relist")}
+              </button>
+            )}
             {mine && isFound && (
               <button className="btn btn-danger" onClick={onDelete} disabled={busy}>
                 <FontAwesomeIcon icon={faTrash} /> {t("common.delete")}
@@ -767,7 +795,32 @@ export default function SightingSheet({ id, onClose, onChanged, onCatSelect }) {
         confirmLabel={t("sighting.foundConfirm")}
         onConfirm={handleConfirmAction}
         onCancel={() => setConfirmAction(null)}
-      />
+      >
+        <div className="field">
+          <label htmlFor="found-outcome">{t("sighting.outcomeLabel")}</label>
+          <select
+            id="found-outcome"
+            value={foundOutcome}
+            onChange={(e) => setFoundOutcome(e.target.value)}
+          >
+            {["returned_home", "found_by_others", "deceased"].map((o) => (
+              <option key={o} value={o}>
+                {t(`sighting.outcome.${o}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="found-story">{t("sighting.storyLabel")}</label>
+          <textarea
+            id="found-story"
+            rows={2}
+            maxLength={500}
+            value={foundStory}
+            onChange={(e) => setFoundStory(e.target.value)}
+          />
+        </div>
+      </ConfirmDialog>
       <ConfirmDialog
         open={confirmAction === "delete"}
         title={t("sighting.deleteTitle")}

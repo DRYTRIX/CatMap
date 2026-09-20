@@ -34,7 +34,7 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export default function SettingsModal({ onClose, onReportIssue, onOpenAccount }) {
+export default function SettingsModal({ onClose, onReportIssue, onOpenAccount, onOpenStats }) {
   const { t } = useTranslation();
   const toast = useToast();
   const { signedIn, user } = useAuth();
@@ -314,6 +314,14 @@ export default function SettingsModal({ onClose, onReportIssue, onOpenAccount })
             {t("settings.clearNearby")}
           </button>
         )}
+      </section>
+
+      <section className="settings-section">
+        <h3>{t("stats.title")}</h3>
+        <p className="hint">{t("stats.hint")}</p>
+        <button type="button" className="btn btn-ghost btn-block" onClick={() => onOpenStats?.()}>
+          {t("stats.open")}
+        </button>
       </section>
 
       <section className="settings-section">

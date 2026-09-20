@@ -77,7 +77,15 @@
     "title": "Gevolgd",
     "empty": "Je volgt nog niets — tik op de bel bij een waarneming of kattenprofiel om het te volgen.",
     "loadError": "Kon je gevolgde items niet laden.",
-    "catProfile": "Kattenprofiel"
+    "catProfile": "Kattenprofiel",
+    "areasTitle": "Gevolgde gebieden",
+    "areasHint": "Krijg een melding bij nieuwe katten in de buurt van een plek. Gebruikt het midden van de kaart.",
+    "areaLabel": "Naam (bijv. Thuis)",
+    "areaAdd": "Volg dit gebied",
+    "areaAdded": "Gebied toegevoegd.",
+    "areaRemove": "Gebied niet meer volgen",
+    "areaRadius": "{{km}} km",
+    "areaRadiusLabel": "Straal"
   },
   "mySightings": {
     "title": "Mijn katten",
@@ -275,7 +283,16 @@
     "unwatchSuccess": "Niet meer gevolgd.",
     "watch": "Volgen",
     "watchSuccess": "Je krijgt meldingen wanneer deze kat wordt bijgewerkt.",
-    "watching": "Volgend"
+    "watching": "Volgend",
+    "relist": "Terug op de kaart zetten",
+    "relistSuccess": "Weer op de kaart.",
+    "outcomeLabel": "Wat is er gebeurd?",
+    "storyLabel": "Vertel het verhaal (optioneel)",
+    "outcome": {
+      "returned_home": "Thuisgekomen",
+      "found_by_others": "Door iemand anders gevonden",
+      "deceased": "Helaas overleden"
+    }
   },
   "catProfile": {
     "title": "Kattenprofiel",
@@ -288,7 +305,10 @@
     "renameSuccess": "Katnaam bijgewerkt.",
     "timelineHint": "Waarnemingen op de tijdlijnkaart, van oud naar nieuw.",
     "unlink": "Ontkoppelen",
-    "unlinkSuccess": "Waarneming ontkoppeld van dit profiel."
+    "unlinkSuccess": "Waarneming ontkoppeld van dit profiel.",
+    "report": "Profiel melden",
+    "reported": "Bedankt — een moderator kijkt ernaar.",
+    "alreadyReported": "Je hebt dit profiel al gemeld."
   },
   "comments": {
     "title": "Reacties",
@@ -543,6 +563,41 @@
     "deleteBodyWithContent": "Je account en alle sightings/katten/reacties van gekoppelde apparaten worden permanent verwijderd.",
     "deleteContentToo": "Verwijder ook mijn sightings, katten en reacties",
     "deleted": "Account verwijderd",
-    "emailRequired": "Vul eerst je e-mail in"
+    "emailRequired": "Vul eerst je e-mail in",
+    "prefDigest": "Wekelijkse samenvatting van nieuwe katten in mijn gebieden"
+  },
+  "stats": {
+    "title": "Statistieken",
+    "hint": "Totalen van de community en data-export.",
+    "open": "Statistieken & export bekijken",
+    "loadError": "Kon statistieken niet laden.",
+    "total": "Katten op de kaart",
+    "missing": "Nu vermist",
+    "reunited": "Herenigd",
+    "confirmations": "Bevestigingen",
+    "earTipped": "Oortopje",
+    "stray": "Zwerfkat",
+    "perDay": "Nieuwe meldingen per dag",
+    "perDayLabel": "{{count}} nieuwe meldingen in de afgelopen {{days}} dagen",
+    "export": "Gegevens exporteren",
+    "exportHint": "Download openbare meldingen (zonder persoonlijke gegevens).",
+    "exportArea": "Gebied",
+    "areaView": "Huidige kaartweergave",
+    "areaWorld": "Wereldwijd (nieuwste 5000)"
+  },
+  "merge": {
+    "button": "Zelfde kat als een ander profiel?",
+    "title": "Dezelfde kat?",
+    "hint": "Kies het profiel dat dezelfde kat is. Beide eigenaars moeten akkoord gaan voordat ze samengevoegd worden.",
+    "search": "Kattenprofielen zoeken",
+    "none": "Geen profielen gevonden.",
+    "unnamed": "Kat zonder naam",
+    "sent": "Suggestie naar de eigenaar gestuurd.",
+    "merged": "Profielen samengevoegd.",
+    "approved": "Goedgekeurd — wachten op de andere eigenaar.",
+    "rejected": "Suggestie afgewezen.",
+    "pending": "Iemand denkt dat deze kat dezelfde is als {{name}}.",
+    "accept": "Samenvoegen",
+    "reject": "Afwijzen"
   }
 }

@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faCat } from "@fortawesome/free-solid-svg-icons";
-import { assetUrl, fetchCatProfile, fetchSighting, fetchWatches } from "../api";
+import { faXmark, faCat, faLocationDot, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  assetUrl,
+  createAreaWatch,
+  fetchCatProfile,
+  fetchSighting,
+  fetchWatches,
+  unwatchTarget,
+} from "../api";
 import { timeAgo } from "../lib/time";
 import Modal from "./Modal";
+import { useToast } from "./Toast";
 
 const PAGE_SIZE = 50;
 
 async function loadRow(watch) {
+  if (watch.target_type === "area") return { watch, area: true };
   try {
     if (watch.target_type === "cat") {
       const cat = await fetchCatProfile(watch.target_id);
@@ -44,8 +53,12 @@ async function loadRows(watches) {
  *
  * Props: onClose, onSelect(sightingId), onCatSelect(catId).
  */
-export default function WatchesModal({ onClose, onSelect, onCatSelect }) {
+export default function WatchesModal({ onClose, onSelect, onCatSelect, getCenter }) {
   const { t } = useTranslation();
+  const toast = useToast();
+  const [radius, setRadius] = useState("5");
+  const [areaLabel, setAreaLabel] = useState("");
+  const [savingArea, setSavingArea] = useState(false);
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(false);
@@ -84,6 +97,36 @@ export default function WatchesModal({ onClose, onSelect, onCatSelect }) {
       .finally(() => setLoadingMore(false));
   }
 
+  async function addArea() {
+    const c = getCenter?.();
+    if (!c) return;
+    setSavingArea(true);
+    try {
+      const watch = await createAreaWatch({
+        lat: c.lat,
+        lng: c.lng,
+        radiusKm: Number(radius),
+        label: areaLabel.trim(),
+      });
+      setItems((prev) => [{ watch, area: true }, ...(prev || [])]);
+      setAreaLabel("");
+      toast.success(t("watches.areaAdded"));
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSavingArea(false);
+    }
+  }
+
+  async function removeArea(row) {
+    try {
+      await unwatchTarget("area", row.watch.target_id);
+      setItems((prev) => prev.filter((r) => r.watch.id !== row.watch.id));
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
   function open(row) {
     if (row.watch.target_type === "cat") {
       onCatSelect?.(row.watch.target_id);
@@ -102,6 +145,65 @@ export default function WatchesModal({ onClose, onSelect, onCatSelect }) {
         </button>
       </div>
 
+      <section className="settings-section">
+        <h3>{t("watches.areasTitle")}</h3>
+        <p className="hint">{t("watches.areasHint")}</p>
+        {(items || [])
+          .filter((r) => r.area)
+          .map((row) => (
+            <div className="notif-row" key={row.watch.id}>
+              <div className="sighting-list-item">
+                <span className="sighting-list-thumb sighting-list-thumb-icon" aria-hidden="true">
+                  <FontAwesomeIcon icon={faLocationDot} />
+                </span>
+                <div className="sighting-list-body">
+                  <p className="sighting-list-desc">
+                    {row.watch.label ||
+                      `${row.watch.lat.toFixed(2)}, ${row.watch.lng.toFixed(2)}`}
+                  </p>
+                  <p className="sighting-list-meta">
+                    {t("watches.areaRadius", { km: row.watch.radius_km })}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="icon-btn notif-delete"
+                aria-label={t("watches.areaRemove")}
+                onClick={() => removeArea(row)}
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </button>
+            </div>
+          ))}
+        {getCenter && (
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <input
+              type="text"
+              value={areaLabel}
+              maxLength={60}
+              placeholder={t("watches.areaLabel")}
+              aria-label={t("watches.areaLabel")}
+              onChange={(e) => setAreaLabel(e.target.value)}
+            />
+            <select
+              value={radius}
+              aria-label={t("watches.areaRadiusLabel")}
+              onChange={(e) => setRadius(e.target.value)}
+            >
+              {["1", "5", "10", "25"].map((km) => (
+                <option key={km} value={km}>
+                  {t("watches.areaRadius", { km })}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn btn-ghost" onClick={addArea} disabled={savingArea}>
+              {t("watches.areaAdd")}
+            </button>
+          </div>
+        )}
+      </section>
+
       {items === null && (
         <>
           <div className="skeleton skeleton-line" />
@@ -111,13 +213,13 @@ export default function WatchesModal({ onClose, onSelect, onCatSelect }) {
 
       {error && <p className="error">{error}</p>}
 
-      {items?.length === 0 && !error && (
+      {items && !items.some((r) => !r.area) && !items.some((r) => r.area) && !error && (
         <div className="sighting-list-empty">{t("watches.empty")}</div>
       )}
 
-      {items && items.length > 0 && (
+      {items && items.some((r) => !r.area) && (
         <div className="sighting-list" role="list">
-          {items.map((row) => (
+          {items.filter((r) => !r.area).map((row) => (
             <button
               key={row.watch.id}
               type="button"

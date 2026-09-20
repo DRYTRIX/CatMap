@@ -77,7 +77,15 @@
     "title": "Beobachtet",
     "empty": "Du beobachtest noch nichts — tippe auf die Glocke bei einer Sichtung oder einem Katzenprofil, um ihr zu folgen.",
     "loadError": "Deine beobachteten Einträge konnten nicht geladen werden.",
-    "catProfile": "Katzenprofil"
+    "catProfile": "Katzenprofil",
+    "areasTitle": "Beobachtete Gebiete",
+    "areasHint": "Werde über neue Katzen in der Nähe eines Ortes benachrichtigt. Verwendet die Kartenmitte.",
+    "areaLabel": "Name (z. B. Zuhause)",
+    "areaAdd": "Dieses Gebiet beobachten",
+    "areaAdded": "Gebiet hinzugefügt.",
+    "areaRemove": "Gebiet nicht mehr beobachten",
+    "areaRadius": "{{km}} km",
+    "areaRadiusLabel": "Radius"
   },
   "mySightings": {
     "title": "Meine Katzen",
@@ -275,7 +283,16 @@
     "unwatchSuccess": "Nicht mehr beobachtet.",
     "watch": "Beobachten",
     "watchSuccess": "Du erhältst Hinweise, wenn diese Katze aktualisiert wird.",
-    "watching": "Wird beobachtet"
+    "watching": "Wird beobachtet",
+    "relist": "Wieder auf die Karte setzen",
+    "relistSuccess": "Wieder auf der Karte.",
+    "outcomeLabel": "Was ist passiert?",
+    "storyLabel": "Erzähl die Geschichte (optional)",
+    "outcome": {
+      "returned_home": "Wieder zu Hause",
+      "found_by_others": "Von jemand anderem gefunden",
+      "deceased": "Leider verstorben"
+    }
   },
   "catProfile": {
     "title": "Katzenprofil",
@@ -288,7 +305,10 @@
     "renameSuccess": "Katzenname aktualisiert.",
     "timelineHint": "Sichtungen auf der Zeitkarte, von alt nach neu.",
     "unlink": "Verknüpfung lösen",
-    "unlinkSuccess": "Sichtung von diesem Profil getrennt."
+    "unlinkSuccess": "Sichtung von diesem Profil getrennt.",
+    "report": "Profil melden",
+    "reported": "Danke – ein Moderator schaut es sich an.",
+    "alreadyReported": "Du hast dieses Profil bereits gemeldet."
   },
   "comments": {
     "title": "Kommentare",
@@ -543,6 +563,41 @@
     "deleteBodyWithContent": "Dein Konto und alle Sichtungen/Katzen/Kommentare verknüpfter Geräte werden dauerhaft gelöscht.",
     "deleteContentToo": "Auch meine Sichtungen, Katzen und Kommentare löschen",
     "deleted": "Konto gelöscht",
-    "emailRequired": "Zuerst E-Mail eingeben"
+    "emailRequired": "Zuerst E-Mail eingeben",
+    "prefDigest": "Wöchentliche Zusammenfassung neuer Katzen in meinen Gebieten"
+  },
+  "stats": {
+    "title": "Statistiken",
+    "hint": "Gemeinschaftszahlen und Datenexport.",
+    "open": "Statistiken & Export ansehen",
+    "loadError": "Statistiken konnten nicht geladen werden.",
+    "total": "Katzen auf der Karte",
+    "missing": "Derzeit vermisst",
+    "reunited": "Wiedervereint",
+    "confirmations": "Bestätigungen",
+    "earTipped": "Ohrspitze",
+    "stray": "Streuner",
+    "perDay": "Neue Sichtungen pro Tag",
+    "perDayLabel": "{{count}} neue Sichtungen in den letzten {{days}} Tagen",
+    "export": "Daten exportieren",
+    "exportHint": "Öffentliche Sichtungen herunterladen (keine persönlichen Daten).",
+    "exportArea": "Bereich",
+    "areaView": "Aktueller Kartenausschnitt",
+    "areaWorld": "Weltweit (neueste 5000)"
+  },
+  "merge": {
+    "button": "Dieselbe Katze wie ein anderes Profil?",
+    "title": "Dieselbe Katze?",
+    "hint": "Wähle das Profil, das dieselbe Katze ist. Beide Besitzer müssen zustimmen, bevor zusammengeführt wird.",
+    "search": "Katzenprofile suchen",
+    "none": "Keine Profile gefunden.",
+    "unnamed": "Katze ohne Namen",
+    "sent": "Vorschlag an den Besitzer gesendet.",
+    "merged": "Profile zusammengeführt.",
+    "approved": "Zugestimmt – warte auf den anderen Besitzer.",
+    "rejected": "Vorschlag abgelehnt.",
+    "pending": "Jemand glaubt, diese Katze ist dieselbe wie {{name}}.",
+    "accept": "Zusammenführen",
+    "reject": "Ablehnen"
   }
 }

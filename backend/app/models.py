@@ -82,6 +82,17 @@ class Sighting(Base):
     # Denormalized public heart count (see Heart table).
     hearts_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # Missing-cat resolution: how it ended, an optional short story, and when.
+    found_outcome: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    found_story: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Last "still missing?" reminder sent to the owner (throttles the job).
+    last_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     confirmations: Mapped[list["Confirmation"]] = relationship(
         back_populates="sighting", cascade="all, delete-orphan"
     )
@@ -174,10 +185,16 @@ class AdminAction(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     action: Mapped[str] = mapped_column(String(16), nullable=False)
     # Not a FK: the sighting may be deleted, but the audit entry must remain.
+    # For cat actions (delete_cat, merge_cats) this holds the cat id.
     sighting_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, nullable=False
     )
+    # Why the action was taken, and who took it. The label is self-declared via
+    # the X-Admin-Label header (there is one shared admin token), so it's for
+    # accountability between moderators, not authentication.
+    reason: Mapped[str | None] = mapped_column(String(280), nullable=True)
+    admin_label: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
 
 class Report(Base):
@@ -198,6 +215,24 @@ class Report(Base):
     __table_args__ = (
         UniqueConstraint("sighting_id", "device_token", name="uq_report_once"),
     )
+
+
+class CatReport(Base):
+    """A report against a cat profile (e.g. wrong name or mixed-up cats)."""
+
+    __tablename__ = "cat_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    cat_id: Mapped[str] = mapped_column(
+        ForeignKey("cats.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    device_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str] = mapped_column(String(280), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+
+    __table_args__ = (UniqueConstraint("cat_id", "device_token", name="uq_cat_report_once"),)
 
 
 class Comment(Base):
@@ -311,12 +346,44 @@ class Watch(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, nullable=False
     )
+    # Area watches (target_type "area"): alert for new cats within radius_km of
+    # (lat, lng). target_id is a generated id; label is a user-chosen name.
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    radius_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    label: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
     __table_args__ = (
         UniqueConstraint(
             "device_token", "target_type", "target_id", name="uq_watch_once"
         ),
         Index("ix_watches_target", "target_type", "target_id"),
+    )
+
+
+class CatMergeSuggestion(Base):
+    """Proposal that two cat profiles are the same cat (``from`` folds into ``into``).
+
+    Both profiles' owners must approve before the merge runs; an owner approves
+    their side implicitly when they make the suggestion.
+    """
+
+    __tablename__ = "cat_merge_suggestions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    # Plain ids (no FK): rows are removed explicitly when a profile is merged away.
+    from_cat_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    into_cat_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    suggested_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_approved: Mapped[bool] = mapped_column(default=False, nullable=False)
+    into_approved: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # "pending", "accepted" or "rejected"
+    status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, nullable=False
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
 
@@ -363,6 +430,11 @@ class User(Base):
     email_following: Mapped[bool] = mapped_column(default=True, nullable=False)
     email_nearby: Mapped[bool] = mapped_column(default=True, nullable=False)
     email_moderation: Mapped[bool] = mapped_column(default=True, nullable=False)
+    # Weekly summary of new cats in the user's watched areas. Opt-in.
+    email_digest: Mapped[bool] = mapped_column(default=False, nullable=False)
+    last_digest_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_now, nullable=False
     )

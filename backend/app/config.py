@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     rate_limit_add_photo: str = "30/hour"
     rate_limit_comment: str = "60/hour"
     rate_limit_mutate: str = "60/hour"
+    rate_limit_export: str = "20/hour"
+    max_export_rows: int = 5000
 
     # Moderation: hide a sighting once it reaches this many distinct reports.
     auto_hide_threshold: int = 3
@@ -55,6 +57,8 @@ class Settings(BaseSettings):
     # A sighting is "stale" (dimmed on the map) if not confirmed within this many
     # days. Cats are transient, so old unconfirmed pins are visually de-emphasized.
     stale_after_days: int = 30
+    # Owners of active missing-cat posts get a "still missing?" nudge this often.
+    missing_reminder_days: int = 14
 
     # Token protecting the /api/admin endpoints. Empty disables admin routes.
     admin_token: str = ""

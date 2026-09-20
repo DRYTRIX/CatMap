@@ -51,6 +51,31 @@ DATABASE_URL=postgresql://user:pass@host:5432/catmap ./backend/scripts/backup_db
 
 Requires `pg_dump` (the `postgresql-client` package).
 
+## Missing-cat reminders
+
+Owners of active missing-cat posts get a "Still missing?" inbox/push nudge
+every `MISSING_REMINDER_DAYS` days (default 14) of inactivity. The job is the
+admin-only `POST /api/admin/jobs/missing-reminders` (header `X-Admin-Token`),
+run daily by `.github/workflows/reminders.yml`. To enable it, add the
+`CATMAP_API_URL` (e.g. `https://catmap-backend.onrender.com`) and
+`CATMAP_ADMIN_TOKEN` repository secrets. Reminders are throttled per post, so
+running the job more often is harmless.
+
+## Area watches and the weekly digest
+
+Users can watch up to 5 areas (centre + radius) from the Watching screen. New
+cats posted inside an area create an inbox notification (and a push, if the
+device is subscribed) — no push subscription required. Signed-in users with a
+verified email can also opt in to a weekly digest of new cats in their areas
+(Account → email preferences). The digest is sent by
+`POST /api/admin/jobs/weekly-digest`, run Mondays by
+`.github/workflows/digest.yml` with the same `CATMAP_API_URL` /
+`CATMAP_ADMIN_TOKEN` secrets as the reminders job. It needs email configured
+(Resend, below), skips users with nothing new, and won't send to the same user
+twice within 6 days. Area watches are matched in Python against all watches on
+each new post, which is fine into the thousands of watches; move the match into
+a bounding-box SQL query if that grows.
+
 ## Push notifications
 
 CatMap supports three notification channels:

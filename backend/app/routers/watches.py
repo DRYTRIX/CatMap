@@ -1,7 +1,9 @@
 """Watch / follow sightings and cat profiles for activity alerts."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -52,6 +54,10 @@ def list_watches(
             target_type=w.target_type,
             target_id=w.target_id,
             created_at=w.created_at,
+            lat=w.lat,
+            lng=w.lng,
+            radius_km=w.radius_km,
+            label=w.label,
         )
         for w in rows
     ]
@@ -85,6 +91,57 @@ def create_watch(
     db.commit()
     db.refresh(row)
     return WatchResult(watching=True, id=row.id)
+
+
+MAX_AREA_WATCHES = 5
+
+
+@router.post("/watches/areas", response_model=WatchOut, status_code=201)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def create_area_watch(
+    request: Request,
+    lat: float = Form(...),
+    lng: float = Form(...),
+    radius_km: float = Form(5.0),
+    label: str = Form(""),
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> WatchOut:
+    """Get alerted (and included in the weekly digest) about new cats near a place."""
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        raise HTTPException(status_code=400, detail="Coordinates out of range.")
+    if not (0.5 <= radius_km <= 50):
+        raise HTTPException(status_code=400, detail="radius_km must be between 0.5 and 50.")
+    count = db.scalar(
+        select(func.count())
+        .select_from(Watch)
+        .where(Watch.device_token.in_(ident.tokens), Watch.target_type == "area")
+    )
+    if (count or 0) >= MAX_AREA_WATCHES:
+        raise HTTPException(status_code=400, detail="Too many watched areas.")
+
+    row = Watch(
+        device_token=ident.device_token,
+        target_type="area",
+        target_id=str(uuid.uuid4()),
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+        label=(label or "").strip()[:60] or None,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return WatchOut(
+        id=row.id,
+        target_type=row.target_type,
+        target_id=row.target_id,
+        created_at=row.created_at,
+        lat=row.lat,
+        lng=row.lng,
+        radius_km=row.radius_km,
+        label=row.label,
+    )
 
 
 @router.delete("/watches", response_model=WatchResult)

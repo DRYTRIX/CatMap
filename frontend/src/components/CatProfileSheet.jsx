@@ -8,6 +8,7 @@ import {
   assetUrl,
   fetchCatProfile,
   renameCatProfile,
+  reportCatProfile,
   unlinkSightingFromCat,
   unwatchTarget,
   watchTarget,
@@ -16,6 +17,7 @@ import { isFavorite, toggleFavorite } from "../lib/favorites";
 import { timeAgo } from "../lib/time";
 import { OSM_TILE_PROPS } from "../lib/osmTiles";
 import { catIcon } from "../lib/markers";
+import MergeSuggestions from "./MergeSuggestions";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
 
@@ -24,7 +26,7 @@ import { useToast } from "./Toast";
  *
  * Props: id, onClose, onSelectSighting(id)
  */
-export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
+export default function CatProfileSheet({ id, onClose, onSelectSighting, onOpenCat }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [data, setData] = useState(null);
@@ -69,6 +71,18 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
     : [20, 0];
 
   const trail = (data?.sightings || []).map((s) => [s.lat, s.lng]);
+
+  async function onReport() {
+    setBusy(true);
+    try {
+      const res = await reportCatProfile(id);
+      toast.success(res.reported ? t("catProfile.reported") : t("catProfile.alreadyReported"));
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onRename() {
     setBusy(true);
@@ -226,8 +240,18 @@ export default function CatProfileSheet({ id, onClose, onSelectSighting }) {
                 <FontAwesomeIcon icon={watching ? faBellSlash : faBell} />{" "}
                 {watching ? t("sighting.watching") : t("sighting.watch")}
               </button>
+              <button type="button" className="btn btn-ghost" onClick={onReport} disabled={busy}>
+                {t("catProfile.report")}
+              </button>
             </div>
           )}
+
+          <MergeSuggestions
+            catId={id}
+            isMine={data.is_mine}
+            onChanged={() => load()}
+            onMovedTo={(catId) => onOpenCat?.(catId)}
+          />
 
           {data.sightings.length > 0 && (
             <div className="cat-profile-map">

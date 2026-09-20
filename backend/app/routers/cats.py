@@ -1,16 +1,26 @@
 """Cat profiles — group multiple sightings of the same individual cat."""
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Query, Request
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from ..cat_merge import merge_cats
 from ..config import get_settings
 from ..database import get_db
 from ..deps import no_cache
 from ..identity import Identity, optional_identity, writable_identity
-from ..models import Cat, Heart, Sighting, Watch
+from ..models import Cat, CatMergeSuggestion, CatReport, Heart, Sighting, Watch
 from ..ratelimit import limiter
-from ..schemas import CatProfile, CatProfileSighting, CatSummary
+from ..schemas import (
+    CatProfile,
+    CatProfileSighting,
+    CatSummary,
+    MergeSuggestionOut,
+    ReportResult,
+)
 
 router = APIRouter(prefix="/cats", tags=["cats"])
 settings = get_settings()
@@ -344,3 +354,236 @@ def unlink_sighting(
     if not sightings:
         return _profile(cat, [], db=db, tokens=ident.tokens, user_id=ident.user_id)
     return _profile(cat, sightings, db=db, tokens=ident.tokens, user_id=ident.user_id)
+
+
+# ---------- "Same cat?" merge suggestions ----------
+
+
+def _owns(cat: Cat | None, ident: Identity) -> bool:
+    return cat is not None and cat.creator_token in ident.tokens
+
+
+def _suggestion_out(
+    db: Session, s: CatMergeSuggestion, ident: Identity, *, merged: bool = False
+) -> dict:
+    from_cat = db.get(Cat, s.from_cat_id)
+    into_cat = db.get(Cat, s.into_cat_id)
+    can_respond = s.status == "pending" and (
+        (_owns(from_cat, ident) and not s.from_approved)
+        or (_owns(into_cat, ident) and not s.into_approved)
+    )
+    return {
+        "id": s.id,
+        "status": s.status,
+        "from_cat_id": s.from_cat_id,
+        "into_cat_id": s.into_cat_id,
+        "from_name": from_cat.name if from_cat else None,
+        "into_name": into_cat.name if into_cat else None,
+        "from_approved": s.from_approved,
+        "into_approved": s.into_approved,
+        "can_respond": can_respond,
+        "merged": merged,
+    }
+
+
+def _merged_out(
+    suggestion_id: str, from_id: str, into_id: str, from_name: str | None, into_name: str | None
+) -> dict:
+    return {
+        "id": suggestion_id,
+        "status": "accepted",
+        "from_cat_id": from_id,
+        "into_cat_id": into_id,
+        "from_name": from_name,
+        "into_name": into_name,
+        "from_approved": True,
+        "into_approved": True,
+        "can_respond": False,
+        "merged": True,
+    }
+
+
+def _finish_if_approved(db: Session, s: CatMergeSuggestion) -> bool:
+    """Run the merge once both owners approved. Returns True if merged."""
+    if not (s.from_approved and s.into_approved):
+        return False
+    source = db.get(Cat, s.from_cat_id)
+    target = db.get(Cat, s.into_cat_id)
+    if source is None or target is None:
+        s.status = "rejected"
+        s.resolved_at = datetime.now(UTC)
+        db.commit()
+        return False
+    # merge_cats deletes every suggestion touching the source (including this one).
+    merge_cats(db, source, target)
+    return True
+
+
+@router.post(
+    "/{cat_id}/merge-suggestions", response_model=MergeSuggestionOut, status_code=201
+)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def suggest_merge(
+    request: Request,
+    cat_id: str,
+    background_tasks: BackgroundTasks,
+    from_cat_id: str = Form(...),
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Suggest that ``from_cat_id`` is the same cat as ``cat_id`` (it would fold into it).
+
+    Both owners must approve. Sides you own are approved automatically, so
+    suggesting between two of your own profiles merges them right away.
+    """
+    into_cat = db.get(Cat, cat_id)
+    from_cat = db.get(Cat, from_cat_id)
+    if into_cat is None or from_cat is None:
+        raise HTTPException(status_code=404, detail="Cat profile not found.")
+    if into_cat.id == from_cat.id:
+        raise HTTPException(status_code=400, detail="Pick two different cat profiles.")
+
+    existing = db.scalars(
+        select(CatMergeSuggestion).where(
+            CatMergeSuggestion.status == "pending",
+            (
+                (CatMergeSuggestion.from_cat_id == from_cat.id)
+                & (CatMergeSuggestion.into_cat_id == into_cat.id)
+            )
+            | (
+                (CatMergeSuggestion.from_cat_id == into_cat.id)
+                & (CatMergeSuggestion.into_cat_id == from_cat.id)
+            ),
+        )
+    ).first()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="A suggestion for these cats already exists.")
+
+    suggestion = CatMergeSuggestion(
+        from_cat_id=from_cat.id,
+        into_cat_id=into_cat.id,
+        suggested_by=ident.device_token,
+        from_approved=_owns(from_cat, ident),
+        into_approved=_owns(into_cat, ident),
+    )
+    db.add(suggestion)
+    db.commit()
+    db.refresh(suggestion)
+    suggestion_id = suggestion.id
+
+    from_name, into_name = from_cat.name, into_cat.name
+    if _finish_if_approved(db, suggestion):
+        return _merged_out(suggestion_id, from_cat_id, cat_id, from_name, into_name)
+
+    from ..user_notifications import notify_inbox_and_push
+
+    for cat, approved in ((from_cat, suggestion.from_approved), (into_cat, suggestion.into_approved)):
+        if approved or cat.creator_token == ident.device_token:
+            continue
+        other = into_cat if cat is from_cat else from_cat
+        background_tasks.add_task(
+            notify_inbox_and_push,
+            recipient_token=cat.creator_token,
+            ntype="cat_merge_suggested",
+            title="Same cat?",
+            body=(
+                f"Someone thinks {cat.name or 'your cat'} and "
+                f"{other.name or 'another profile'} are the same cat."
+            ),
+            payload={"cat_id": cat.id, "suggestion_id": suggestion_id},
+            url=f"/?c={cat.id}",
+        )
+    return _suggestion_out(db, suggestion, ident)
+
+
+@router.get("/{cat_id}/merge-suggestions", response_model=list[MergeSuggestionOut])
+def list_merge_suggestions(
+    cat_id: str,
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+    _: None = Depends(no_cache),
+) -> list[dict]:
+    """Pending "same cat?" suggestions involving one of your cat profiles."""
+    _get_own_cat(db, cat_id, ident)
+    rows = db.scalars(
+        select(CatMergeSuggestion)
+        .where(
+            CatMergeSuggestion.status == "pending",
+            (CatMergeSuggestion.from_cat_id == cat_id)
+            | (CatMergeSuggestion.into_cat_id == cat_id),
+        )
+        .order_by(CatMergeSuggestion.created_at.desc())
+    ).all()
+    return [_suggestion_out(db, s, ident) for s in rows]
+
+
+def _get_respondable(db: Session, suggestion_id: str, ident: Identity) -> CatMergeSuggestion:
+    s = db.get(CatMergeSuggestion, suggestion_id)
+    if s is None or s.status != "pending":
+        raise HTTPException(status_code=404, detail="Suggestion not found.")
+    if not (_owns(db.get(Cat, s.from_cat_id), ident) or _owns(db.get(Cat, s.into_cat_id), ident)):
+        raise HTTPException(status_code=403, detail="Not your cat profile.")
+    return s
+
+
+@router.post("/merge-suggestions/{suggestion_id}/accept", response_model=MergeSuggestionOut)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def accept_merge(
+    request: Request,
+    suggestion_id: str,
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    s = _get_respondable(db, suggestion_id, ident)
+    if _owns(db.get(Cat, s.from_cat_id), ident):
+        s.from_approved = True
+    if _owns(db.get(Cat, s.into_cat_id), ident):
+        s.into_approved = True
+    db.commit()
+    into_id, from_id = s.into_cat_id, s.from_cat_id
+    into_cat, from_cat = db.get(Cat, into_id), db.get(Cat, from_id)
+    names = (from_cat.name if from_cat else None, into_cat.name if into_cat else None)
+    if _finish_if_approved(db, s):
+        return _merged_out(suggestion_id, from_id, into_id, *names)
+    return _suggestion_out(db, s, ident)
+
+
+@router.post("/merge-suggestions/{suggestion_id}/reject", response_model=MergeSuggestionOut)
+@limiter.shared_limit(settings.rate_limit_mutate, scope="mutate")
+def reject_merge(
+    request: Request,
+    suggestion_id: str,
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> dict:
+    s = _get_respondable(db, suggestion_id, ident)
+    s.status = "rejected"
+    s.resolved_at = datetime.now(UTC)
+    db.commit()
+    return _suggestion_out(db, s, ident)
+
+
+@router.post("/{cat_id}/report", response_model=ReportResult)
+@limiter.limit(settings.rate_limit_report)
+def report_cat(
+    request: Request,
+    cat_id: str,
+    reason: str = Form(""),
+    ident: Identity = Depends(writable_identity),
+    db: Session = Depends(get_db),
+) -> ReportResult:
+    """Flag a cat profile for moderator review (once per device)."""
+    from .sightings import ALLOWED_REPORT_REASONS
+
+    if db.get(Cat, cat_id) is None:
+        raise HTTPException(status_code=404, detail="Cat profile not found.")
+    reason = (reason or "").strip()
+    if reason and reason not in ALLOWED_REPORT_REASONS:
+        raise HTTPException(status_code=400, detail="Invalid report reason.")
+    db.add(CatReport(cat_id=cat_id, device_token=ident.device_token, reason=reason[:280]))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return ReportResult(reported=False, hidden=False)
+    return ReportResult(reported=True, hidden=False)

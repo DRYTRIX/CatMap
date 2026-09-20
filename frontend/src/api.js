@@ -59,6 +59,23 @@ async function handle(res) {
   return res.json().catch(() => null);
 }
 
+export async function fetchStatsDetail(days = 30, signal) {
+  const res = await fetch(`${API_BASE}/api/stats/detail?days=${days}`, { signal });
+  return handle(res);
+}
+
+/** Download URL for the public GeoJSON/CSV export of a bounding box. */
+export function exportUrl(format, bbox) {
+  const params = new URLSearchParams({
+    format,
+    min_lat: bbox.minLat,
+    max_lat: bbox.maxLat,
+    min_lng: bbox.minLng,
+    max_lng: bbox.maxLng,
+  });
+  return `${API_BASE}/api/sightings/export?${params}`;
+}
+
 export async function fetchStats() {
   const res = await fetch(`${API_BASE}/api/stats`);
   return handle(res);
@@ -159,6 +176,44 @@ export async function renameCatProfile(catId, name) {
   return handle(res);
 }
 
+export async function reportCatProfile(catId, reason = "other") {
+  const form = new FormData();
+  form.append("reason", reason);
+  const res = await fetch(`${API_BASE}/api/cats/${catId}/report`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function suggestCatMerge(intoCatId, fromCatId) {
+  const form = new FormData();
+  form.append("from_cat_id", fromCatId);
+  const res = await fetch(`${API_BASE}/api/cats/${intoCatId}/merge-suggestions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function fetchMergeSuggestions(catId, signal) {
+  const res = await fetch(`${API_BASE}/api/cats/${catId}/merge-suggestions`, {
+    headers: authHeaders(),
+    signal,
+  });
+  return handle(res);
+}
+
+export async function respondMergeSuggestion(id, accept) {
+  const res = await fetch(
+    `${API_BASE}/api/cats/merge-suggestions/${id}/${accept ? "accept" : "reject"}`,
+    { method: "POST", headers: authHeaders() }
+  );
+  return handle(res);
+}
+
 export async function sendPrivateTip(sightingId, text) {
   const form = new FormData();
   form.append("text", text);
@@ -175,6 +230,20 @@ export async function fetchWatches({ limit = 50, offset = 0 } = {}, signal) {
   const res = await fetch(`${API_BASE}/api/watches?${params}`, {
     headers: authHeaders(),
     signal,
+  });
+  return handle(res);
+}
+
+export async function createAreaWatch({ lat, lng, radiusKm, label }) {
+  const form = new FormData();
+  form.append("lat", lat);
+  form.append("lng", lng);
+  form.append("radius_km", radiusKm);
+  if (label) form.append("label", label);
+  const res = await fetch(`${API_BASE}/api/watches/areas`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
   });
   return handle(res);
 }
@@ -204,13 +273,14 @@ export async function unwatchTarget(targetType, targetId) {
 }
 
 export async function fetchRecent(
-  { limit = 20, offset = 0, sort = "recent", kind, q, status, near_lat, near_lng, radius_km } = {},
+  { limit = 20, offset = 0, sort = "recent", kind, q, status, exclude_outcome, near_lat, near_lng, radius_km } = {},
   signal
 ) {
   const params = new URLSearchParams({ limit, offset, sort });
   if (kind) params.set("kind", kind);
   if (q) params.set("q", q);
   if (status) params.set("status", status);
+  if (exclude_outcome) params.set("exclude_outcome", exclude_outcome);
   if (near_lat != null) params.set("near_lat", near_lat);
   if (near_lng != null) params.set("near_lng", near_lng);
   if (radius_km != null) params.set("radius_km", radius_km);
@@ -411,8 +481,20 @@ export async function markGone(id) {
   return handle(res);
 }
 
-export async function markFound(id) {
+export async function markFound(id, { outcome = "returned_home", story = "" } = {}) {
+  const form = new FormData();
+  form.append("outcome", outcome);
+  if (story.trim()) form.append("story", story.trim());
   const res = await fetch(`${API_BASE}/api/sightings/${id}/found`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  return handle(res);
+}
+
+export async function relistSighting(id) {
+  const res = await fetch(`${API_BASE}/api/sightings/${id}/relist`, {
     method: "POST",
     headers: authHeaders(),
   });
@@ -591,8 +673,72 @@ export async function unsubscribePush(subscription) {
   return handle(res);
 }
 
+// Who is moderating and why. The label is self-declared (there is one shared
+// admin token) and is recorded in the audit log next to each action.
+const adminContext = { label: "", reason: "" };
+
+export function setAdminContext({ label, reason } = {}) {
+  if (label !== undefined) adminContext.label = label;
+  if (reason !== undefined) adminContext.reason = reason;
+}
+
 function adminHeaders(token) {
-  return { "X-Admin-Token": token };
+  const headers = { "X-Admin-Token": token };
+  const label = adminContext.label.trim();
+  if (label) headers["X-Admin-Label"] = label;
+  return headers;
+}
+
+/** Query string carrying the moderation reason for the audit log. */
+function adminReasonQuery() {
+  const reason = adminContext.reason.trim();
+  return reason ? `?reason=${encodeURIComponent(reason.slice(0, 280))}` : "";
+}
+
+export async function fetchAdminCats({ token, q = "", reportedOnly = false, limit = 50, offset = 0 }) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (q) params.set("q", q);
+  if (reportedOnly) params.set("reported_only", "true");
+  const res = await fetch(`${API_BASE}/api/admin/cats?${params}`, {
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminMergeCats(intoId, fromId, token) {
+  const form = new FormData();
+  form.append("from_cat_id", fromId);
+  const res = await fetch(`${API_BASE}/api/admin/cats/${intoId}/merge${adminReasonQuery()}`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: form,
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
+}
+
+export async function adminDeleteCat(id, token) {
+  const res = await fetch(`${API_BASE}/api/admin/cats/${id}${adminReasonQuery()}`, {
+    method: "DELETE",
+    headers: adminHeaders(token),
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  if (!res.ok) return handle(res);
+  return true;
+}
+
+export async function adminBulkSightings(action, ids, token) {
+  const form = new FormData();
+  form.append("action", action);
+  form.append("ids", ids.join(","));
+  const res = await fetch(`${API_BASE}/api/admin/sightings/bulk${adminReasonQuery()}`, {
+    method: "POST",
+    headers: adminHeaders(token),
+    body: form,
+  });
+  if (res.status === 401) throw new Error("UNAUTHORIZED");
+  return handle(res);
 }
 
 export async function fetchAdminReports({ token, sort = "reports", limit = 50, offset = 0 }) {
@@ -605,7 +751,7 @@ export async function fetchAdminReports({ token, sort = "reports", limit = 50, o
 }
 
 export async function adminHideSighting(id, token) {
-  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/hide`, {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/hide${adminReasonQuery()}`, {
     method: "POST",
     headers: adminHeaders(token),
   });
@@ -614,7 +760,7 @@ export async function adminHideSighting(id, token) {
 }
 
 export async function adminUnhideSighting(id, token) {
-  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/unhide`, {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/unhide${adminReasonQuery()}`, {
     method: "POST",
     headers: adminHeaders(token),
   });
@@ -623,7 +769,7 @@ export async function adminUnhideSighting(id, token) {
 }
 
 export async function adminDeleteSighting(id, token) {
-  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}`, {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}${adminReasonQuery()}`, {
     method: "DELETE",
     headers: adminHeaders(token),
   });
@@ -651,7 +797,7 @@ export async function fetchAdminPending({ token, limit = 50, offset = 0 }) {
 }
 
 export async function adminApproveSighting(id, token) {
-  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/approve`, {
+  const res = await fetch(`${API_BASE}/api/admin/sightings/${id}/approve${adminReasonQuery()}`, {
     method: "POST",
     headers: adminHeaders(token),
   });

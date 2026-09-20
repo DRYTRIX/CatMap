@@ -1,10 +1,20 @@
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Response,
+)
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from ..cat_merge import merge_cats
 from ..config import get_settings
 from ..database import get_db
 from ..deps import require_admin
@@ -12,6 +22,7 @@ from ..models import (
     AdminAction,
     BlockedToken,
     Cat,
+    CatReport,
     Comment,
     Confirmation,
     IssueReport,
@@ -23,11 +34,13 @@ from ..models import (
 from ..push import submit_push
 from ..schemas import (
     AdminActionRow,
+    AdminCatRow,
     AdminCommentRow,
     AdminIssueRow,
     AdminMetrics,
     AdminReportRow,
     BlockedTokenRow,
+    BulkResult,
     DatabaseTableUsage,
     DatabaseUsage,
     PhotoOut,
@@ -39,6 +52,22 @@ router = APIRouter(
     tags=["admin"],
     dependencies=[Depends(require_admin)],
 )
+
+
+@router.post("/jobs/missing-reminders")
+def run_missing_reminders() -> dict:
+    """Send "still missing?" nudges. Call from a scheduler (cron) with the admin token."""
+    from ..user_notifications import send_missing_reminders
+
+    return {"sent": send_missing_reminders()}
+
+
+@router.post("/jobs/weekly-digest")
+def run_weekly_digest() -> dict:
+    """Send the weekly area digest. Call from a scheduler with the admin token."""
+    from ..user_notifications import send_weekly_digest
+
+    return {"sent": send_weekly_digest()}
 
 
 MAX_PAGE_SIZE = 200
@@ -289,8 +318,29 @@ def _get_or_404(db: Session, sighting_id: str) -> Sighting:
     return sighting
 
 
-def _record_action(db: Session, action: str, sighting_id: str) -> None:
-    db.add(AdminAction(action=action, sighting_id=sighting_id))
+class ModContext:
+    """Why a moderation action was taken and who took it (self-declared label)."""
+
+    def __init__(
+        self,
+        reason: str = Query("", max_length=280),
+        x_admin_label: str | None = Header(default=None),
+    ) -> None:
+        self.reason = (reason or "").strip() or None
+        self.label = (x_admin_label or "").strip()[:60] or None
+
+
+def _record_action(
+    db: Session, action: str, sighting_id: str, ctx: "ModContext | None" = None
+) -> None:
+    db.add(
+        AdminAction(
+            action=action,
+            sighting_id=sighting_id,
+            reason=ctx.reason if ctx else None,
+            admin_label=ctx.label if ctx else None,
+        )
+    )
 
 
 @router.get("/sightings/{sighting_id}/thumbnail")
@@ -307,16 +357,12 @@ def admin_photo(sighting_id: str, db: Session = Depends(get_db)) -> Response:
     return Response(content=sighting.photo, media_type=sighting.photo_mime)
 
 
-@router.post("/sightings/{sighting_id}/hide")
-def hide(
-    sighting_id: str,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-) -> dict:
-    sighting = _get_or_404(db, sighting_id)
+def _hide_one(
+    db: Session, sighting: Sighting, ctx: ModContext, background_tasks: BackgroundTasks
+) -> None:
     creator = sighting.creator_token
     sighting.status = "hidden"
-    _record_action(db, "hide", sighting.id)
+    _record_action(db, "hide", sighting.id, ctx)
     db.commit()
     if creator:
         from ..user_notifications import notify_sighting_moderated
@@ -327,14 +373,27 @@ def hide(
             creator_token=creator,
             approved=False,
         )
+
+
+@router.post("/sightings/{sighting_id}/hide")
+def hide(
+    sighting_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    ctx: ModContext = Depends(),
+) -> dict:
+    sighting = _get_or_404(db, sighting_id)
+    _hide_one(db, sighting, ctx, background_tasks)
     return {"id": sighting.id, "status": sighting.status}
 
 
 @router.post("/sightings/{sighting_id}/unhide")
-def unhide(sighting_id: str, db: Session = Depends(get_db)) -> dict:
+def unhide(
+    sighting_id: str, db: Session = Depends(get_db), ctx: ModContext = Depends()
+) -> dict:
     sighting = _get_or_404(db, sighting_id)
     sighting.status = "active"
-    _record_action(db, "unhide", sighting.id)
+    _record_action(db, "unhide", sighting.id, ctx)
     db.commit()
     return {"id": sighting.id, "status": sighting.status}
 
@@ -344,11 +403,12 @@ def approve(
     sighting_id: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    ctx: ModContext = Depends(),
 ) -> dict:
     sighting = _get_or_404(db, sighting_id)
     creator = sighting.creator_token
     sighting.status = "active"
-    _record_action(db, "approve", sighting.id)
+    _record_action(db, "approve", sighting.id, ctx)
     db.commit()
     if creator:
         from ..user_notifications import notify_sighting_moderated
@@ -368,27 +428,140 @@ def approve(
         lng=sighting.lng,
         description=sighting.description,
         kind=sighting.kind,
+        exclude_tokens=frozenset({creator}),
     )
     return {"id": sighting.id, "status": sighting.status}
 
 
 @router.delete("/sightings/{sighting_id}", status_code=204)
-def admin_delete(sighting_id: str, db: Session = Depends(get_db)):
+def admin_delete(
+    sighting_id: str, db: Session = Depends(get_db), ctx: ModContext = Depends()
+):
     sighting = _get_or_404(db, sighting_id)
-    _record_action(db, "delete", sighting.id)
+    _record_action(db, "delete", sighting.id, ctx)
     db.delete(sighting)
     db.commit()
 
 
 @router.delete("/cats/{cat_id}", status_code=204)
-def admin_delete_cat(cat_id: str, db: Session = Depends(get_db)):
+def admin_delete_cat(
+    cat_id: str, db: Session = Depends(get_db), ctx: ModContext = Depends()
+):
     """Delete a cat profile; linked sightings keep their data (cat_id cleared)."""
     cat = db.get(Cat, cat_id)
     if cat is None:
         raise HTTPException(status_code=404, detail="Cat profile not found.")
-    _record_action(db, "delete_cat", cat.id)
+    _record_action(db, "delete_cat", cat.id, ctx)
     db.delete(cat)
     db.commit()
+
+
+@router.get("/cats", response_model=list[AdminCatRow])
+def list_cats(
+    db: Session = Depends(get_db),
+    q: str | None = None,
+    reported_only: bool = False,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[AdminCatRow]:
+    """Cat profiles for moderation, with sighting/heart/report counts."""
+    if limit < 1 or limit > MAX_PAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"limit must be 1-{MAX_PAGE_SIZE}.")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0.")
+
+    reports = (
+        select(CatReport.cat_id, func.count().label("n")).group_by(CatReport.cat_id).subquery()
+    )
+    sightings = (
+        select(Sighting.cat_id, func.count().label("n")).group_by(Sighting.cat_id).subquery()
+    )
+    stmt = (
+        select(
+            Cat,
+            func.coalesce(sightings.c.n, 0).label("sightings"),
+            func.coalesce(reports.c.n, 0).label("reports"),
+        )
+        .outerjoin(sightings, sightings.c.cat_id == Cat.id)
+        .outerjoin(reports, reports.c.cat_id == Cat.id)
+    )
+    if q:
+        stmt = stmt.where(Cat.name.ilike(f"%{q.strip()[:100]}%"))
+    if reported_only:
+        stmt = stmt.where(func.coalesce(reports.c.n, 0) > 0)
+    stmt = stmt.order_by(
+        func.coalesce(reports.c.n, 0).desc(), Cat.created_at.desc()
+    ).limit(limit).offset(offset)
+    return [
+        AdminCatRow(
+            id=cat.id,
+            name=cat.name,
+            created_at=cat.created_at,
+            creator_token=cat.creator_token,
+            sighting_count=int(n_sightings),
+            hearts_count=int(cat.hearts_count or 0),
+            reports_count=int(n_reports),
+        )
+        for cat, n_sightings, n_reports in db.execute(stmt).all()
+    ]
+
+
+@router.post("/cats/{cat_id}/merge")
+def admin_merge_cats(
+    cat_id: str,
+    from_cat_id: str = Form(...),
+    db: Session = Depends(get_db),
+    ctx: ModContext = Depends(),
+) -> dict:
+    """Force-merge ``from_cat_id`` into ``cat_id`` without owner approval."""
+    target = db.get(Cat, cat_id)
+    source = db.get(Cat, from_cat_id)
+    if target is None or source is None:
+        raise HTTPException(status_code=404, detail="Cat profile not found.")
+    if target.id == source.id:
+        raise HTTPException(status_code=400, detail="Pick two different cat profiles.")
+    _record_action(db, "merge_cats", target.id, ctx)
+    merge_cats(db, source, target)  # commits the audit row too
+    return {"id": target.id, "merged": from_cat_id}
+
+
+BULK_ACTIONS = {"hide", "unhide", "delete"}
+MAX_BULK = 100
+
+
+@router.post("/sightings/bulk", response_model=BulkResult)
+def bulk_sightings(
+    background_tasks: BackgroundTasks,
+    action: str = Form(...),
+    ids: str = Form(...),
+    db: Session = Depends(get_db),
+    ctx: ModContext = Depends(),
+) -> BulkResult:
+    """Hide, unhide or delete many sightings at once (comma-separated ids, max 100)."""
+    if action not in BULK_ACTIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid action (expected one of: {', '.join(sorted(BULK_ACTIONS))}).",
+        )
+    id_list = list(dict.fromkeys(i.strip() for i in ids.split(",") if i.strip()))
+    if not id_list:
+        raise HTTPException(status_code=400, detail="Provide at least one id.")
+    if len(id_list) > MAX_BULK:
+        raise HTTPException(status_code=400, detail=f"At most {MAX_BULK} ids per request.")
+
+    found = {s.id: s for s in db.scalars(select(Sighting).where(Sighting.id.in_(id_list))).all()}
+    for sid, sighting in found.items():
+        if action == "hide":
+            _hide_one(db, sighting, ctx, background_tasks)
+        elif action == "unhide":
+            sighting.status = "active"
+            _record_action(db, "unhide", sid, ctx)
+            db.commit()
+        else:
+            _record_action(db, "delete", sid, ctx)
+            db.delete(sighting)
+            db.commit()
+    return BulkResult(processed=len(found), not_found=[i for i in id_list if i not in found])
 
 
 @router.get("/actions", response_model=list[AdminActionRow])
@@ -416,6 +589,8 @@ def list_actions(
             action=a.action,
             sighting_id=a.sighting_id,
             created_at=a.created_at,
+            reason=a.reason,
+            admin_label=a.admin_label,
         )
         for a in rows
     ]
@@ -550,9 +725,14 @@ def admin_extra_thumbnail(
 
 
 @router.delete("/sightings/{sighting_id}/photos/{photo_id}", status_code=204)
-def admin_delete_photo(sighting_id: str, photo_id: str, db: Session = Depends(get_db)):
+def admin_delete_photo(
+    sighting_id: str,
+    photo_id: str,
+    db: Session = Depends(get_db),
+    ctx: ModContext = Depends(),
+):
     photo = _get_admin_extra_photo(db, sighting_id, photo_id)
-    _record_action(db, "delete_photo", sighting_id)
+    _record_action(db, "delete_photo", sighting_id, ctx)
     db.delete(photo)
     db.commit()
 

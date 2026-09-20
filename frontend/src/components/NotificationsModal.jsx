@@ -20,7 +20,7 @@ function parsePayload(json) {
   }
 }
 
-export default function NotificationsModal({ onClose, onSelectSighting }) {
+export default function NotificationsModal({ onClose, onSelectSighting, onSelectCat }) {
   const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,9 @@ export default function NotificationsModal({ onClose, onSelectSighting }) {
         )
       );
     }
+    const catId = parsePayload(item.payload_json).cat_id;
     if (item.sighting_id) onSelectSighting?.(item.sighting_id);
+    else if (catId && onSelectCat) onSelectCat(catId);
     else onClose();
   }
 

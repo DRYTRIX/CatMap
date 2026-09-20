@@ -77,7 +77,15 @@
     "title": "Suivis",
     "empty": "Vous ne suivez rien pour l’instant — touchez la cloche d’un signalement ou d’un profil de chat pour le suivre.",
     "loadError": "Impossible de charger vos suivis.",
-    "catProfile": "Profil de chat"
+    "catProfile": "Profil de chat",
+    "areasTitle": "Zones suivies",
+    "areasHint": "Soyez alerté des nouveaux chats près d'un lieu. Utilise le centre de la carte.",
+    "areaLabel": "Nom (ex. Maison)",
+    "areaAdd": "Suivre cette zone",
+    "areaAdded": "Zone ajoutée.",
+    "areaRemove": "Ne plus suivre cette zone",
+    "areaRadius": "{{km}} km",
+    "areaRadiusLabel": "Rayon"
   },
   "mySightings": {
     "title": "Mes chats",
@@ -275,7 +283,16 @@
     "unwatchSuccess": "Suivi arrêté.",
     "watch": "Suivre",
     "watchSuccess": "Vous serez alerté lorsque ce chat sera mis à jour.",
-    "watching": "Suivi"
+    "watching": "Suivi",
+    "relist": "Remettre sur la carte",
+    "relistSuccess": "De nouveau sur la carte.",
+    "outcomeLabel": "Que s'est-il passé ?",
+    "storyLabel": "Racontez l'histoire (facultatif)",
+    "outcome": {
+      "returned_home": "Rentré à la maison",
+      "found_by_others": "Retrouvé par quelqu'un d'autre",
+      "deceased": "Malheureusement décédé"
+    }
   },
   "catProfile": {
     "title": "Profil du chat",
@@ -288,7 +305,10 @@
     "renameSuccess": "Nom du chat mis à jour.",
     "timelineHint": "Observations sur la carte chronologique, de la plus ancienne à la plus récente.",
     "unlink": "Dissocier",
-    "unlinkSuccess": "Observation dissociée de ce profil."
+    "unlinkSuccess": "Observation dissociée de ce profil.",
+    "report": "Signaler le profil",
+    "reported": "Merci — un modérateur va regarder.",
+    "alreadyReported": "Vous avez déjà signalé ce profil."
   },
   "comments": {
     "title": "Commentaires",
@@ -543,6 +563,41 @@
     "deleteBodyWithContent": "Votre compte et tous les signalements/chats/commentaires des appareils liés seront définitivement supprimés.",
     "deleteContentToo": "Supprimer aussi mes signalements, chats et commentaires",
     "deleted": "Compte supprimé",
-    "emailRequired": "Entrez d’abord votre e-mail"
+    "emailRequired": "Entrez d’abord votre e-mail",
+    "prefDigest": "Résumé hebdomadaire des nouveaux chats dans mes zones"
+  },
+  "stats": {
+    "title": "Statistiques",
+    "hint": "Totaux de la communauté et export des données.",
+    "open": "Voir les statistiques et exporter",
+    "loadError": "Impossible de charger les statistiques.",
+    "total": "Chats sur la carte",
+    "missing": "Disparus actuellement",
+    "reunited": "Retrouvés",
+    "confirmations": "Confirmations",
+    "earTipped": "Oreille coupée",
+    "stray": "Errants",
+    "perDay": "Nouveaux signalements par jour",
+    "perDayLabel": "{{count}} nouveaux signalements ces {{days}} derniers jours",
+    "export": "Exporter les données",
+    "exportHint": "Télécharger les signalements publics (sans données personnelles).",
+    "exportArea": "Zone",
+    "areaView": "Vue actuelle de la carte",
+    "areaWorld": "Monde entier (5000 derniers)"
+  },
+  "merge": {
+    "button": "Même chat qu'un autre profil ?",
+    "title": "Même chat ?",
+    "hint": "Choisissez le profil qui est le même chat. Les deux propriétaires doivent accepter avant la fusion.",
+    "search": "Rechercher des profils",
+    "none": "Aucun profil trouvé.",
+    "unnamed": "Chat sans nom",
+    "sent": "Suggestion envoyée au propriétaire.",
+    "merged": "Profils fusionnés.",
+    "approved": "Approuvé — en attente de l'autre propriétaire.",
+    "rejected": "Suggestion refusée.",
+    "pending": "Quelqu'un pense que ce chat est le même que {{name}}.",
+    "accept": "Fusionner",
+    "reject": "Refuser"
   }
 }

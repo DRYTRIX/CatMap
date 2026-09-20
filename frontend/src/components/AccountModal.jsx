@@ -520,6 +520,17 @@ export default function AccountModal({
               />
               {t("account.prefModeration")}
             </label>
+            <label
+              className={`checkbox-row checkbox-row--sub${!prefs.enabled ? " checkbox-row--disabled" : ""}`}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(prefs.digest)}
+                disabled={!prefs.enabled}
+                onChange={(e) => togglePref("digest", e.target.checked)}
+              />
+              {t("account.prefDigest")}
+            </label>
           </section>
 
           <section className="settings-section">

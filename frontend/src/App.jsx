@@ -20,6 +20,7 @@ const FilterPanel = lazy(() => import("./components/FilterPanel"));
 const FavoritesModal = lazy(() => import("./components/FavoritesModal"));
 const MySightingsModal = lazy(() => import("./components/MySightingsModal"));
 const RecentFeedModal = lazy(() => import("./components/RecentFeedModal"));
+const StatsModal = lazy(() => import("./components/StatsModal"));
 const ReportIssueModal = lazy(() => import("./components/ReportIssueModal"));
 const CatProfileSheet = lazy(() => import("./components/CatProfileSheet"));
 const OfflineQueueModal = lazy(() => import("./components/OfflineQueueModal"));
@@ -53,6 +54,7 @@ function AppShell() {
   const [showMySightings, setShowMySightings] = useState(false);
   const [showRecent, setShowRecent] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
@@ -76,6 +78,7 @@ function AppShell() {
     mySightings: [showMySightings, setShowMySightings],
     recent: [showRecent, setShowRecent],
     reportIssue: [showReportIssue, setShowReportIssue],
+    stats: [showStats, setShowStats],
     notifications: [showNotifications, setShowNotifications],
     settings: [showSettings, setShowSettings],
     account: [showAccount, setShowAccount],
@@ -424,6 +427,7 @@ function AppShell() {
           id={selectedCatId}
           onClose={closeScreen}
           onSelectSighting={openSighting}
+          onOpenCat={openCat}
         />
       )}
 
@@ -447,6 +451,23 @@ function AppShell() {
         <RecentFeedModal onClose={closeScreen} onSelect={openSighting} />
       )}
 
+      {showStats && (
+        <StatsModal
+          onClose={closeScreen}
+          getBounds={() => {
+            const b = mapRef.current?.getBounds();
+            return b
+              ? {
+                  minLat: b.getSouth(),
+                  maxLat: b.getNorth(),
+                  minLng: b.getWest(),
+                  maxLng: b.getEast(),
+                }
+              : null;
+          }}
+        />
+      )}
+
       {showReportIssue && (
         <ReportIssueModal onClose={closeScreen} />
       )}
@@ -461,6 +482,10 @@ function AppShell() {
             openSighting(id);
             fetchUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
           }}
+          onSelectCat={(id) => {
+            openCat(id);
+            fetchUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
+          }}
         />
       )}
 
@@ -469,6 +494,7 @@ function AppShell() {
           onClose={closeScreen}
           onReportIssue={() => switchScreen("reportIssue")}
           onOpenAccount={() => switchScreen("account")}
+          onOpenStats={() => switchScreen("stats")}
         />
       )}
 
@@ -496,6 +522,10 @@ function AppShell() {
           onClose={closeScreen}
           onSelect={openSighting}
           onCatSelect={openCat}
+          getCenter={() => {
+            const c = mapRef.current?.getCenter();
+            return c ? { lat: c.lat, lng: c.lng } : null;
+          }}
         />
       )}
 
