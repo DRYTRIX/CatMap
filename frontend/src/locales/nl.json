@@ -163,6 +163,8 @@
     "gpsFound": "GPS gevonden in de foto. Versleep de pin om te verfijnen.",
     "gpsMobile": "Je telefoon heeft mogelijk locatiegegevens verwijderd — gebruik Mijn locatie of plaats een pin.",
     "gpsManual": "Geen GPS in deze foto — plaats een pin of gebruik je locatie.",
+    "fromDeviceLocation": "van jouw locatie",
+    "deviceLocationFound": "Geen GPS in de foto, dus we gebruikten je huidige locatie. Versleep de pin om te verfijnen.",
     "description": "Beschrijving",
     "descriptionPlaceholder": "Oranje tabby die dut bij de bakker…",
     "descriptionPlaceholderMissing": "Naam, halsband, kenmerken, wanneer laatst gezien…",
@@ -468,7 +470,8 @@
     "ariaLabel": "Zoek een plaats"
   },
   "photoPick": {
-    "opening": "Openen…"
+    "opening": "Openen…",
+    "camera": "Foto maken"
   },
   "onboarding": {
     "hint": "Tik op {{action}} om je eerste waarneming op de kaart te plaatsen.",

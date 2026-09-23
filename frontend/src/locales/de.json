@@ -163,6 +163,8 @@
     "gpsFound": "GPS im Foto gefunden. Pin zum Feinabstimmen ziehen.",
     "gpsMobile": "Dein Handy hat möglicherweise Standortdaten entfernt — nutze Mein Standort oder setze einen Pin.",
     "gpsManual": "Kein GPS in diesem Foto — Pin setzen oder Standort nutzen.",
+    "fromDeviceLocation": "von deinem Standort",
+    "deviceLocationFound": "Kein GPS im Foto, daher haben wir deinen aktuellen Standort verwendet. Pin zum Feinabstimmen ziehen.",
     "description": "Beschreibung",
     "descriptionPlaceholder": "Orangefarbene Getigerte, die bei der Bäckerei döst…",
     "descriptionPlaceholderMissing": "Name, Halsband, Merkmale, zuletzt gesehen…",
@@ -468,7 +470,8 @@
     "ariaLabel": "Nach einem Ort suchen"
   },
   "photoPick": {
-    "opening": "Wird geöffnet…"
+    "opening": "Wird geöffnet…",
+    "camera": "Foto aufnehmen"
   },
   "onboarding": {
     "hint": "Tippe auf {{action}}, um deine erste Sichtung auf der Karte zu markieren.",

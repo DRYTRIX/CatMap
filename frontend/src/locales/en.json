@@ -163,6 +163,8 @@
     "gpsFound": "Found GPS in the photo. Drag the pin to fine-tune.",
     "gpsMobile": "Your phone may have removed location data from the photo — use My location or drop a pin.",
     "gpsManual": "No GPS in this photo — drop a pin or use your location.",
+    "fromDeviceLocation": "from your location",
+    "deviceLocationFound": "No GPS in the photo, so we used your current location. Drag the pin to fine-tune.",
     "description": "Description",
     "descriptionPlaceholder": "Orange tabby napping by the bakery…",
     "descriptionPlaceholderMissing": "Name, collar, distinctive marks, when last seen…",
@@ -473,7 +475,8 @@
     "ariaLabel": "Search for a place or cat"
   },
   "photoPick": {
-    "opening": "Opening…"
+    "opening": "Opening…",
+    "camera": "Take a photo"
   },
   "onboarding": {
     "hint": "Tap {{action}} to pin your first sighting on the map.",

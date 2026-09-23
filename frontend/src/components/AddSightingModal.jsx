@@ -5,6 +5,8 @@ import { createSighting } from "../api";
 import { clearDraft, isDraftWorthSaving, loadDraft, saveDraft } from "../lib/addDraft";
 import { isNetworkError, queueSighting, serializeFiles } from "../lib/offlineQueue";
 import { compressImage, formatBytes } from "../lib/image";
+import { getPosition } from "../lib/geolocate";
+import { isNativePlatform } from "../lib/platform";
 import {
   filterImageFiles,
   isMobile,
@@ -98,6 +100,7 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
 
   const [location, setLocation] = useState(initialLocation);
   const [fromExif, setFromExif] = useState(false);
+  const [fromDeviceLocation, setFromDeviceLocation] = useState(false);
 
   const [description, setDescription] = useState("");
   const [catName, setCatName] = useState("");
@@ -129,6 +132,7 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
     kind,
     location,
     fromExif,
+    fromDeviceLocation,
     description,
     catName,
     contact,
@@ -153,6 +157,7 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
     setKind(d.kind || "sighting");
     if (d.location) setLocation(d.location);
     setFromExif(Boolean(d.fromExif));
+    setFromDeviceLocation(Boolean(d.fromDeviceLocation));
     setDescription(d.description || "");
     setCatName(d.catName || "");
     setContact(d.contact || "");
@@ -203,15 +208,23 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
       for (let i = 0; i < incoming.length; i++) {
         const f = incoming[i];
 
-        // Read GPS from ORIGINAL bytes (compression strips EXIF). Scan every
-        // photo in the batch until coordinates are found.
+        // Read GPS from ORIGINAL bytes (compression strips EXIF). Native
+        // picks (lib/pickPhotos) attach GPS separately as `f.gps`, since the
+        // OS always re-encodes the returned file there too. Scan every photo
+        // in the batch until coordinates are found.
         if (!gpsFound) {
-          const gps = await readGpsFromFile(f);
+          const gps = f.gps || (await readGpsFromFile(f));
           if (gps) {
             setLocation({ lat: gps.latitude, lng: gps.longitude });
             setFromExif(true);
             gpsFound = true;
-            track("exif_gps_read", { found: true, error: false, photo_index: i });
+            track("exif_gps_read", {
+              found: true,
+              error: false,
+              photo_index: i,
+              source: f.gps ? "native_metadata" : "file_bytes",
+              platform: isNativePlatform() ? "native" : "web",
+            });
           }
         }
 
@@ -243,8 +256,31 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
       }
 
       if (!gpsFound && isFirstBatch && !hadLocation) {
-        track("exif_gps_read", { found: false, error: false });
         setFromExif(false);
+        // Phones routinely strip/redact photo GPS (Android picker redaction,
+        // iOS "Options" toggle, re-encoding on native picks). Rather than
+        // leave mobile users stuck on a world map, silently try the device's
+        // current position — same helper the "My location" button uses, so
+        // this only succeeds where that button already would.
+        let deviceLocationFound = false;
+        if (isMobile()) {
+          try {
+            const pos = await getPosition({ highAccuracy: true, timeout: 6000 });
+            setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setFromDeviceLocation(true);
+            deviceLocationFound = true;
+          } catch {
+            // Permission denied/unavailable — user still has "My location" and
+            // manual pin placement on the next step.
+          }
+        }
+        track("exif_gps_read", {
+          found: false,
+          error: false,
+          platform: isNativePlatform() ? "native" : "web",
+          mobile: isMobile(),
+          device_location: deviceLocationFound,
+        });
       }
     } finally {
       setProcessing(false);
@@ -285,7 +321,7 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
       } else {
         toast.success(isMissing ? t("addSighting.missingSuccess") : t("addSighting.success"));
         onCreated(created, {
-          location_source: fromExif ? "exif" : "manual",
+          location_source: fromExif ? "exif" : fromDeviceLocation ? "device" : "manual",
           has_description: Boolean(description.trim()),
           photo_count: photos.length,
           has_attributes: Boolean(color || isEarTipped || isStray),
@@ -474,15 +510,20 @@ export default function AddSightingModal({ onClose, onCreated, initialLocation =
           <label>
             {isMissing ? t("addSighting.locationMissing") : t("addSighting.location")}{" "}
             {fromExif && <span className="gps-badge">{t("addSighting.fromGps")}</span>}
+            {!fromExif && fromDeviceLocation && (
+              <span className="gps-badge">{t("addSighting.fromDeviceLocation")}</span>
+            )}
           </label>
           <p className="hint">
             {isMissing
               ? t("addSighting.locationMissingHint")
               : fromExif
                 ? t("addSighting.gpsFound")
-                : isMobile()
-                  ? t("addSighting.gpsMobile")
-                  : t("addSighting.gpsManual")}
+                : fromDeviceLocation
+                  ? t("addSighting.deviceLocationFound")
+                  : isMobile()
+                    ? t("addSighting.gpsMobile")
+                    : t("addSighting.gpsManual")}
           </p>
           <LocationPicker value={location} onChange={setLocation} />
         </div>

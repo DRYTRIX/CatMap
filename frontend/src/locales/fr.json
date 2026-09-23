@@ -163,6 +163,8 @@
     "gpsFound": "GPS trouvé dans la photo. Faites glisser l'épingle pour ajuster.",
     "gpsMobile": "Votre téléphone a peut-être supprimé la localisation — utilisez Ma position ou placez une épingle.",
     "gpsManual": "Pas de GPS dans cette photo — placez une épingle ou utilisez votre position.",
+    "fromDeviceLocation": "depuis votre position",
+    "deviceLocationFound": "Pas de GPS dans la photo, nous avons donc utilisé votre position actuelle. Faites glisser l'épingle pour ajuster.",
     "description": "Description",
     "descriptionPlaceholder": "Chat tigré orange qui fait la sieste près de la boulangerie…",
     "descriptionPlaceholderMissing": "Nom, collier, signes distinctifs, dernière vue…",
@@ -468,7 +470,8 @@
     "ariaLabel": "Rechercher un lieu"
   },
   "photoPick": {
-    "opening": "Ouverture…"
+    "opening": "Ouverture…",
+    "camera": "Prendre une photo"
   },
   "onboarding": {
     "hint": "Touchez {{action}} pour placer votre première observation sur la carte.",
