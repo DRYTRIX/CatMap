@@ -52,6 +52,15 @@ Add GitHub repository secrets:
 | `ANDROID_KEY_PASSWORD` | Key password from `keystore.properties` |
 | `ANDROID_GOOGLE_SERVICES_JSON` | Full contents of `frontend/android/app/google-services.json` (Firebase; required for FCM) |
 
+#### Play App Signing
+
+The keystore above is the **upload key**. Google holds the actual app signing key (Play App Signing), which is required for current Play features such as automatic app-string translation.
+
+Enroll once in Play Console → **Test and release → App integrity → App signing**:
+
+- **No release rolled out yet:** choose *Let Google create and manage my app signing key*. `catmap-upload.keystore` stays the upload key; nothing changes in CI.
+- **Releases already published with this keystore:** choose *Use existing app signing key from Java keystore*, download `pepk.jar` from that page, run the shown command against `catmap-upload.keystore` (alias `catmap`) and upload the encrypted zip. Keep using the same keystore as upload key so the CI secrets stay valid.
+
 ### Version numbering
 
 Version is derived from the git tag — do **not** edit `build.gradle` manually for releases.
